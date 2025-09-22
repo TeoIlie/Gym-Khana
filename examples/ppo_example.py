@@ -42,7 +42,7 @@ if train:
     run.finish()
 
 else:
-    model_path = "models/3wlusg06/model.zip"
+    model_path = "models/70ftjvia/model.zip"
     model = PPO.load(model_path, print_system_info=True, device="cpu")
     eval_env = gym.make(
         "f1tenth_gym:f1tenth-v0",

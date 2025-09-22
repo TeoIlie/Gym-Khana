@@ -50,6 +50,9 @@ gym 0.17.3 requires pyglet<=1.5.0,>=1.4.0, but you'll have pyglet 1.5.11 which i
 ```
 which could be ignored. The environment should still work without error.
 
+## Wanbd
+The wandb models are available here: https://wandb.ai/teo-altum-quinque-queen-s-university/projects 
+
 ## Citing
 If you find this Gym environment useful, please consider citing:
 
