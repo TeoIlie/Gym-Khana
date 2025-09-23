@@ -34,7 +34,7 @@ In order to achieve this using this existing simulation environment, there are s
  4. Develop Drift Training Script                                                
                                                                                  
  - Create examples/drift.py based on ppo_example.py template            
- - Configure environment with bicycle kinematics model                      
+ - Configure environment with bicycle kinematics model - this is already defined and can be used as `gym.make("model": "st",...)`                     
                                                                                  
  5. Model the actuator dynamics as a first-order lag system                                                       
                                                                                  

@@ -292,7 +292,7 @@ class VectorObservation(Observation):
             low=-large_num,
             high=large_num,
             shape=(complete_space_size,),
-            dtype=float,
+            dtype=np.float32,
         )
         return obs_space
 
@@ -330,9 +330,13 @@ class VectorObservation(Observation):
         # add agent's observation to multi-agent observation
         vec_obs = []
         for k in self.features:
-            vec_obs.extend(list(agent_obs[k]))
+            if isinstance(agent_obs[k], (list, np.ndarray)):
+                vec_obs.extend(list(agent_obs[k]))
+            else:
+                # Handle scalar values
+                vec_obs.append(agent_obs[k])
 
-        return np.array(vec_obs)
+        return np.array(vec_obs, dtype=np.float32)
 
 
 def observation_factory(env, type: str | None, **kwargs) -> Observation:
@@ -372,6 +376,10 @@ def observation_factory(env, type: str | None, **kwargs) -> Observation:
         features = [
             "scan",
         ]
+        return VectorObservation(env, features=features)
+    elif type == "drift":
+        features = ["linear_vel_x", "linear_vel_y", "ang_vel_z", "delta"]
+        # TODO add more features once these are tested and working
         return VectorObservation(env, features=features)
     else:
         raise ValueError(f"Invalid observation type {type}.")

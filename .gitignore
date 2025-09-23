@@ -173,6 +173,7 @@ cython_debug/
 
 **/maps/*
 
+
 examples/wandb
 examples/models
 examples/runs
