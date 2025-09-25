@@ -50,9 +50,7 @@ class TestTrack(unittest.TestCase):
 
             # check subdir is capitalized (at least first letter is capitalized)
             trackdirname = trackdir.stem
-            self.assertTrue(
-                trackdirname[0].isupper(), f"trackdir {trackdirname} is not capitalized"
-            )
+            self.assertTrue(trackdirname[0].isupper(), f"trackdir {trackdirname} is not capitalized")
 
             # check map spec file exists
             file_spec = trackdir / f"{trackdirname}_map.yaml"
@@ -109,9 +107,7 @@ class TestTrack(unittest.TestCase):
             "occupied_thresh",
             "free_thresh",
         ]:
-            self.assertEqual(
-                getattr(track.spec, spec_attr), getattr(track_backup.spec, spec_attr)
-            )
+            self.assertEqual(getattr(track.spec, spec_attr), getattr(track_backup.spec, spec_attr))
 
         # check the two tracks' racelines are the same
         for raceline_attr in ["ss", "xs", "ys", "yaws", "ks", "vxs", "axs"]:
@@ -145,9 +141,7 @@ class TestTrack(unittest.TestCase):
 
         # Check frenet to cartesian conversion
         # using the track's xs, ys
-        for s, x, y in zip(
-            track.centerline.ss, track.centerline.xs, track.centerline.ys
-        ):
+        for s, x, y in zip(track.centerline.ss, track.centerline.xs, track.centerline.ys):
             x_, y_, _ = track.frenet_to_cartesian(s, 0, 0)
             self.assertAlmostEqual(x, x_, places=4)
             self.assertAlmostEqual(y, y_, places=4)
@@ -172,5 +166,7 @@ class TestTrack(unittest.TestCase):
             x, y, psi = track.frenet_to_cartesian(s, d, 0)
             s_, d_, _ = track.cartesian_to_frenet(x, y, psi, s_guess=s_)
             # Handle edge case where we are checking for s=0 but s_ is the last s (same point, but different s)
-            self.assertTrue(np.isclose(s, s_, atol=1e-4) or np.isclose(s + track.centerline.spline.s[-1], s_, atol=1e-4))
+            self.assertTrue(
+                np.isclose(s, s_, atol=1e-4) or np.isclose(s + track.centerline.spline.s[-1], s_, atol=1e-4)
+            )
             self.assertAlmostEqual(d, d_, places=4)

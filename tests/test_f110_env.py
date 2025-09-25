@@ -67,9 +67,7 @@ class TestEnvInterface(unittest.TestCase):
 
         # finally, run a simulation and check that the results are the same
         obs0, _ = base_env.reset(options={"poses": np.array([[0.0, 0.0, np.pi / 2]])})
-        obs1, _ = extended_env.reset(
-            options={"poses": np.array([[0.0, 0.0, np.pi / 2]])}
-        )
+        obs1, _ = extended_env.reset(options={"poses": np.array([[0.0, 0.0, np.pi / 2]])})
         done0 = done1 = False
         t = 0
 
@@ -156,9 +154,7 @@ class TestEnvInterface(unittest.TestCase):
             "num_agents": num_agents,
             "observation_config": {"type": "kinematic_state"},
         }
-        vec_env = gym.make_vec(
-            "f1tenth_gym:f1tenth-v0", asynchronous=False, config=config, num_envs=num_envs
-        )
+        vec_env = gym.make_vec("f1tenth_gym:f1tenth-v0", asynchronous=False, config=config, num_envs=num_envs)
 
         rnd_poses = np.random.random((2, 3))
         obss, infos = vec_env.reset(options={"poses": rnd_poses})
@@ -187,9 +183,7 @@ class TestEnvInterface(unittest.TestCase):
             "num_agents": num_agents,
             "observation_config": {"type": "kinematic_state"},
         }
-        vec_env = gym.make_vec(
-            "f1tenth_gym:f1tenth-v0", vectorization_mode="async", config=config, num_envs=num_envs
-        )
+        vec_env = gym.make_vec("f1tenth_gym:f1tenth-v0", vectorization_mode="async", config=config, num_envs=num_envs)
 
         rnd_poses = np.random.random((2, 3))
         obss, infos = vec_env.reset(options={"poses": rnd_poses})
@@ -220,7 +214,10 @@ class TestEnvInterface(unittest.TestCase):
             "reset_config": {"type": "rl_random_random"},
         }
         vec_env = gym.make_vec(
-            "f1tenth_gym:f1tenth-v0", vectorization_mode="sync", config=config, num_envs=num_envs,
+            "f1tenth_gym:f1tenth-v0",
+            vectorization_mode="sync",
+            config=config,
+            num_envs=num_envs,
         )
 
         obss, infos = vec_env.reset()
@@ -257,9 +254,7 @@ class TestEnvInterface(unittest.TestCase):
             obss, rewards, dones, truncations, infos = vec_env.step(actions)
 
             all_dones_once = [all_dones_once[i] or dones[i] for i in range(num_envs)]
-            all_dones_twice = [
-                all_dones_twice[i] or all_dones_once[i] for i in range(num_envs)
-            ]
+            all_dones_twice = [all_dones_twice[i] or all_dones_once[i] for i in range(num_envs)]
             max_steps -= 1
 
         vec_env.close()

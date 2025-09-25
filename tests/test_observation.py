@@ -47,24 +47,8 @@ class TestObservationInterface(unittest.TestCase):
         ]
 
         # check that the observation space has the correct types
-        self.assertTrue(
-            all(
-                [
-                    isinstance(env.observation_space.spaces[k], Box)
-                    for k in obs_keys
-                    if k != "ego_idx"
-                ]
-            )
-        )
-        self.assertTrue(
-            all(
-                [
-                    env.observation_space.spaces[k].dtype == np.float32
-                    for k in obs_keys
-                    if k != "ego_idx"
-                ]
-            )
-        )
+        self.assertTrue(all([isinstance(env.observation_space.spaces[k], Box) for k in obs_keys if k != "ego_idx"]))
+        self.assertTrue(all([env.observation_space.spaces[k].dtype == np.float32 for k in obs_keys if k != "ego_idx"]))
 
         # check the observation space is a dict
         self.assertTrue(isinstance(obs, dict))
@@ -80,9 +64,7 @@ class TestObservationInterface(unittest.TestCase):
         """
         features = ["pose_x", "pose_y", "pose_theta"]
 
-        env = self._make_env(
-            config={"observation_config": {"type": "features", "features": features}}
-        )
+        env = self._make_env(config={"observation_config": {"type": "features", "features": features}})
 
         # check the observation space is a dict
         self.assertTrue(isinstance(env.observation_space, gym.spaces.Dict))
@@ -111,9 +93,7 @@ class TestObservationInterface(unittest.TestCase):
                 obs[agent_id]["pose_theta"],
             )
 
-            for ground_truth, observation in zip(
-                [pose_x, pose_y, pose_theta], [obs_x, obs_y, obs_theta]
-            ):
+            for ground_truth, observation in zip([pose_x, pose_y, pose_theta], [obs_x, obs_y, obs_theta]):
                 self.assertTrue(np.allclose(ground_truth, observation))
 
     def test_unexisting_obs_space(self):
@@ -151,9 +131,7 @@ class TestObservationInterface(unittest.TestCase):
             )
             obs_velx = obs[agent_id]["linear_vel_x"]
 
-            for ground_truth, observed in zip(
-                [pose_x, pose_y, pose_theta, velx], [obs_x, obs_y, obs_theta, obs_velx]
-            ):
+            for ground_truth, observed in zip([pose_x, pose_y, pose_theta, velx], [obs_x, obs_y, obs_theta, obs_velx]):
                 self.assertTrue(np.allclose(ground_truth, observed))
 
     def test_dynamic_obs_space(self):
