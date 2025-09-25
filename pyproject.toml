@@ -58,6 +58,13 @@ autoflake = "^2.2.1"
 matplotlib = "^3.8.2"
 flake8 = "^7.0.0"
 
+[tool.black]
+line-length = 120
+target-version = ['py39']
+
+[tool.isort]
+profile = "black"
+line_length = 120
 
 [build-system]
 requires = ["poetry-core"]

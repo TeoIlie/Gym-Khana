@@ -3,7 +3,6 @@ gym/f110_gym.egg-info
 __pycache__
 *.pyc
 .DS_Store
-.vscode/
 docs/_build/
 *.mypy_cache/
 flycheck_*
