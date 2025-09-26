@@ -345,14 +345,16 @@ class Track:
         """
         Convert Cartesian coordinates to Frenet coordinates.
 
-        x: x-coordinate
-        y: y-coordinate
-        phi: yaw angle
+        x: x-coordinate (Cartesian coord from std_state["x"])
+        y: y-coordinate (Cartesian coord from std_state["y"])
+        phi: yaw angle (from std_state["yaw"])
+        use_raceline: Calculate with respect to raceline or centerline
+        s_guess: Initial guess for arc length calculation
 
         returns:
-            s: distance along the centerline
-            ey: lateral deviation
-            ephi: heading deviation
+            s: arc length distance along the centerline/raceline
+            ey: lateral deviation from centerline/raceline
+            ephi: heading deviation (angle between vehicle and track heading) in radians
         """
         line = self.raceline if use_raceline else self.centerline
         # s, ey = line.spline.calc_arclength_inaccurate(x, y) # inaccurate, but much faster

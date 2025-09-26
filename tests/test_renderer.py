@@ -24,7 +24,11 @@ class TestRenderer(unittest.TestCase):
         }
         config = deep_update(base_config, config)
 
-        env = gym.make("f1tenth_gym:f1tenth-v0", config=config, render_mode=render_mode,)
+        env = gym.make(
+            "f1tenth_gym:f1tenth-v0",
+            config=config,
+            render_mode=render_mode,
+        )
 
         return env
 
@@ -66,9 +70,7 @@ class TestRenderer(unittest.TestCase):
 
         frame_list = env.render()
 
-        self.assertTrue(
-            isinstance(frame_list, list), "the returned object is not a list of frames"
-        )
+        self.assertTrue(isinstance(frame_list, list), "the returned object is not a list of frames")
         self.assertTrue(
             len(frame_list) == steps + 1,
             "the returned list does not have the correct number of frames",

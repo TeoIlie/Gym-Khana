@@ -1,5 +1,6 @@
 import gymnasium as gym
 from stable_baselines3 import PPO
+import os
 
 # if using wandb (recommended):
 from wandb.integration.sb3 import WandbCallback
@@ -42,7 +43,7 @@ if train:
     run.finish()
 
 else:
-    model_path = "models/70ftjvia/model.zip"
+    model_path = os.path.join(os.path.dirname(__file__), "models", "70ftjvia", "model.zip")
     model = PPO.load(model_path, print_system_info=True, device="cpu")
     eval_env = gym.make(
         "f1tenth_gym:f1tenth-v0",
@@ -51,7 +52,7 @@ else:
             "num_agents": 1,
             "timestep": 0.01,
             "num_beams": 36,
-            "integrator": "rk4",
+            "integrator": "rk4",  # this is the Runge-Kutta method Dimitria mentioned!
             "control_input": ["speed", "steering_angle"],
             "observation_config": {"type": "rl"},
             "reset_config": {"type": "rl_random_static"},
