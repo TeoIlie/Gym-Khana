@@ -53,6 +53,19 @@ which could be ignored. The environment should still work without error.
 ## Wanbd
 The wandb models are available here: https://wandb.ai/teo-altum-quinque-queen-s-university/projects 
 
+## Formatting/Linting
+Run formatting mannually with `black .`. Linting also runs automatically due to settings in `.vscode/settings.json`.
+
+## Debugging
+1. Debug with breakpoints by looping through environment steps, as in `tests/drift_observation_test.py`
+2. Run with `render_mode` set to `human` to visualize the process
+
+## Important files:
+* `F1TENTH_Gym/f1tenth_gym/envs/base_classes.py:503` defines the `step` method. 
+  * notice that the action space is defined as an `ndarray` with 
+    1. the first element being desired **steering angle**
+    2. second element is desired **velocity**.
+
 ## Citing
 If you find this Gym environment useful, please consider citing:
 

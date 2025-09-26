@@ -51,7 +51,7 @@ else:
             "num_agents": 1,
             "timestep": 0.01,
             "num_beams": 36,
-            "integrator": "rk4", # this is the Runge-Kutta method Dimitria mentioned!
+            "integrator": "rk4",  # this is the Runge-Kutta method Dimitria mentioned!
             "control_input": ["speed", "steering_angle"],
             "observation_config": {"type": "rl"},
             "reset_config": {"type": "rl_random_static"},
