@@ -284,6 +284,8 @@ class VectorObservation(Observation):
             "collision": 1,
             "lap_time": 1,
             "lap_count": 1,
+            "frenet_u": 1,
+            "frenet_n": 1,
         }
 
         complete_space_size = sum([obs_size_dict[k] for k in self.features])
@@ -311,6 +313,28 @@ class VectorObservation(Observation):
         vy = std_state["v_y"]
         angvel = std_state["yaw_rate"]
 
+        # Compute Frenet coordinates if track is available
+        frenet_u = float('nan')  # heading error (NaN indicates unavailable)
+        frenet_n = float('nan')  # lateral distance (NaN indicates unavailable)
+
+        # Check if track and centerline are available
+        track = getattr(self.env.unwrapped, 'track', None)
+        if track is not None and getattr(track, 'centerline', None) is not None:
+            try:
+                # Use cached s_guess for performance optimization
+                s_guess = getattr(agent, '_last_frenet_s', 0.0)
+                s, ey, ephi = track.cartesian_to_frenet(x, y, theta, use_raceline=False, s_guess=s_guess)
+
+                # Cache s value for next iteration
+                agent._last_frenet_s = s
+
+                frenet_u = float(ephi)  # heading error (vehicle heading - track heading)
+                frenet_n = float(ey)    # lateral distance from centerline (left=-ve, right=+ve)
+
+            except Exception as e:
+                print(f"Frenet conversion failed: {e}")
+                # Keep NaN values to indicate computation failure
+
         # create agent's observation dict
         agent_obs = {
             "scan": scan,
@@ -325,6 +349,8 @@ class VectorObservation(Observation):
             "collision": int(agent.in_collision),
             "lap_time": lap_time,
             "lap_count": lap_count,
+            "frenet_u": frenet_u,
+            "frenet_n": frenet_n,
         }
 
         # add agent's observation to multi-agent observation
@@ -378,8 +404,7 @@ def observation_factory(env, type: str | None, **kwargs) -> Observation:
         ]
         return VectorObservation(env, features=features)
     elif type == "drift":
-        features = ["linear_vel_x", "linear_vel_y", "ang_vel_z", "delta"]
-        # TODO add more features once these are tested and working
+        features = ["linear_vel_x", "linear_vel_y", "ang_vel_z", "delta", "frenet_u", "frenet_n"]
         return VectorObservation(env, features=features)
     else:
         raise ValueError(f"Invalid observation type {type}.")

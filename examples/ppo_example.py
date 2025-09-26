@@ -1,5 +1,6 @@
 import gymnasium as gym
 from stable_baselines3 import PPO
+import os
 
 # if using wandb (recommended):
 from wandb.integration.sb3 import WandbCallback
@@ -42,7 +43,7 @@ if train:
     run.finish()
 
 else:
-    model_path = "models/70ftjvia/model.zip"
+    model_path = os.path.join(os.path.dirname(__file__), "models", "70ftjvia", "model.zip")
     model = PPO.load(model_path, print_system_info=True, device="cpu")
     eval_env = gym.make(
         "f1tenth_gym:f1tenth-v0",

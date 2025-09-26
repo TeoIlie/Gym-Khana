@@ -61,10 +61,14 @@ Run formatting mannually with `black .`. Linting also runs automatically due to 
 2. Run with `render_mode` set to `human` to visualize the process
 
 ## Important files:
-* `F1TENTH_Gym/f1tenth_gym/envs/base_classes.py:503` defines the `step` method. 
+* `f1tenth_gym/envs/base_classes.py:503` defines the `step` method. 
   * notice that the action space is defined as an `ndarray` with 
     1. the first element being desired **steering angle**
     2. second element is desired **velocity**.
+* dynamics models are defined in `f1tenth_gym/envs/dynamic_models`
+  * `single_track.py` models the single-track dynamics model, but no tires
+  * `multi_body.py` models the car in far more detail, including tires, but may be overkill with RL
+  * to replicate the paper - single-track dynamics + Pacejka tire model - it may be necessary to write a custom hybrid approach using `single_track.py` and `multi_body.py`
 
 ## Citing
 If you find this Gym environment useful, please consider citing:

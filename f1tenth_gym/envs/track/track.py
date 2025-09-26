@@ -354,7 +354,7 @@ class Track:
         returns:
             s: arc length distance along the centerline/raceline
             ey: lateral deviation from centerline/raceline
-            ephi: heading deviation (angle between vehicle and track heading)
+            ephi: heading deviation (angle between vehicle and track heading) in radians
         """
         line = self.raceline if use_raceline else self.centerline
         # s, ey = line.spline.calc_arclength_inaccurate(x, y) # inaccurate, but much faster

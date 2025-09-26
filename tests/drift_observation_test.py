@@ -1,15 +1,16 @@
 import gymnasium as gym
 import numpy as np
+from f1tenth_gym.envs.f110_env import F110Env
 
 # create env
 env = gym.make(
     "f1tenth_gym:f1tenth-v0",
     config={
         "map": "IMS",  # Open area for drift practice
-        "num_agents": 1,           # Single agent for focused learning
-        "timestep": 0.01,          # High-frequency control (100Hz)
-        "integrator": "rk4",       # Accurate physics integration
-        "model": "mb",             # Single Track dynamic bicycle model with tire slip
+        "num_agents": 1,  # Single agent for focused learning
+        "timestep": 0.01,  # High-frequency control (100Hz)
+        "integrator": "rk4",  # Accurate physics integration
+        "model": "st",  # Single Track dynamic bicycle model with tire slip
         "control_input": ["speed", "steering_angle"],
         "observation_config": {"type": "drift"},  # 6D drift state: [vx, vy, yaw_rate, delta, frenet_u, frenet_n]
         "reset_config": {"type": "rl_random_static"},
@@ -34,12 +35,15 @@ except Exception as e:
 
 # Test with action to see non-zero values
 # For single agent, action should be 2D array: shape (1, 2)
-action = np.array([[0.0, 10.0]])  # steering_angle, target velocity
-
+action = np.array([[0.0, 0.1]])  # steering_angle, target velocity
 # Take multiple steps to see if steering catches up
 for step in range(10000):  # Reduced for testing
     obs, reward, done, truncated, info = env.step(action)
-    print(f"Step {step+1}: vx={obs[0]:.4f}, vy={obs[1]:.4f}, yaw_rate={obs[2]:.4f}, delta={obs[3]:.4f}, frenet_u={obs[4]:.4f}, frenet_n={obs[5]:.4f}")
+    heading_error_radians = obs[4]
+    heading_error_degrees = np.degrees(heading_error_radians)
+    print(
+        f"Step {step+1:6d}: vx={obs[0]:6.2f}, vy={obs[1]:6.2f}, yaw_rate={obs[2]:6.2f}, delta={obs[3]:6.2f}, heading error (degrees)={heading_error_degrees:6.2f}, lateral distance={obs[5]:6.2f}"
+    )
 
     # Try to render each step
     try:
