@@ -296,6 +296,8 @@ class VectorObservation(Observation):
             "frenet_u": 1,
             "frenet_n": 1,
             "prev_steering_cmd": 1,
+            "prev_vel_cmd": 1,
+            "curr_vel_cmd": 1,
         }
 
         complete_space_size = sum([obs_size_dict[k] for k in self.features])
@@ -362,6 +364,8 @@ class VectorObservation(Observation):
             "frenet_u": frenet_u,
             "frenet_n": frenet_n,
             "prev_steering_cmd": agent.prev_steering_cmd,
+            "prev_vel_cmd": agent.prev_vel_cmd,
+            "curr_vel_cmd": agent.curr_vel_cmd,
         }
 
         # add agent's observation to multi-agent observation
@@ -415,7 +419,7 @@ def observation_factory(env, type: str | None, **kwargs) -> Observation:
         ]
         return VectorObservation(env, features=features)
     elif type == "drift":
-        features = ["linear_vel_x", "linear_vel_y", "ang_vel_z", "delta", "frenet_u", "frenet_n", "prev_steering_cmd"]
+        features = ["linear_vel_x", "linear_vel_y", "ang_vel_z", "delta", "frenet_u", "frenet_n", "prev_steering_cmd", "prev_vel_cmd", "curr_vel_cmd"]
         return VectorObservation(env, features=features)
     else:
         raise ValueError(f"Invalid observation type {type}.")
