@@ -20,10 +20,18 @@ class Observation:
 
     @abstractmethod
     def space(self):
+        """
+        Defines the observation space structure for the gym env
+        :return gym.spaces object that desribes shape, data types, and observation bounds
+        """
         raise NotImplementedError()
 
     @abstractmethod
     def observe(self):
+        """
+        Generated the observation data at each time step
+        :return current observation values as np array or dict
+        """
         raise NotImplementedError()
 
 
@@ -271,6 +279,7 @@ class VectorObservation(Observation):
         num_agents = len(self.env.unwrapped.agent_ids)
         assert num_agents == 1, "Vector observation only supports single agent"
 
+        # map observation features to their sizes, used to calculate obs space shape
         obs_size_dict = {
             "scan": scan_size,
             "pose_x": 1,
@@ -286,6 +295,7 @@ class VectorObservation(Observation):
             "lap_count": 1,
             "frenet_u": 1,
             "frenet_n": 1,
+            "prev_steering_cmd": 1,
         }
 
         complete_space_size = sum([obs_size_dict[k] for k in self.features])
@@ -335,7 +345,7 @@ class VectorObservation(Observation):
                 print(f"Frenet conversion failed: {e}")
                 # Keep NaN values to indicate computation failure
 
-        # create agent's observation dict
+        # create agent's observation dict, with all possible observation values for current time step
         agent_obs = {
             "scan": scan,
             "pose_x": x,
@@ -351,6 +361,7 @@ class VectorObservation(Observation):
             "lap_count": lap_count,
             "frenet_u": frenet_u,
             "frenet_n": frenet_n,
+            "prev_steering_cmd": agent.prev_steering_cmd,
         }
 
         # add agent's observation to multi-agent observation
@@ -404,7 +415,7 @@ def observation_factory(env, type: str | None, **kwargs) -> Observation:
         ]
         return VectorObservation(env, features=features)
     elif type == "drift":
-        features = ["linear_vel_x", "linear_vel_y", "ang_vel_z", "delta", "frenet_u", "frenet_n"]
+        features = ["linear_vel_x", "linear_vel_y", "ang_vel_z", "delta", "frenet_u", "frenet_n", "prev_steering_cmd"]
         return VectorObservation(env, features=features)
     else:
         raise ValueError(f"Invalid observation type {type}.")
