@@ -70,6 +70,10 @@ Run formatting mannually with `black .`. Linting also runs automatically due to 
   * `multi_body.py` models the car in far more detail, including tires, but may be overkill with RL
   * to replicate the paper - single-track dynamics + Pacejka tire model - it may be necessary to write a custom hybrid approach using `single_track.py` and `multi_body.py`
 
+## Branches and the f1tenth_gym fork
+* The original `f1tenth_gym` project has branch `main` which in this project is renamed to `f1tenth_main_original`, and `rl_example`, which in this project is renamed to `main`
+* This is bc the `rl_example` contains all the code I am actively using to build this project
+
 ## Citing
 If you find this Gym environment useful, please consider citing:
 

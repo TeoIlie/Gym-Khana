@@ -1,6 +1,7 @@
 ---
 name: feature-implementation-planner
 description: Use this agent when you need to create a comprehensive implementation plan for a new feature based on explicit requirements or instructions. Examples: <example>Context: User wants to add multi-agent collision avoidance to the F1TENTH simulator. user: 'I need to implement collision avoidance between multiple racing cars. The cars should slow down when approaching each other and maintain safe distances.' assistant: 'I'll use the feature-implementation-planner agent to create a detailed implementation strategy for multi-agent collision avoidance in the F1TENTH environment.' <commentary>The user has provided explicit requirements for a new feature, so use the feature-implementation-planner to analyze the requirements and create a comprehensive implementation plan.</commentary></example> <example>Context: User wants to add a new sensor model to the simulation. user: 'Add support for camera sensors with configurable resolution and field of view, similar to how LiDAR is currently implemented.' assistant: 'Let me use the feature-implementation-planner agent to design the camera sensor implementation strategy.' <commentary>This is a clear feature request with explicit requirements, perfect for the feature-implementation-planner to analyze and create a structured approach.</commentary></example>
+tools: Glob, Grep, Read, WebFetch, TodoWrite, WebSearch, BashOutput, KillShell, SlashCommand
 model: sonnet
 color: green
 ---
