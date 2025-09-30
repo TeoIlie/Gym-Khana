@@ -187,6 +187,10 @@ class F110Env(gym.Env):
             render_fps=self.metadata["render_fps"],
         )
 
+        # automatically add track line rendering callback if configured
+        if self.config.get("render_track_lines", False):
+            self.add_render_callback(self.track.render_both_lines)
+
     @classmethod
     def fullscale_vehicle_params(cls) -> dict:
         params = {
@@ -402,6 +406,7 @@ class F110Env(gym.Env):
             "reset_config": {"type": None},
             "scale": 1.0,
             "num_beams": 1080,
+            "render_track_lines": False,
         }
 
     def configure(self, config: dict) -> None:

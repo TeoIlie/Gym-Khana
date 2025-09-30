@@ -12,6 +12,7 @@ from yamldataclassconfig.config import YamlDataClassConfig
 from . import Raceline
 from .cubic_spline import CubicSpline2D
 from .utils import find_track_dir
+from ..rendering import EnvRenderer
 
 
 @dataclass
@@ -373,3 +374,47 @@ class Track:
 
         phi = phi - yaw
         return s, ey, np.arctan2(np.sin(phi), np.cos(phi))
+
+    def render_centerline(self, e: EnvRenderer) -> None:
+        """
+        Render the track centerline.
+
+        The centerline represents the geometric center of the track and is rendered in green.
+
+        Parameters
+        ----------
+        e : EnvRenderer
+            Environment renderer object.
+        """
+        GREEN = (0, 255, 0)
+        if self.centerline is not None:
+            self.centerline.render_waypoints(e, color=GREEN)
+
+    def render_raceline(self, e: EnvRenderer) -> None:
+        """
+        Render the track raceline.
+
+        The raceline represents the optimal racing line through the track and is rendered in red.
+
+        Parameters
+        ----------
+        e : EnvRenderer
+            Environment renderer object.
+        """
+        RED = (255, 0, 0)
+        if self.raceline is not None:
+            self.raceline.render_waypoints(e, color=RED)
+
+    def render_both_lines(self, e: EnvRenderer) -> None:
+        """
+        Render both the centerline and raceline.
+
+        This is a convenience method that renders both the centerline (green) and raceline (red).
+
+        Parameters
+        ----------
+        e : EnvRenderer
+            Environment renderer object.
+        """
+        self.render_centerline(e)
+        self.render_raceline(e)
