@@ -28,12 +28,25 @@ pip install -e .
 ```
 
 ### Testing
+First source the virtual env 
+```bash
+source rl_env/bin/activate
+```
+
+Run commands with `python3`
+
 ```bash
 pytest
 ```
 The CI runs pytest for Python versions 3.9-3.12.
 
 ### Running Examples
+First source the virtual env 
+```bash
+source rl_env/bin/activate
+```
+
+Run commands with `python3`
 ```bash
 cd examples
 python3 waypoint_follow.py

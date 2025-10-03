@@ -58,7 +58,12 @@ Run formatting mannually with `black .`. Linting also runs automatically due to 
 
 ## Debugging
 1. Debug with breakpoints by looping through environment steps, as in `tests/drift_observation_test.py`
-2. Run with `render_mode` set to `human` to visualize the process
+2. `gym.make()` configurations:
+  1. Run with `render_mode` set to `human` to visualize the process
+  2. Set `"render_track_lines": True` (it is `False` by default) to render the centerline in **green** and the raceline in **red**
+  3. Set `"render_lookahead_curvatures": True` (it is `False` by default) to visualize lookahead curvature sampling points ahead of the vehicle in **yellow**. Optional parameters:
+     - `"lookahead_n_points": 10` - Number of lookahead points (default: 10)
+     - `"lookahead_ds": 0.3` - Spacing between points in meters (default: 0.3m)
 
 ## Important files:
 * `f1tenth_gym/envs/base_classes.py:503` defines the `step` method. 
