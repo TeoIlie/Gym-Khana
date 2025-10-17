@@ -58,7 +58,12 @@ Run formatting mannually with `black .`. Linting also runs automatically due to 
 
 ## Debugging
 1. Debug with breakpoints by looping through environment steps, as in `tests/drift_observation_test.py`
-2. Run with `render_mode` set to `human` to visualize the process
+2. `gym.make()` configurations:
+  1. Run with `render_mode` set to `human` to visualize the process
+  2. Set `"render_track_lines": True` (it is `False` by default) to render the centerline in **green** and the raceline in **red**
+  3. Set `"render_lookahead_curvatures": True` (it is `False` by default) to visualize lookahead curvature sampling points ahead of the vehicle in **yellow**. Optional parameters:
+     - `"lookahead_n_points": 10` - Number of lookahead points (default: 10)
+     - `"lookahead_ds": 0.3` - Spacing between points in meters (default: 0.3m)
 
 ## Important files:
 * `f1tenth_gym/envs/base_classes.py:503` defines the `step` method. 
@@ -69,6 +74,10 @@ Run formatting mannually with `black .`. Linting also runs automatically due to 
   * `single_track.py` models the single-track dynamics model, but no tires
   * `multi_body.py` models the car in far more detail, including tires, but may be overkill with RL
   * to replicate the paper - single-track dynamics + Pacejka tire model - it may be necessary to write a custom hybrid approach using `single_track.py` and `multi_body.py`
+
+## Branches and the f1tenth_gym fork
+* The original `f1tenth_gym` project has branch `main` which in this project is renamed to `f1tenth_main_original`, and `rl_example`, which in this project is renamed to `main`
+* This is bc the `rl_example` contains all the code I am actively using to build this project
 
 ## Citing
 If you find this Gym environment useful, please consider citing:

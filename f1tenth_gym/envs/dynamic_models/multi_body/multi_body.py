@@ -4,7 +4,7 @@ from numba.typed import Dict
 
 from f1tenth_gym.envs.dynamic_models.utils import steering_constraint, accl_constraints
 
-from .tire_model import (
+from ..tire_model import (
     formula_lateral,
     formula_lateral_comb,
     formula_longitudinal,

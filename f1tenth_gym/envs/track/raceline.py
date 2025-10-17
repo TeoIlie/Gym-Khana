@@ -184,7 +184,7 @@ class Raceline:
             accxs=waypoints[:, 6],
         )
 
-    def render_waypoints(self, e: EnvRenderer) -> None:
+    def render_waypoints(self, e: EnvRenderer, color: tuple[int, int, int] = (0, 128, 0)) -> None:
         """
         Callback to render waypoints.
 
@@ -192,9 +192,16 @@ class Raceline:
         ----------
         e : EnvRenderer
             Environment renderer object.
+        color : tuple[int, int, int], optional
+            RGB color tuple for the waypoint line, by default (0, 128, 0) (green).
         """
         points = np.stack([self.xs, self.ys], axis=1)
         if self.waypoint_render is None:
-            self.waypoint_render = e.render_closed_lines(points, color=(0, 128, 0), size=1)
+            self.waypoint_render = e.render_closed_lines(points, color=color, size=1)
         else:
-            self.waypoint_render.updateItems(points)
+            # PyQt renderer supports updateItems, Pygame may not
+            if hasattr(self.waypoint_render, 'updateItems'):
+                self.waypoint_render.updateItems(points)
+            else:
+                # For Pygame renderer, re-render
+                self.waypoint_render = e.render_closed_lines(points, color=color, size=1)

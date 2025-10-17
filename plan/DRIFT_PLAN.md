@@ -8,14 +8,21 @@ In order to achieve this using this existing simulation environment, there are s
                                                                                  
  1. Create Drift-Optimized Observation                                           
                                                                                  
- - Extend the RL observation to include drift-critical state information:        
-   1) Linear velocities in vehicle frame: longitudinal vx and lateral vy
-   2) Yaw rate: r
-   3) The angle between the car’s heading and the track heading, expressed in Frenet coordinates u 
-   4) Lateral distance from the centerline, in Frenet coordinates: n 
-   5) Measured steering angle δ and the previous control input δ_ref 
-   6) Measured wheel speed ω, commanded wheel speed ω_ref, and the last control input ω̇ref
-   7) Track information, represented by N points, with curvature c ∈ R^N and width w ∈ R^N . These N points are sampled uniformly in front of the vehicle at 30-centimeter intervals.                                                   
+ - Extend the RL observation to include drift-critical state information. Existing observations are marked [X] and To-Do observations are marked [ ]:
+        
+   [X] 1) Linear velocities in vehicle frame: longitudinal vx and lateral vy 
+
+   [X] 2) Yaw rate: r
+
+   [X] 3) The angle between the car’s heading and the track heading, expressed in Frenet coordinates u 
+   
+   [X] 4) Lateral distance from the centerline, in Frenet coordinates: n 
+   
+   [X] 5) Measured steering angle δ and the previous control input δ_ref 
+   
+   [X] 6) Measured wheel speed ω, commanded wheel speed ω_ref, and the last control input ω̇ref
+   
+   [ ] 7) Track information, represented by N points, with curvature c ∈ R^N and width w ∈ R^N . These N points are sampled uniformly in front of the vehicle at 30-centimeter intervals.                                                   
  - Location: Modify f1tenth_gym/envs/observation.py or create custom observation type
                                                                                  
  2. Implement Drift-Reward Function                                              

@@ -75,7 +75,7 @@ class RaceCar(object):
         """
         TODO rewrite it
 
-        Init function
+        Init function creates a race car instance with all required state vars
 
         Args:
             params (dict): vehicle parameters dictionary
@@ -123,6 +123,18 @@ class RaceCar(object):
 
         # collision threshold for iTTC to environment
         self.ttc_thresh = 0.005
+
+        # previous steering command for observations
+        self.prev_steering_cmd = 0.0
+
+        # current steering command for observations
+        self.curr_steering_cmd = 0.0
+
+        # previous velocity command for observations
+        self.prev_vel_cmd = 0.0
+
+        # current velocity command for observations
+        self.curr_vel_cmd = 0.0
 
         # initialize scan sim
         if RaceCar.scan_simulator is None:
@@ -205,6 +217,12 @@ class RaceCar(object):
         self.steer_angle_vel = 0.0
         # clear collision indicator
         self.in_collision = False
+        # clear previous and current steering commands
+        self.prev_steering_cmd = 0.0
+        self.curr_steering_cmd = 0.0
+        # clear previous and current velocity commands
+        self.prev_vel_cmd = 0.0
+        self.curr_vel_cmd = 0.0
         # init state from pose
         self.state = self.model.get_initial_state(pose=pose, params=self.params)
 
@@ -278,15 +296,23 @@ class RaceCar(object):
 
     def update_pose(self, raw_steer, vel):
         """
-        Steps the vehicle's physical simulation
+        Steps the vehicle's physical simulation by one time step
 
         Args:
-            steer (float): desired steering angle, or desired steering velocity
+            raw_steer (float): desired steering angle, or desired steering velocity
             vel (float): desired longitudinal velocity, or desired longitudinal acceleration
 
         Returns:
             current_scan
         """
+
+        # steering: update prev to curr, and current to new action input raw_steer
+        self.prev_steering_cmd = self.curr_steering_cmd
+        self.curr_steering_cmd = raw_steer
+
+        # velocity: update prev to curr, and current to new action input vel
+        self.prev_vel_cmd = self.curr_vel_cmd
+        self.curr_vel_cmd = vel
 
         # steering delay
         steer = 0.0

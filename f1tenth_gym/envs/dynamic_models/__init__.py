@@ -9,14 +9,17 @@ import numpy as np
 
 from .kinematic import vehicle_dynamics_ks, get_standardized_state_ks
 from .single_track import vehicle_dynamics_st, get_standardized_state_st
+from .single_track_drift import vehicle_dynamics_std, get_standardized_state_std
 from .multi_body import init_mb, vehicle_dynamics_mb, get_standardized_state_mb
 from .utils import pid_steer, pid_accl
 from typing import Optional
+
 
 class DynamicModel(Enum):
     KS = 1  # Kinematic Single Track
     ST = 2  # Single Track
     MB = 3  # Multi-body Model
+    STD = 4  # Single Track Drift
 
     @staticmethod
     def from_string(model: str):
@@ -29,13 +32,15 @@ class DynamicModel(Enum):
             return DynamicModel.ST
         elif model == "mb":
             return DynamicModel.MB
+        elif model == "std":
+            return DynamicModel.STD
         else:
             raise ValueError(f"Unknown model type {model}")
 
     def get_initial_state(self, pose=None, params: Optional[dict] = None):
         # Assert that if self is MB, params is not None
-        if self == DynamicModel.MB and params is None:
-            raise ValueError("MultiBody model requires parameters to be provided.")
+        if (self == DynamicModel.MB or self == DynamicModel.STD) and params is None:
+            raise ValueError("MultiBody and SingleTrackDrift models require parameters to be provided.")
         # initialize zero state
         if self == DynamicModel.KS:
             # state is [x, y, steer_angle, vel, yaw_angle]
@@ -46,6 +51,9 @@ class DynamicModel(Enum):
         elif self == DynamicModel.MB:
             # state is a 29D vector
             state = np.zeros(29)
+        elif self == DynamicModel.STD:
+            # state is [x, y, steer_angle, vel, yaw_angle, yaw_rate, slip_angle, omega_f, omega_r]
+            state = np.zeros(9)
         else:
             raise ValueError(f"Unknown model type {self}")
 
@@ -67,6 +75,8 @@ class DynamicModel(Enum):
             return vehicle_dynamics_st
         elif self == DynamicModel.MB:
             return vehicle_dynamics_mb
+        elif self == DynamicModel.STD:
+            return vehicle_dynamics_std
         else:
             raise ValueError(f"Unknown model type {self}")
 
@@ -82,5 +92,7 @@ class DynamicModel(Enum):
             return get_standardized_state_st
         elif self == DynamicModel.MB:
             return get_standardized_state_mb
+        elif self == DynamicModel.STD:
+            return get_standardized_state_std
         else:
             raise ValueError(f"Unknown model type {self}")
