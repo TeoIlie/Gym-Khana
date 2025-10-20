@@ -45,9 +45,6 @@ tStart = 0  # start time
 tFinal = 1  # start time
 
 # create dynamic models for STD and MB
-std_model = DynamicModel.from_string("std")
-mb_model = DynamicModel.from_string("mb")
-st_model = DynamicModel.from_string("st")
 delta0 = 0
 vel0 = 15
 Psi0 = 0

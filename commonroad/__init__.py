@@ -1,0 +1,1 @@
+# CommonRoad vehicle models package
