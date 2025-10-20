@@ -1,9 +1,5 @@
 """
-Functions for testing different vehicle models (see examples in chap. 11 of documentation)
-Use:
-1. Choose a tire param for p from F110Env
-2. Choose a function to uncomment in main 
-3. Run the code and observe the plots 
+Compares behaviour of f110 gym mb model with reference commonroad mb model to confirm matching behaviour.
 """
 
 from scipy.integrate import odeint
