@@ -5,17 +5,12 @@ Compares behaviour of f110 gym std model with reference commonroad std model to 
 from scipy.integrate import odeint
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.pyplot import title, legend
 import math
 
 from commonroad.vehiclemodels.vehicle_dynamics_std import vehicle_dynamics_std as cr_vehicle_dynamics_std
 from commonroad.vehiclemodels.init_std import init_std as init_std_cr
 from commonroad.vehiclemodels.parameters_vehicle1 import parameters_vehicle1
 
-from f1tenth_gym.envs.dynamic_models import DynamicModel
-from f1tenth_gym.envs.dynamic_models.multi_body import init_mb
-from f1tenth_gym.envs.dynamic_models.multi_body.multi_body import vehicle_dynamics_mb
-from f1tenth_gym.envs.dynamic_models.single_track import vehicle_dynamics_st
 from f1tenth_gym.envs.dynamic_models.single_track_drift import init_std
 from f1tenth_gym.envs.dynamic_models.single_track_drift.single_track_drift import vehicle_dynamics_std
 from f1tenth_gym.envs.f110_env import F110Env
@@ -124,35 +119,35 @@ def compare_std_oversteer_understeer():
     _, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 4))
 
     # position
-    ax1.set_title('position comparison STD')
+    ax1.set_title("position comparison STD")
     ax1.plot([tmp[0] for tmp in x_coast_STD], [tmp[1] for tmp in x_coast_STD])
     ax1.plot([tmp[0] for tmp in x_brake_STD], [tmp[1] for tmp in x_brake_STD])
     ax1.plot([tmp[0] for tmp in x_acc_STD], [tmp[1] for tmp in x_acc_STD])
     ax1.plot([tmp[0] for tmp in x_coast_STD_cr], [tmp[1] for tmp in x_coast_STD_cr])
     ax1.plot([tmp[0] for tmp in x_brake_STD_cr], [tmp[1] for tmp in x_brake_STD_cr])
     ax1.plot([tmp[0] for tmp in x_acc_STD_cr], [tmp[1] for tmp in x_acc_STD_cr])
-    ax1.legend(['coasting', 'braking', 'accelerating', 'coasting_cr', 'braking_cr', 'accelerating_cr'])
-    
+    ax1.legend(["coasting", "braking", "accelerating", "coasting_cr", "braking_cr", "accelerating_cr"])
+
     # compare slip angles
-    ax2.set_title('slip angle comparison STD')
+    ax2.set_title("slip angle comparison STD")
     ax2.plot(t, [tmp[6] for tmp in x_coast_STD])
     ax2.plot(t, [tmp[6] for tmp in x_brake_STD])
     ax2.plot(t, [tmp[6] for tmp in x_acc_STD])
     ax2.plot(t, [tmp[6] for tmp in x_coast_STD_cr])
     ax2.plot(t, [tmp[6] for tmp in x_brake_STD_cr])
     ax2.plot(t, [tmp[6] for tmp in x_acc_STD_cr])
-    ax2.legend(['coasting', 'braking', 'accelerating', 'coasting_cr', 'braking_cr', 'accelerating_cr'])
-    
+    ax2.legend(["coasting", "braking", "accelerating", "coasting_cr", "braking_cr", "accelerating_cr"])
+
     # orientation
-    ax3.set_title('orientation comparison STD')
+    ax3.set_title("orientation comparison STD")
     ax3.plot(t, [tmp[4] for tmp in x_coast_STD])
     ax3.plot(t, [tmp[4] for tmp in x_brake_STD])
     ax3.plot(t, [tmp[4] for tmp in x_acc_STD])
     ax3.plot(t, [tmp[4] for tmp in x_coast_STD_cr])
     ax3.plot(t, [tmp[4] for tmp in x_brake_STD_cr])
     ax3.plot(t, [tmp[4] for tmp in x_acc_STD_cr])
-    ax3.legend(['coasting', 'braking', 'accelerating', 'coasting_cr', 'braking_cr', 'accelerating_cr'])
-    
+    ax3.legend(["coasting", "braking", "accelerating", "coasting_cr", "braking_cr", "accelerating_cr"])
+
     plt.tight_layout()
     plt.show()
 
@@ -178,8 +173,8 @@ def compare_std_braking():
 
     # velocity
     ax2.set_title("velocity")
-    ax2.plot(t, [tmp[3]*math.cos(tmp[6]) for tmp in x_brake_STD])
-    ax2.plot(t, [tmp[3]*math.cos(tmp[6]) for tmp in x_brake_STD_cr])
+    ax2.plot(t, [tmp[3] * math.cos(tmp[6]) for tmp in x_brake_STD])
+    ax2.plot(t, [tmp[3] * math.cos(tmp[6]) for tmp in x_brake_STD_cr])
     ax2.legend(["STD", "STD_CR"])
 
     # wheel spin
@@ -242,6 +237,6 @@ if __name__ == "__main__":
     4. accelerating() - Line 306. Compares MB and STD models during acceleration.
     """
     compare_std_cornering_left(0.15, 0)
-    # compare_std_oversteer_understeer()
-    # compare_std_braking()
-    # compare_std_accelerating()
+    compare_std_oversteer_understeer()
+    compare_std_braking()
+    compare_std_accelerating()
