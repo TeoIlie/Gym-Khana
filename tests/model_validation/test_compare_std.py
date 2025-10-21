@@ -62,7 +62,7 @@ def func_STD(x, t, u, p):
     return f
 
 
-x0_STD = init_std(initialState, p)  # initial state for multi-body model
+x0_STD = init_std(initialState, p)  # initial state for std model
 
 # --------------------------------------------------------------------------
 

@@ -388,11 +388,7 @@ class F110Env(gym.Env):
     def f1tenth_std_vehicle_params(cls) -> dict:
         """
         Returns default parameters for Single Track Drift (STD) model.
-
         Extends standard F1TENTH parameters with wheel dynamics and Pacejka tire model.
-        Uses reference Pacejka coefficients:
-          Front: [B=7.17, C=1.56, D=0.69, E=0.53]
-          Rear:  [B=8.29, C=2.11, D=0.68, E=0.40]
 
         Returns:
             dict: Complete parameter dictionary for STD model

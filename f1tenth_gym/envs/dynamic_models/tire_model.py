@@ -1,6 +1,9 @@
 import numpy as np
 from numba import njit
 
+"""
+Implementation of the PAC2002 tire model
+"""
 
 # longitudinal tire forces
 def formula_longitudinal(kappa, gamma, F_z, params: dict):
