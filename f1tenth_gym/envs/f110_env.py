@@ -423,10 +423,10 @@ class F110Env(gym.Env):
             # tire parameters from ADAMS handbook
             # longitudinal coefficients
             "tire_p_cx1": 1.6411,  # Shape factor Cfx for longitudinal force
-            "tire_p_dx1": 1.1739,  # Longitudinal friction Mux at Fznom
+            "tire_p_dx1": 1.23,  # Longitudinal friction Mux at Fznom
             "tire_p_dx3": 0,  # Variation of friction Mux with camber
             "tire_p_ex1": 0.46403,  # Longitudinal curvature Efx at Fznom
-            "tire_p_kx1": 22.303,  # Longitudinal slip stiffness Kfx/Fz at Fznom
+            "tire_p_kx1": 66.909,  # Longitudinal slip stiffness Kfx/Fz at Fznom
             "tire_p_hx1": 0.0012297,  # Horizontal shift Shx at Fznom
             "tire_p_vx1": -8.8098e-006,  # Vertical shift Svx/Fz at Fznom
             "tire_r_bx1": 13.276,  # Slope factor for combined slip Fx reduction
@@ -436,10 +436,10 @@ class F110Env(gym.Env):
             "tire_r_hx1": 0.0050722,  # Shift factor for combined slip Fx reduction
             # lateral coefficients
             "tire_p_cy1": 1.3507,  # Shape factor Cfy for lateral forces
-            "tire_p_dy1": 1.0489,  # Lateral friction Muy
+            "tire_p_dy1": 1.101,  # Lateral friction Muy
             "tire_p_dy3": -2.8821,  # Variation of friction Muy with squared camber
             "tire_p_ey1": -0.0074722,  # Lateral curvature Efy at Fznom
-            "tire_p_ky1": -21.92,  # Maximum value of stiffness Kfy/Fznom
+            "tire_p_ky1": -65.76,  # Maximum value of stiffness Kfy/Fznom
             "tire_p_hy1": 0.0026747,  # Horizontal shift Shy at Fznom
             "tire_p_hy3": 0.031415,  # Variation of shift Shy with camber
             "tire_p_vy1": 0.037318,  # Vertical shift in Svy/Fz at Fznom
