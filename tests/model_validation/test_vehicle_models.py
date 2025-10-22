@@ -63,7 +63,7 @@ def cornering_left(v_delta, a_long):
     u = [v_delta, a_long]
 
     # simulate multibody
-    x_left = odeint(func_MB, x0_MB, t, args=(u, p))
+    x_left_mb = odeint(func_MB, x0_MB, t, args=(u, p))
 
     # simulate single-track model
     x_left_st = odeint(func_ST, x0_ST, t, args=(u, p))
@@ -73,8 +73,8 @@ def cornering_left(v_delta, a_long):
 
     # results
     # position
-    title("positions turning")
-    plt.plot([tmp[0] for tmp in x_left], [tmp[1] for tmp in x_left])
+    title('positions turning')
+    plt.plot([tmp[0] for tmp in x_left_mb], [tmp[1] for tmp in x_left_mb])
     plt.plot([tmp[0] for tmp in x_left_st], [tmp[1] for tmp in x_left_st])
     plt.plot([tmp[0] for tmp in x_left_std], [tmp[1] for tmp in x_left_std])
     legend(["MB", "ST", "STD"])
@@ -82,8 +82,8 @@ def cornering_left(v_delta, a_long):
     plt.show()
 
     # slip angle
-    title("slip angle turning")
-    plt.plot(t, [tmp[10] / tmp[3] for tmp in x_left])
+    title('slip angle turning')
+    plt.plot(t, [tmp[10] / tmp[3] for tmp in x_left_mb])
     plt.plot(t, [tmp[6] for tmp in x_left_st])
     plt.plot(t, [tmp[6] for tmp in x_left_std])
     legend(["MB", "ST", "STD"])

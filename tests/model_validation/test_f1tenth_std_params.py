@@ -7,6 +7,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import math
+import os
+from datetime import datetime
+import yaml
 
 from f1tenth_gym.envs.dynamic_models.single_track_drift import init_std
 from f1tenth_gym.envs.dynamic_models.single_track_drift.single_track_drift import vehicle_dynamics_std
@@ -247,5 +250,18 @@ if __name__ == "__main__":
     fig.suptitle('Fullscale vs F1TENTH Vehicle Parameters Comparison - STD Model',
                  fontsize=10, fontweight='bold')
 
-    plt.savefig('f1tenth_std_params.png',bbox_inches='tight')
+    # Create figures directory if it doesn't exist
+    today = datetime.now().strftime('%Y-%m-%d')
+    figures_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'figures', 'tire_params', today)
+    os.makedirs(figures_dir, exist_ok=True)
+
+    # Save f1tenth parameters to YAML
+    params_filepath = os.path.join(figures_dir, 'f1tenth_params.yaml')
+    with open(params_filepath, 'w') as f:
+        yaml.dump(p_10th, f, default_flow_style=False, sort_keys=False)
+
+    # Save with fixed filename
+    filename = 'f1tenth_std_params_comparison.png'
+    filepath = os.path.join(figures_dir, filename)
+    plt.savefig(filepath, bbox_inches='tight')
     plt.show()

@@ -21,6 +21,13 @@ cd f1tenth_gym
 pip install -e .
 ```
 
+Alternatively, install using poetry:
+
+```bash
+poetry install
+source $(poetry env info -p)/bin/activate # or instead of sourcing, prefix commands with `poetry run`
+```
+
 Then you can run a quick waypoint follow example by:
 ```bash
 cd examples
@@ -78,6 +85,11 @@ Run formatting mannually with `black .`. Linting also runs automatically due to 
 ## Branches and the f1tenth_gym fork
 * The original `f1tenth_gym` project has branch `main` which in this project is renamed to `f1tenth_main_original`, and `rl_example`, which in this project is renamed to `main`
 * This is bc the `rl_example` contains all the code I am actively using to build this project
+
+## Tire parameters
+* Parameters for the 1/10 scale f1tenth car to be used with the `STD` model are defined in `f110_env.py` as `f1tenth_std_vehicle_params`. They are created as a mix of existing f1tenth params and tire parameters adjusted from the fullscale car. 
+* In future I may measure these parameters from real data for more accurate fitting
+* To maintain a history of parameter choices, and how they compare with the correct behaviour on the fullscale car, tests script `tests/model_validation/test_f1tenth_std_params.py` creates comparison figures along with parameter YAML file dump ordered by date created inside folder `figures/tire_params`
 
 ## Citing
 If you find this Gym environment useful, please consider citing:
