@@ -48,6 +48,7 @@ pyqtgraph = "^0.13.7"
 PyQt6 = "^6.7.1"
 wandb = "^0.17.0"
 stable-baselines3 = "^2.3.0"
+omegaconf = "^2.3.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.4"
