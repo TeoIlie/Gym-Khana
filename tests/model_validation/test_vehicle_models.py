@@ -73,7 +73,7 @@ def cornering_left(v_delta, a_long):
 
     # results
     # position
-    title('positions turning')
+    title("positions turning")
     plt.plot([tmp[0] for tmp in x_left_mb], [tmp[1] for tmp in x_left_mb])
     plt.plot([tmp[0] for tmp in x_left_st], [tmp[1] for tmp in x_left_st])
     plt.plot([tmp[0] for tmp in x_left_std], [tmp[1] for tmp in x_left_std])
@@ -82,7 +82,7 @@ def cornering_left(v_delta, a_long):
     plt.show()
 
     # slip angle
-    title('slip angle turning')
+    title("slip angle turning")
     plt.plot(t, [tmp[10] / tmp[3] for tmp in x_left_mb])
     plt.plot(t, [tmp[6] for tmp in x_left_st])
     plt.plot(t, [tmp[6] for tmp in x_left_std])

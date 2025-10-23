@@ -5,14 +5,15 @@ Each submodule contains a single model, and the equations or their source is doc
 
 import warnings
 from enum import Enum
+from typing import Optional
+
 import numpy as np
 
-from .kinematic import vehicle_dynamics_ks, get_standardized_state_ks
-from .single_track import vehicle_dynamics_st, get_standardized_state_st
-from .single_track_drift import init_std, vehicle_dynamics_std, get_standardized_state_std
-from .multi_body import init_mb, vehicle_dynamics_mb, get_standardized_state_mb
-from .utils import pid_steer, pid_accl
-from typing import Optional
+from .kinematic import get_standardized_state_ks, vehicle_dynamics_ks
+from .multi_body import get_standardized_state_mb, init_mb, vehicle_dynamics_mb
+from .single_track import get_standardized_state_st, vehicle_dynamics_st
+from .single_track_drift import get_standardized_state_std, init_std, vehicle_dynamics_std
+from .utils import bang_bang_steer, p_accl
 
 
 class DynamicModel(Enum):
@@ -24,9 +25,7 @@ class DynamicModel(Enum):
     @staticmethod
     def from_string(model: str):
         if model == "ks":
-            warnings.warn(
-                "Chosen model is KS. This is different from previous versions of the gym."
-            )
+            warnings.warn("Chosen model is KS. This is different from previous versions of the gym.")
             return DynamicModel.KS
         elif model == "st":
             return DynamicModel.ST

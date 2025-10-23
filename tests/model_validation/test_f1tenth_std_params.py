@@ -28,7 +28,7 @@ tFinal = 1  # start time
 # create dynamic models for STD and MB
 delta0 = 0
 vel0_fullscale = 15  # m/s for fullscale vehicle
-vel0_f1tenth = 5     # m/s for 1/10 scale vehicle (scaled appropriately)
+vel0_f1tenth = 5  # m/s for 1/10 scale vehicle (scaled appropriately)
 Psi0 = 0
 dotPsi0 = 0
 beta0 = 0
@@ -71,7 +71,7 @@ def compare_std_cornering_left(v_delta, a_long, ax1, ax2):
     # position
     ax1.set_title("Cornering Left: Position")
     ax1.plot([tmp[0] for tmp in x_left_fullscale], [tmp[1] for tmp in x_left_fullscale])
-    ax1.plot([tmp[0] for tmp in x_left_f1tenth], [tmp[1] for tmp in x_left_f1tenth], linestyle='--')
+    ax1.plot([tmp[0] for tmp in x_left_f1tenth], [tmp[1] for tmp in x_left_f1tenth], linestyle="--")
     ax1.legend(["Fullscale", "F1TENTH"])
     ax1.set_xlabel("X Position [m]")
     ax1.set_ylabel("Y Position [m]")
@@ -79,7 +79,7 @@ def compare_std_cornering_left(v_delta, a_long, ax1, ax2):
     # slip angle
     ax2.set_title("Cornering Left: Slip Angle")
     ax2.plot(t, [tmp[6] for tmp in x_left_fullscale])
-    ax2.plot(t, [tmp[6] for tmp in x_left_f1tenth], linestyle='--')
+    ax2.plot(t, [tmp[6] for tmp in x_left_f1tenth], linestyle="--")
     ax2.legend(["Fullscale", "F1TENTH"])
     ax2.set_xlabel("Time [s]")
     ax2.set_ylabel("Slip angle β [rad]")
@@ -109,9 +109,9 @@ def compare_std_oversteer_understeer(ax1, ax2, ax3):
     ax1.plot([tmp[0] for tmp in x_coast_fullscale], [tmp[1] for tmp in x_coast_fullscale])
     ax1.plot([tmp[0] for tmp in x_brake_fullscale], [tmp[1] for tmp in x_brake_fullscale])
     ax1.plot([tmp[0] for tmp in x_acc_fullscale], [tmp[1] for tmp in x_acc_fullscale])
-    ax1.plot([tmp[0] for tmp in x_coast_f1tenth], [tmp[1] for tmp in x_coast_f1tenth], linestyle='--')
-    ax1.plot([tmp[0] for tmp in x_brake_f1tenth], [tmp[1] for tmp in x_brake_f1tenth], linestyle='--')
-    ax1.plot([tmp[0] for tmp in x_acc_f1tenth], [tmp[1] for tmp in x_acc_f1tenth], linestyle='--')
+    ax1.plot([tmp[0] for tmp in x_coast_f1tenth], [tmp[1] for tmp in x_coast_f1tenth], linestyle="--")
+    ax1.plot([tmp[0] for tmp in x_brake_f1tenth], [tmp[1] for tmp in x_brake_f1tenth], linestyle="--")
+    ax1.plot([tmp[0] for tmp in x_acc_f1tenth], [tmp[1] for tmp in x_acc_f1tenth], linestyle="--")
     ax1.legend(["Coast-Full", "Brake-Full", "Accel-Full", "Coast-F1/10", "Brake-F1/10", "Accel-F1/10"], fontsize=8)
     ax1.set_xlabel("X Position [m]")
     ax1.set_ylabel("Y Position [m]")
@@ -121,9 +121,9 @@ def compare_std_oversteer_understeer(ax1, ax2, ax3):
     ax2.plot(t, [tmp[6] for tmp in x_coast_fullscale])
     ax2.plot(t, [tmp[6] for tmp in x_brake_fullscale])
     ax2.plot(t, [tmp[6] for tmp in x_acc_fullscale])
-    ax2.plot(t, [tmp[6] for tmp in x_coast_f1tenth], linestyle='--')
-    ax2.plot(t, [tmp[6] for tmp in x_brake_f1tenth], linestyle='--')
-    ax2.plot(t, [tmp[6] for tmp in x_acc_f1tenth], linestyle='--')
+    ax2.plot(t, [tmp[6] for tmp in x_coast_f1tenth], linestyle="--")
+    ax2.plot(t, [tmp[6] for tmp in x_brake_f1tenth], linestyle="--")
+    ax2.plot(t, [tmp[6] for tmp in x_acc_f1tenth], linestyle="--")
     ax2.legend(["Coast-Full", "Brake-Full", "Accel-Full", "Coast-F1/10", "Brake-F1/10", "Accel-F1/10"], fontsize=8)
     ax2.set_xlabel("Time [s]")
     ax2.set_ylabel("Front wheel ang speed [rad/s]")
@@ -133,9 +133,9 @@ def compare_std_oversteer_understeer(ax1, ax2, ax3):
     ax3.plot(t, [tmp[4] for tmp in x_coast_fullscale])
     ax3.plot(t, [tmp[4] for tmp in x_brake_fullscale])
     ax3.plot(t, [tmp[4] for tmp in x_acc_fullscale])
-    ax3.plot(t, [tmp[4] for tmp in x_coast_f1tenth], linestyle='--')
-    ax3.plot(t, [tmp[4] for tmp in x_brake_f1tenth], linestyle='--')
-    ax3.plot(t, [tmp[4] for tmp in x_acc_f1tenth], linestyle='--')
+    ax3.plot(t, [tmp[4] for tmp in x_coast_f1tenth], linestyle="--")
+    ax3.plot(t, [tmp[4] for tmp in x_brake_f1tenth], linestyle="--")
+    ax3.plot(t, [tmp[4] for tmp in x_acc_f1tenth], linestyle="--")
     ax3.legend(["Coast-Full", "Brake-Full", "Accel-Full", "Coast-F1/10", "Brake-F1/10", "Accel-F1/10"], fontsize=8)
     ax3.set_xlabel("Time [s]")
     ax3.set_ylabel("Heading angle Ψ [rad]")
@@ -154,7 +154,7 @@ def compare_std_braking(ax1, ax2, ax3):
     # position
     ax1.set_title("Braking: Position")
     ax1.plot([tmp[0] for tmp in x_brake_fullscale], [tmp[1] for tmp in x_brake_fullscale])
-    ax1.plot([tmp[0] for tmp in x_brake_f1tenth], [tmp[1] for tmp in x_brake_f1tenth], linestyle='--')
+    ax1.plot([tmp[0] for tmp in x_brake_f1tenth], [tmp[1] for tmp in x_brake_f1tenth], linestyle="--")
     ax1.legend(["Fullscale", "F1TENTH"])
     ax1.set_xlabel("X Position [m]")
     ax1.set_ylabel("Y Position [m]")
@@ -162,7 +162,7 @@ def compare_std_braking(ax1, ax2, ax3):
     # velocity
     ax2.set_title("Braking: Velocity")
     ax2.plot(t, [tmp[3] * math.cos(tmp[6]) for tmp in x_brake_fullscale])
-    ax2.plot(t, [tmp[3] * math.cos(tmp[6]) for tmp in x_brake_f1tenth], linestyle='--')
+    ax2.plot(t, [tmp[3] * math.cos(tmp[6]) for tmp in x_brake_f1tenth], linestyle="--")
     ax2.legend(["Fullscale", "F1TENTH"])
     ax2.set_xlabel("Time [s]")
     ax2.set_ylabel("Longitudinal Velocity [m/s]")
@@ -171,8 +171,8 @@ def compare_std_braking(ax1, ax2, ax3):
     ax3.set_title("Braking: Wheel Spin")
     ax3.plot(t, [tmp[7] for tmp in x_brake_fullscale])
     ax3.plot(t, [tmp[8] for tmp in x_brake_fullscale])
-    ax3.plot(t, [tmp[7] for tmp in x_brake_f1tenth], linestyle='--')
-    ax3.plot(t, [tmp[8] for tmp in x_brake_f1tenth], linestyle='--')
+    ax3.plot(t, [tmp[7] for tmp in x_brake_f1tenth], linestyle="--")
+    ax3.plot(t, [tmp[8] for tmp in x_brake_f1tenth], linestyle="--")
     ax3.legend(["Full-Front", "Full-Rear", "F1/10-Front", "F1/10-Rear"], fontsize=8)
     ax3.set_xlabel("Time [s]")
     ax3.set_ylabel("Wheel Angular Velocity [rad/s]")
@@ -191,7 +191,7 @@ def compare_std_accelerating(ax1, ax2, ax3):
     # position
     ax1.set_title("Accelerating: Position")
     ax1.plot([tmp[0] for tmp in x_acc_fullscale], [tmp[1] for tmp in x_acc_fullscale])
-    ax1.plot([tmp[0] for tmp in x_acc_f1tenth], [tmp[1] for tmp in x_acc_f1tenth], linestyle='--')
+    ax1.plot([tmp[0] for tmp in x_acc_f1tenth], [tmp[1] for tmp in x_acc_f1tenth], linestyle="--")
     ax1.legend(["Fullscale", "F1TENTH"])
     ax1.set_xlabel("X Position [m]")
     ax1.set_ylabel("Y Position [m]")
@@ -199,7 +199,7 @@ def compare_std_accelerating(ax1, ax2, ax3):
     # velocity
     ax2.set_title("Accelerating: Velocity")
     ax2.plot(t, [tmp[3] * math.cos(tmp[6]) for tmp in x_acc_fullscale])
-    ax2.plot(t, [tmp[3] * math.cos(tmp[6]) for tmp in x_acc_f1tenth], linestyle='--')
+    ax2.plot(t, [tmp[3] * math.cos(tmp[6]) for tmp in x_acc_f1tenth], linestyle="--")
     ax2.legend(["Fullscale", "F1TENTH"])
     ax2.set_xlabel("Time [s]")
     ax2.set_ylabel("Longitudinal Velocity [m/s]")
@@ -208,8 +208,8 @@ def compare_std_accelerating(ax1, ax2, ax3):
     ax3.set_title("Accelerating: Wheel Spin")
     ax3.plot(t, [tmp[7] for tmp in x_acc_fullscale])
     ax3.plot(t, [tmp[8] for tmp in x_acc_fullscale])
-    ax3.plot(t, [tmp[7] for tmp in x_acc_f1tenth], linestyle='--')
-    ax3.plot(t, [tmp[8] for tmp in x_acc_f1tenth], linestyle='--')
+    ax3.plot(t, [tmp[7] for tmp in x_acc_f1tenth], linestyle="--")
+    ax3.plot(t, [tmp[8] for tmp in x_acc_f1tenth], linestyle="--")
     ax3.legend(["Full-Wheel1", "Full-Wheel2", "F1/10-Wheel1", "F1/10-Wheel2"], fontsize=8)
     ax3.set_xlabel("Time [s]")
     ax3.set_ylabel("Wheel Angular Velocity [rad/s]")
@@ -247,21 +247,20 @@ if __name__ == "__main__":
     compare_std_accelerating(ax4_1, ax4_2, ax4_3)
 
     # Add overall title
-    fig.suptitle('Fullscale vs F1TENTH Vehicle Parameters Comparison - STD Model',
-                 fontsize=10, fontweight='bold')
+    fig.suptitle("Fullscale vs F1TENTH Vehicle Parameters Comparison - STD Model", fontsize=10, fontweight="bold")
 
     # Create figures directory if it doesn't exist
-    today = datetime.now().strftime('%Y-%m-%d')
-    figures_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'figures', 'tire_params', today)
+    today = datetime.now().strftime("%Y-%m-%d")
+    figures_dir = os.path.join(os.path.dirname(__file__), "..", "..", "figures", "tire_params", today)
     os.makedirs(figures_dir, exist_ok=True)
 
     # Save f1tenth parameters to YAML
-    params_filepath = os.path.join(figures_dir, 'f1tenth_params.yaml')
-    with open(params_filepath, 'w') as f:
+    params_filepath = os.path.join(figures_dir, "f1tenth_params.yaml")
+    with open(params_filepath, "w") as f:
         yaml.dump(p_10th, f, default_flow_style=False, sort_keys=False)
 
     # Save with fixed filename
-    filename = 'f1tenth_std_params_comparison.png'
+    filename = "f1tenth_std_params_comparison.png"
     filepath = os.path.join(figures_dir, filename)
-    plt.savefig(filepath, bbox_inches='tight')
+    plt.savefig(filepath, bbox_inches="tight")
     plt.show()

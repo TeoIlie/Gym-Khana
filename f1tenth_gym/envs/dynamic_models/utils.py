@@ -1,6 +1,7 @@
 import numpy as np
 from numba import njit
 
+
 @njit(cache=True)
 def upper_accel_limit(vel, a_max, v_switch):
     """
@@ -20,6 +21,7 @@ def upper_accel_limit(vel, a_max, v_switch):
         pos_limit = a_max
 
     return pos_limit
+
 
 @njit(cache=True)
 def accl_constraints(vel, a_long_d, v_switch, a_max, v_min, v_max):
@@ -53,9 +55,7 @@ def accl_constraints(vel, a_long_d, v_switch, a_max, v_min, v_max):
 
 
 @njit(cache=True)
-def steering_constraint(
-    steering_angle, steering_velocity, s_min, s_max, sv_min, sv_max
-):
+def steering_constraint(steering_angle, steering_velocity, s_min, s_max, sv_min, sv_max):
     """
     Steering constraints, adjusts the steering velocity based on constraints
 
@@ -72,9 +72,7 @@ def steering_constraint(
     """
 
     # constraint steering velocity
-    if (steering_angle <= s_min and steering_velocity <= 0) or (
-        steering_angle >= s_max and steering_velocity >= 0
-    ):
+    if (steering_angle <= s_min and steering_velocity <= 0) or (steering_angle >= s_max and steering_velocity >= 0):
         steering_velocity = 0.0
     elif steering_velocity <= sv_min:
         steering_velocity = sv_min
@@ -83,8 +81,13 @@ def steering_constraint(
 
     return steering_velocity
 
+
 @njit(cache=True)
-def pid_steer(steer, current_steer, max_sv):
+def bang_bang_steer(steer, current_steer, max_sv):
+    """
+    Bang-bang controller outputs maximum steering velocity in the direction of the error,
+    creating aggressive steering response with lag
+    """
     # steering
     steer_diff = steer - current_steer
     if np.fabs(steer_diff) > 1e-4:
@@ -96,16 +99,16 @@ def pid_steer(steer, current_steer, max_sv):
 
 
 @njit(cache=True)
-def pid_accl(speed, current_speed, max_a, max_v, min_v):
+def p_accl(speed, current_speed, max_a, max_v, min_v):
     """
-    Basic controller for speed/steer -> accl./steer vel.
+    Basic proportional controller for speed/steer -> accl./steer vel.
 
-        Args:
-            speed (float): desired input speed
-            steer (float): desired input steering angle
+    Args:
+        speed (float): desired input speed
+        steer (float): desired input steering angle
 
-        Returns:
-            accl (float): desired input acceleration
+    Returns:
+        accl (float): desired input acceleration
             sv (float): desired input steering velocity
     """
     # accl
