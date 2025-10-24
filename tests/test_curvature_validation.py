@@ -32,7 +32,7 @@ def test_circle():
     expected_curvature = 1.0 / radius
 
     # Create circle (exclude the last point to avoid duplication)
-    theta = np.linspace(0, 2*np.pi, 100)[:-1]
+    theta = np.linspace(0, 2 * np.pi, 100)[:-1]
     x = radius * np.cos(theta)
     y = radius * np.sin(theta)
 
@@ -44,14 +44,15 @@ def test_circle():
     std_curvature = np.std(curvatures)
     error = abs(mean_curvature - expected_curvature)
 
-    print(f"Circle (R={radius}m) - Expected: {expected_curvature:.4f} m⁻¹, "
-          f"Got: {mean_curvature:.4f} m⁻¹, Error: {error:.6f}, Std: {std_curvature:.6f}")
+    print(
+        f"Circle (R={radius}m) - Expected: {expected_curvature:.4f} m⁻¹, "
+        f"Got: {mean_curvature:.4f} m⁻¹, Error: {error:.6f}, Std: {std_curvature:.6f}"
+    )
 
     # Allow 5% error due to discretization and cubic spline approximation
     tolerance = 0.05 * expected_curvature
     assert error < tolerance, (
-        f"Circle curvature should be {expected_curvature:.4f} ± {tolerance:.4f} m⁻¹, "
-        f"got {mean_curvature:.4f} m⁻¹"
+        f"Circle curvature should be {expected_curvature:.4f} ± {tolerance:.4f} m⁻¹, " f"got {mean_curvature:.4f} m⁻¹"
     )
 
 
@@ -59,7 +60,7 @@ def test_sine_wave():
     """Test curvature on a sine wave at inflection point (known analytical formula)."""
     # y = A*sin(ω*x), curvature κ = A*ω²*sin(ω*x) / (1 + A²*ω²*cos²(ω*x))^(3/2)
     A = 2.0  # amplitude
-    omega = 2*np.pi / 10  # wavelength = 10m
+    omega = 2 * np.pi / 10  # wavelength = 10m
 
     x = np.linspace(0, 20, 200)
     y = A * np.sin(omega * x)
@@ -81,7 +82,7 @@ def test_lookahead_sampling():
     """Test the lookahead sampling logic (replicates sample_lookahead_curvatures)."""
     # Create a circular track
     radius = 10.0
-    theta = np.linspace(0, 2*np.pi, 100)[:-1]
+    theta = np.linspace(0, 2 * np.pi, 100)[:-1]
     x = radius * np.cos(theta)
     y = radius * np.sin(theta)
 
@@ -102,8 +103,10 @@ def test_lookahead_sampling():
     mean_curvature = np.mean(np.abs(manual_curvatures))
     expected_curvature = 1.0 / radius
 
-    print(f"Lookahead sampling - Sampled {n_points} points at ds={ds}m intervals: "
-          f"Mean κ={mean_curvature:.4f} m⁻¹ (expected {expected_curvature:.4f} m⁻¹)")
+    print(
+        f"Lookahead sampling - Sampled {n_points} points at ds={ds}m intervals: "
+        f"Mean κ={mean_curvature:.4f} m⁻¹ (expected {expected_curvature:.4f} m⁻¹)"
+    )
 
     # Verify lookahead sampling produces reasonable curvature values
     # Allow 10% error since we're sampling discrete points on a circle
@@ -122,10 +125,10 @@ def test_curvature_visualization():
     and the corresponding curvature profile.
     """
     # Create a lemniscate curve (figure-8 shape) - clear varying curvature
-    t = np.linspace(0, 2*np.pi, 200)[:-1]
+    t = np.linspace(0, 2 * np.pi, 200)[:-1]
     a = 5.0
-    x = a * np.cos(t) / (1 + np.sin(t)**2)
-    y = a * np.sin(t) * np.cos(t) / (1 + np.sin(t)**2)
+    x = a * np.cos(t) / (1 + np.sin(t) ** 2)
+    y = a * np.sin(t) * np.cos(t) / (1 + np.sin(t) ** 2)
 
     spline = CubicSpline2D(x, y)
 
@@ -137,20 +140,20 @@ def test_curvature_visualization():
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8))
 
     # Top panel: Track layout in XY plane
-    ax1.plot(x, y, 'b-', linewidth=2, label='Track')
-    ax1.set_xlabel('X [m]')
-    ax1.set_ylabel('Y [m]')
-    ax1.set_title('Track Layout')
-    ax1.axis('equal')
+    ax1.plot(x, y, "b-", linewidth=2, label="Track")
+    ax1.set_xlabel("X [m]")
+    ax1.set_ylabel("Y [m]")
+    ax1.set_title("Track Layout")
+    ax1.axis("equal")
     ax1.grid(True)
     ax1.legend()
 
     # Bottom panel: Curvature vs arc length
-    ax2.plot(s_samples, curvatures, 'r-', linewidth=2, label='Curvature')
-    ax2.axhline(y=0, color='k', linestyle='--', alpha=0.3, label='Zero curvature')
-    ax2.set_xlabel('Arc length s [m]')
-    ax2.set_ylabel('Curvature κ [1/m]')
-    ax2.set_title('Curvature Profile Along Track')
+    ax2.plot(s_samples, curvatures, "r-", linewidth=2, label="Curvature")
+    ax2.axhline(y=0, color="k", linestyle="--", alpha=0.3, label="Zero curvature")
+    ax2.set_xlabel("Arc length s [m]")
+    ax2.set_ylabel("Curvature κ [1/m]")
+    ax2.set_title("Curvature Profile Along Track")
     ax2.grid(True)
     ax2.legend()
 

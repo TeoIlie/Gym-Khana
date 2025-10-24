@@ -31,14 +31,10 @@ if train:
     )
 
     # will be faster on cpu
-    model = PPO(
-        "MlpPolicy", env, verbose=1, tensorboard_log=f"runs/{run.id}", device="cpu", seed=42
-    )
+    model = PPO("MlpPolicy", env, verbose=1, tensorboard_log=f"runs/{run.id}", device="cpu", seed=42)
     model.learn(
         total_timesteps=1_000_000,
-        callback=WandbCallback(
-            gradient_save_freq=0, model_save_path=f"models/{run.id}", verbose=2
-        ),
+        callback=WandbCallback(gradient_save_freq=0, model_save_path=f"models/{run.id}", verbose=2),
     )
     run.finish()
 

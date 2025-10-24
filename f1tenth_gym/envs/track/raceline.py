@@ -101,7 +101,7 @@ class Raceline:
         xx, yy = waypoints[:, 0], waypoints[:, 1]
         # scale waypoints
         xx, yy = xx * track_scale, yy * track_scale
-        
+
         # close loop
         xx = np.append(xx, xx[0])
         yy = np.append(yy, yy[0])
@@ -133,7 +133,9 @@ class Raceline:
         )
 
     @staticmethod
-    def from_raceline_file(filepath: pathlib.Path, delimiter: str = ";", track_scale: Optional[float] = 1.0) -> Raceline:
+    def from_raceline_file(
+        filepath: pathlib.Path, delimiter: str = ";", track_scale: Optional[float] = 1.0
+    ) -> Raceline:
         """
         Load raceline from a raceline file.
 
@@ -158,10 +160,10 @@ class Raceline:
             # scale x-y waypoints and recalculate s, psi, and k
             waypoints[:, 1] *= track_scale
             waypoints[:, 2] *= track_scale
-            spline = CubicSpline2D(x=waypoints[:, 1], y=waypoints[:, 2])    
+            spline = CubicSpline2D(x=waypoints[:, 1], y=waypoints[:, 2])
             ss, yaws, ks = [], [], []
             for (x, y) in zip(waypoints[:, 1], waypoints[:, 2]):
-                i_s, _  = spline.calc_arclength(x, y)
+                i_s, _ = spline.calc_arclength(x, y)
                 yaw = spline.calc_yaw(i_s)
                 k = spline.calc_curvature(i_s)
                 yaws.append(yaw)
@@ -170,10 +172,8 @@ class Raceline:
             waypoints[:, 0] = ss
             waypoints[:, 3] = yaws
             waypoints[:, 4] = ks
-        
-        assert (
-            waypoints.shape[1] == 7
-        ), "expected waypoints as [s, x, y, psi, k, vx, ax]"
+
+        assert waypoints.shape[1] == 7, "expected waypoints as [s, x, y, psi, k, vx, ax]"
         return Raceline(
             ss=waypoints[:, 0],
             xs=waypoints[:, 1],
@@ -200,7 +200,7 @@ class Raceline:
             self.waypoint_render = e.render_closed_lines(points, color=color, size=1)
         else:
             # PyQt renderer supports updateItems, Pygame may not
-            if hasattr(self.waypoint_render, 'updateItems'):
+            if hasattr(self.waypoint_render, "updateItems"):
                 self.waypoint_render.updateItems(points)
             else:
                 # For Pygame renderer, re-render

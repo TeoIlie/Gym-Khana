@@ -161,21 +161,15 @@ class F110Env(gym.Env):
         # observations
         self.agent_ids = [f"agent_{i}" for i in range(self.num_agents)]
 
-        assert (
-            "type" in self.observation_config
-        ), "observation_config must contain 'type' key"
+        assert "type" in self.observation_config, "observation_config must contain 'type' key"
         self.observation_type = observation_factory(env=self, **self.observation_config)
         self.observation_space = self.observation_type.space()
 
         # action space
-        self.action_space = from_single_to_multi_action_space(
-            self.action_type.space, self.num_agents
-        )
+        self.action_space = from_single_to_multi_action_space(self.action_type.space, self.num_agents)
 
         # reset modes
-        self.reset_fn = make_reset_fn(
-            **self.config["reset_config"], track=self.track, num_agents=self.num_agents
-        )
+        self.reset_fn = make_reset_fn(**self.config["reset_config"], track=self.track, num_agents=self.num_agents)
 
         # stateful observations for rendering
         # add choice of colors (same, random, ...)
@@ -237,10 +231,7 @@ class F110Env(gym.Env):
 
             # Render the lookahead curvature points
             self.track.render_lookahead_curvatures(
-                e=e,
-                vehicle_s=s,
-                n_points=self.lookahead_n_points,
-                ds=self.lookahead_ds
+                e=e, vehicle_s=s, n_points=self.lookahead_n_points, ds=self.lookahead_ds
             )
         except Exception:
             # Silently skip on errors to avoid breaking rendering
@@ -465,7 +456,7 @@ class F110Env(gym.Env):
             "sv_min": -3.2,
             "sv_max": 3.2,
             "v_switch": 7.319,
-            "a_max": 9.51, # TODO possible set to 5 m/s^2 as per the "On learning..." paper
+            "a_max": 9.51,  # TODO possible set to 5 m/s^2 as per the "On learning..." paper
             "v_min": -5.0,
             "v_max": 20.0,
             "width": 0.31,
@@ -513,12 +504,12 @@ class F110Env(gym.Env):
             # =========================
             # 2. New params modified for 1/10 scale
             # =========================
-            "h_s": 0.074, # height of center of gravity [m], copied from ETH simulator
-            "R_w": 0.049, # effective tire radius [m] estimated by me to be 49 mm which is 0.049 m
-            "I_y_w": 0.00017, # wheel inertia in [kg m^2], approximated by me using I = 1/2 * m * r^2, where m = 107.5g and r = 50 mm
+            "h_s": 0.074,  # height of center of gravity [m], copied from ETH simulator
+            "R_w": 0.049,  # effective tire radius [m] estimated by me to be 49 mm which is 0.049 m
+            "I_y_w": 0.00017,  # wheel inertia in [kg m^2], approximated by me using I = 1/2 * m * r^2, where m = 107.5g and r = 50 mm
             # split of brake and engine torque
-            "T_sb": 0.5, # torque split of brakes (percent of torque sent to front axle) [no units] - I'm assuming it's even front/back
-            "T_se": 0.5, # torque split of engine (percent of torque sent to front axle) [no units] - For AWD I'm assuming it's even front/back
+            "T_sb": 0.5,  # torque split of brakes (percent of torque sent to front axle) [no units] - I'm assuming it's even front/back
+            "T_se": 0.5,  # torque split of engine (percent of torque sent to front axle) [no units] - For AWD I'm assuming it's even front/back
         }
         return params
 
@@ -567,12 +558,8 @@ class F110Env(gym.Env):
 
             if hasattr(self, "action_space"):
                 # if some parameters changed, recompute action space
-                self.action_type = CarAction(
-                    self.config["control_input"], params=self.params
-                )
-                self.action_space = from_single_to_multi_action_space(
-                    self.action_type.space, self.num_agents
-                )
+                self.action_type = CarAction(self.config["control_input"], params=self.params)
+                self.action_space = from_single_to_multi_action_space(self.action_type.space, self.num_agents)
 
     def _check_done(self):
         """
@@ -601,7 +588,7 @@ class F110Env(gym.Env):
         temp_y[idx2] = -right_t - temp_y[idx2]
         temp_y[np.invert(np.logical_or(idx1, idx2))] = 0
 
-        dist2 = delta_pt[0, :] ** 2 + temp_y**2
+        dist2 = delta_pt[0, :] ** 2 + temp_y ** 2
         closes = dist2 <= 0.1
         for i in range(self.num_agents):
             if closes[i] and not self.near_starts[i]:
@@ -640,11 +627,7 @@ class F110Env(gym.Env):
 
         reward = 0.0
         for i in range(self.num_agents):
-            current_s, _ = (
-                self.track.centerline.spline.calc_arclength_inaccurate(
-                    self.poses_x[i], self.poses_y[i]
-                )
-            )
+            current_s, _ = self.track.centerline.spline.calc_arclength_inaccurate(self.poses_x[i], self.poses_y[i])
 
             prog = current_s - self.last_s[i]
             if prog > 0.9 * self.track.centerline.spline.s[-1]:
@@ -652,7 +635,7 @@ class F110Env(gym.Env):
             reward += prog
 
             if self.collisions[i]:
-                reward -= 1.
+                reward -= 1.0
 
             self.last_s[i] = current_s
         return reward

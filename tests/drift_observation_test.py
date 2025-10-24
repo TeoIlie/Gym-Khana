@@ -2,11 +2,13 @@ import gymnasium as gym
 import numpy as np
 from f1tenth_gym.envs.f110_env import F110Env
 
+
 def format_float(x):
     if abs(x) < 1e-5:
         return "Approx 0"
     else:
         return f"{x:.4f}"
+
 
 lookahead_n_points = 10
 
@@ -19,7 +21,7 @@ env = gym.make(
         "timestep": 0.01,  # High-frequency control (100Hz)
         "integrator": "rk4",  # Accurate physics integration
         "model": "std",  # Single Track dynamic bicycle model with tire slip
-        "control_input": ["speed", "steering_angle"], #TODO change speed to accl
+        "control_input": ["speed", "steering_angle"],  # TODO change speed to accl
         "observation_config": {"type": "drift"},  # 6D drift state: [vx, vy, yaw_rate, delta, frenet_u, frenet_n]
         "reset_config": {"type": "rl_random_static"},
         "render_lookahead_curvatures": True,  # Enable lookahead curvature visualization
@@ -42,7 +44,7 @@ print(f"Initial observation after env reset: {obs}")
 # Test with action to see non-zero values
 # For single agent, action should be 2D array: shape (1, 2)
 action = np.array([[0.0, 0.2]])  # steering, velocity targets
-# note that internally any action is converted to 
+# note that internally any action is converted to
 # Take multiple steps to see if steering catches up
 for step in range(10000):  # Reduced for testing
     # if 0 <= step <= 2:
@@ -68,7 +70,7 @@ for step in range(10000):  # Reduced for testing
     prev_steer_cmd = obs[6]
     prev_vel_cmd = obs[7]
     curr_vel_cmd = obs[8]
-    curvatures = obs[9: 9+lookahead_n_points]
+    curvatures = obs[9 : 9 + lookahead_n_points]
 
     print(
         f"Step {step+1:6d}:\n"

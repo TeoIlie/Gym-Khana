@@ -50,7 +50,7 @@ class PygameEnvRenderer(EnvRenderer):
         render_mode : str
             rendering mode in ["human", "human_fast", "rgb_array"]
         render_fps : int
-            number of frames per second            
+            number of frames per second
         """
         super().__init__()
         self.params = params
@@ -65,13 +65,8 @@ class PygameEnvRenderer(EnvRenderer):
         self.render_mode = render_mode
         self.render_fps = render_fps
 
-        colors_rgb = [
-            [rgb for rgb in ImageColor.getcolor(c, "RGB")]
-            for c in render_spec.vehicle_palette
-        ]
-        self.car_colors = [
-            colors_rgb[i % len(colors_rgb)] for i in range(len(self.agent_ids))
-        ]
+        colors_rgb = [[rgb for rgb in ImageColor.getcolor(c, "RGB")] for c in render_spec.vehicle_palette]
+        self.car_colors = [colors_rgb[i % len(colors_rgb)] for i in range(len(self.agent_ids))]
 
         width, height = render_spec.window_size, render_spec.window_size
 
@@ -91,18 +86,10 @@ class PygameEnvRenderer(EnvRenderer):
 
         # fps and time renderer
         self.clock = pygame.time.Clock()
-        self.fps_renderer = TextObject(
-            window_shape=(width, height), position="bottom_left"
-        )
-        self.time_renderer = TextObject(
-            window_shape=(width, height), position="bottom_right"
-        )
-        self.bottom_info_renderer = TextObject(
-            window_shape=(width, height), position="bottom_center"
-        )
-        self.top_info_renderer = TextObject(
-            window_shape=(width, height), position="top_center"
-        )
+        self.fps_renderer = TextObject(window_shape=(width, height), position="bottom_left")
+        self.time_renderer = TextObject(window_shape=(width, height), position="bottom_right")
+        self.bottom_info_renderer = TextObject(window_shape=(width, height), position="bottom_center")
+        self.top_info_renderer = TextObject(window_shape=(width, height), position="top_center")
 
         # load map image
         original_img = track.occupancy_map
@@ -115,10 +102,7 @@ class PygameEnvRenderer(EnvRenderer):
             k: pygame.Surface((map_r.track_map.shape[0], map_r.track_map.shape[1]))
             for k, map_r in self.map_renderers.items()
         }
-        self.ppus = {
-            k: original_img.shape[0] / map_r.track_map.shape[0]
-            for k, map_r in self.map_renderers.items()
-        }
+        self.ppus = {k: original_img.shape[0] / map_r.track_map.shape[0] for k, map_r in self.map_renderers.items()}
 
         # callbacks for custom visualization, called at every rendering step
         self.callbacks = []
@@ -221,14 +205,8 @@ class PygameEnvRenderer(EnvRenderer):
 
             self.canvas.blit(self.map_canvas, surface_mod_rect)
 
-            agent_to_follow_id = (
-                self.agent_ids[self.agent_to_follow]
-                if self.agent_to_follow is not None
-                else None
-            )
-            self.bottom_info_renderer.render(
-                text=f"Focus on: {agent_to_follow_id}", display=self.canvas
-            )
+            agent_to_follow_id = self.agent_ids[self.agent_to_follow] if self.agent_to_follow is not None else None
+            self.bottom_info_renderer.render(text=f"Focus on: {agent_to_follow_id}", display=self.canvas)
 
         if self.render_spec.show_info:
             self.top_info_renderer.render(text=INSTRUCTION_TEXT, display=self.canvas)
@@ -237,9 +215,7 @@ class PygameEnvRenderer(EnvRenderer):
         if self.render_mode in ["human", "human_fast"]:
             assert self.window is not None
 
-            self.fps_renderer.render(
-                text=f"FPS: {self.clock.get_fps():.2f}", display=self.canvas
-            )
+            self.fps_renderer.render(text=f"FPS: {self.clock.get_fps():.2f}", display=self.canvas)
 
             self.window.blit(self.canvas, self.canvas.get_rect())
 
@@ -250,13 +226,9 @@ class PygameEnvRenderer(EnvRenderer):
             # The following line will automatically add a delay to keep the framerate stable.
             self.clock.tick(self.render_fps)
         else:  # rgb_array
-            frame = np.transpose(
-                np.array(pygame.surfarray.pixels3d(self.canvas)), axes=(1, 0, 2)
-            )
+            frame = np.transpose(np.array(pygame.surfarray.pixels3d(self.canvas)), axes=(1, 0, 2))
             if frame.shape[0] > 2000:
-                frame = cv2.resize(
-                    frame, dsize=(2000, 2000), interpolation=cv2.INTER_AREA
-                )
+                frame = cv2.resize(frame, dsize=(2000, 2000), interpolation=cv2.INTER_AREA)
             return frame
 
     def event_handling(self) -> None:
@@ -277,9 +249,7 @@ class PygameEnvRenderer(EnvRenderer):
                 if self.agent_to_follow is None:
                     self.agent_to_follow = 0
                 else:
-                    self.agent_to_follow = (self.agent_to_follow + 1) % len(
-                        self.agent_ids
-                    )
+                    self.agent_to_follow = (self.agent_to_follow + 1) % len(self.agent_ids)
 
                 self.active_map_renderer = "car"
 
@@ -290,9 +260,7 @@ class PygameEnvRenderer(EnvRenderer):
                 if self.agent_to_follow is None:
                     self.agent_to_follow = 0
                 else:
-                    self.agent_to_follow = (self.agent_to_follow - 1) % len(
-                        self.agent_ids
-                    )
+                    self.agent_to_follow = (self.agent_to_follow - 1) % len(self.agent_ids)
 
                 self.active_map_renderer = "car"
 
@@ -359,9 +327,7 @@ class PygameEnvRenderer(EnvRenderer):
         points = ((points - origin[:2]) / resolution).astype(int)
         size = math.ceil(size / ppu)
 
-        pygame.draw.lines(
-            self.map_canvas, color, closed=False, points=points, width=size
-        )
+        pygame.draw.lines(self.map_canvas, color, closed=False, points=points, width=size)
 
     def render_closed_lines(
         self,
@@ -387,9 +353,7 @@ class PygameEnvRenderer(EnvRenderer):
         points = ((points - origin[:2]) / resolution).astype(int)
         size = math.ceil(size / ppu)
 
-        pygame.draw.lines(
-            self.map_canvas, color, closed=True, points=points, width=size
-        )
+        pygame.draw.lines(self.map_canvas, color, closed=True, points=points, width=size)
 
     def close(self) -> None:
         """

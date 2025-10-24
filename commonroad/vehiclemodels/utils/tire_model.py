@@ -23,7 +23,7 @@ def formula_longitudinal(kappa, gamma, F_z, p):
     S_vx = F_z * p.p_vx1
 
     kappa_x = kappa + S_hx
-    mu_x = p.p_dx1 * (1 - p.p_dx3 * gamma**2)
+    mu_x = p.p_dx1 * (1 - p.p_dx3 * gamma ** 2)
 
     C_x = p.p_cx1
     D_x = mu_x * F_z
@@ -47,7 +47,7 @@ def formula_lateral(alpha, gamma, F_z, p):
     S_vy = sign(gamma) * F_z * (p.p_vy1 + p.p_vy3 * math.fabs(gamma))
 
     alpha_y = alpha + S_hy
-    mu_y = p.p_dy1 * (1 - p.p_dy3 * gamma**2)
+    mu_y = p.p_dy1 * (1 - p.p_dy3 * gamma ** 2)
 
     C_y = p.p_cy1
     D_y = mu_y * F_z

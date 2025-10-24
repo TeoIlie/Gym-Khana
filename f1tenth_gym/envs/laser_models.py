@@ -74,12 +74,7 @@ def xy_2_rc(x, y, orig_x, orig_y, orig_c, orig_s, height, width, resolution):
     y_rot = -x_trans * orig_s + y_trans * orig_c
 
     # clip the state to be a cell
-    if (
-        x_rot < 0
-        or x_rot >= width * resolution
-        or y_rot < 0
-        or y_rot >= height * resolution
-    ):
+    if x_rot < 0 or x_rot >= width * resolution or y_rot < 0 or y_rot >= height * resolution:
         c = -1
         r = -1
     else:
@@ -90,9 +85,7 @@ def xy_2_rc(x, y, orig_x, orig_y, orig_c, orig_s, height, width, resolution):
 
 
 @njit(cache=True)
-def distance_transform(
-    x, y, orig_x, orig_y, orig_c, orig_s, height, width, resolution, dt
-):
+def distance_transform(x, y, orig_x, orig_y, orig_c, orig_s, height, width, resolution, dt):
     """
     Look up corresponding distance in the distance matrix
 
@@ -149,9 +142,7 @@ def trace_ray(
     c = cosines[theta_index_]
 
     # distance to nearest initialization
-    dist_to_nearest = distance_transform(
-        x, y, orig_x, orig_y, orig_c, orig_s, height, width, resolution, dt
-    )
+    dist_to_nearest = distance_transform(x, y, orig_x, orig_y, orig_c, orig_s, height, width, resolution, dt)
     total_dist = dist_to_nearest
 
     # ray tracing iterations
@@ -162,9 +153,7 @@ def trace_ray(
 
         # update dist_to_nearest for current point on ray
         # also keeps track of total ray length
-        dist_to_nearest = distance_transform(
-            x, y, orig_x, orig_y, orig_c, orig_s, height, width, resolution, dt
-        )
+        dist_to_nearest = distance_transform(x, y, orig_x, orig_y, orig_c, orig_s, height, width, resolution, dt)
         total_dist += dist_to_nearest
 
     if total_dist > max_range:
@@ -367,9 +356,7 @@ def get_blocked_view_indices(pose, vertices, scan_angles):
 
     angles_with_x = np.empty((4,))
     for i in range(4):
-        angle = np.arctan2(ego_x_vec[1], ego_x_vec[0]) - np.arctan2(
-            unit_vecs[i, 1], unit_vecs[i, 0]
-        )
+        angle = np.arctan2(ego_x_vec[1], ego_x_vec[0]) - np.arctan2(unit_vecs[i, 1], unit_vecs[i, 0])
         if angle > np.pi:
             angle = angle - 2 * np.pi
         elif angle < -np.pi:

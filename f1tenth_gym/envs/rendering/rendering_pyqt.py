@@ -25,6 +25,8 @@ INSTRUCTION_TEXT = "Mouse click (L/M/R): Change POV - 'S' key: On/Off"
 
 # Replicated from pyqtgraphs' example utils for ci pipelines to pass
 from time import perf_counter
+
+
 class FrameCounter(QtCore.QObject):
     sigFpsUpdate = QtCore.pyqtSignal(object)
 
@@ -48,6 +50,7 @@ class FrameCounter(QtCore.QObject):
         self.last_update = now
         self.count = 0
         self.sigFpsUpdate.emit(fps)
+
 
 class PyQtEnvRenderer(EnvRenderer):
     """
@@ -98,9 +101,7 @@ class PyQtEnvRenderer(EnvRenderer):
         self.app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
         self.window = pg.GraphicsLayoutWidget()
         self.window.setWindowTitle("F1Tenth Gym")
-        self.window.setGeometry(
-            0, 0, self.render_spec.window_size, self.render_spec.window_size
-        )
+        self.window.setGeometry(0, 0, self.render_spec.window_size, self.render_spec.window_size)
         self.canvas: pg.PlotItem = self.window.addPlot()
 
         # Disable interactivity
@@ -127,23 +128,14 @@ class PyQtEnvRenderer(EnvRenderer):
         self.clock = FrameCounter()
         self.fps_renderer = TextObject(parent=self.canvas, position="bottom_left")
         self.time_renderer = TextObject(parent=self.canvas, position="bottom_right")
-        self.bottom_info_renderer = TextObject(
-            parent=self.canvas, position="bottom_center"
-        )
+        self.bottom_info_renderer = TextObject(parent=self.canvas, position="bottom_center")
         self.top_info_renderer = TextObject(parent=self.canvas, position="top_center")
 
         if self.render_mode in ["human", "human_fast"]:
-            self.clock.sigFpsUpdate.connect(
-                lambda fps: self.fps_renderer.render(f"FPS: {fps:.1f}")
-            )
+            self.clock.sigFpsUpdate.connect(lambda fps: self.fps_renderer.render(f"FPS: {fps:.1f}"))
 
-        colors_rgb = [
-            [rgb for rgb in ImageColor.getcolor(c, "RGB")]
-            for c in render_spec.vehicle_palette
-        ]
-        self.car_colors = [
-            colors_rgb[i % len(colors_rgb)] for i in range(len(self.agent_ids))
-        ]
+        colors_rgb = [[rgb for rgb in ImageColor.getcolor(c, "RGB")] for c in render_spec.vehicle_palette]
+        self.car_colors = [colors_rgb[i % len(colors_rgb)] for i in range(len(self.agent_ids))]
 
         width, height = render_spec.window_size, render_spec.window_size
 
@@ -307,15 +299,9 @@ class PyQtEnvRenderer(EnvRenderer):
             self.canvas.setYRange(ego_y - 10, ego_y + 10)
         else:
             self.canvas.autoRange()
-            
-        agent_to_follow_id = (
-            self.agent_ids[self.agent_to_follow]
-            if self.agent_to_follow is not None
-            else None
-        )
-        self.bottom_info_renderer.render(
-            text=f"Focus on: {agent_to_follow_id}"
-        )
+
+        agent_to_follow_id = self.agent_ids[self.agent_to_follow] if self.agent_to_follow is not None else None
+        self.bottom_info_renderer.render(text=f"Focus on: {agent_to_follow_id}")
 
         if self.render_spec.show_info:
             self.top_info_renderer.render(text=INSTRUCTION_TEXT)
@@ -327,7 +313,7 @@ class PyQtEnvRenderer(EnvRenderer):
         if self.render_mode in ["human", "human_fast"]:
             assert self.window is not None
 
-        else:  
+        else:
             # rgb_array mode => extract the frame from the canvas
             qImage = self.exporter.export(toBytes=True)
 
@@ -337,8 +323,8 @@ class PyQtEnvRenderer(EnvRenderer):
             ptr = qImage.bits()
             ptr.setsize(height * width * 4)
             frame = np.array(ptr).reshape(height, width, 4)  #  Copies the data
-            
-            return frame[:, :, :3] # remove alpha channel
+
+            return frame[:, :, :3]  # remove alpha channel
 
     def render_points(
         self,
@@ -425,4 +411,3 @@ class PyQtEnvRenderer(EnvRenderer):
         Close the rendering environment.
         """
         self.app.exit()
-        

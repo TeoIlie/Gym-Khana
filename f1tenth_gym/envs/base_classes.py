@@ -247,9 +247,7 @@ class RaceCar(object):
         # loop over all opponent vehicle poses
         for opp_pose in self.opp_poses:
             # get vertices of current oppoenent
-            opp_vertices = get_vertices(
-                opp_pose, self.params["length"], self.params["width"]
-            )
+            opp_vertices = get_vertices(opp_pose, self.params["length"], self.params["width"])
 
             new_scan = ray_cast(
                 np.append(self.state[0:2], self.state[4]),
@@ -327,9 +325,7 @@ class RaceCar(object):
         if self.action_type.type is None:
             raise ValueError("No Control Action Type Specified.")
 
-        accl, sv = self.action_type.act(
-            action=(vel, steer), state=self.state, params=self.params
-        )
+        accl, sv = self.action_type.act(action=(vel, steer), state=self.state, params=self.params)
 
         u_np = np.array([sv, accl])
 
@@ -342,9 +338,7 @@ class RaceCar(object):
         self.state[4] %= 2 * np.pi  # TODO: This is a problem waiting to happen
 
         # update scan
-        current_scan = RaceCar.scan_simulator.scan(
-            np.append(self.state[0:2], self.state[4]), self.scan_rng
-        )
+        current_scan = RaceCar.scan_simulator.scan(np.append(self.state[0:2], self.state[4]), self.scan_rng)
 
         return current_scan
 
@@ -552,9 +546,7 @@ class Simulator(object):
 
         for i, agent in enumerate(self.agents):
             # update agent's information on other agents
-            opp_poses = np.concatenate(
-                (self.agent_poses[0:i, :], self.agent_poses[i + 1 :, :]), axis=0
-            )
+            opp_poses = np.concatenate((self.agent_poses[0:i, :], self.agent_poses[i + 1 :, :]), axis=0)
             agent.update_opp_poses(opp_poses)
 
             # update each agent's current scan based on other agents
@@ -576,9 +568,7 @@ class Simulator(object):
         """
 
         if poses.shape[0] != self.num_agents:
-            raise ValueError(
-                "Number of poses for reset does not match number of agents."
-            )
+            raise ValueError("Number of poses for reset does not match number of agents.")
 
         # loop over poses to reset
         for i in range(self.num_agents):

@@ -26,7 +26,7 @@ def formula_longitudinal(kappa, gamma, F_z, params: dict):
     S_vx = F_z * tire_p_vx1
 
     kappa_x = kappa + S_hx
-    mu_x = tire_p_dx1 * (1 - tire_p_dx3 * gamma**2)
+    mu_x = tire_p_dx1 * (1 - tire_p_dx3 * gamma ** 2)
 
     C_x = tire_p_cx1
     D_x = mu_x * F_z
@@ -35,11 +35,7 @@ def formula_longitudinal(kappa, gamma, F_z, params: dict):
     B_x = K_x / (C_x * D_x)
 
     # magic tire formula
-    return D_x * np.sin(
-        C_x
-        * np.arctan(B_x * kappa_x - E_x * (B_x * kappa_x - np.arctan(B_x * kappa_x)))
-        + S_vx
-    )
+    return D_x * np.sin(C_x * np.arctan(B_x * kappa_x - E_x * (B_x * kappa_x - np.arctan(B_x * kappa_x))) + S_vx)
 
 
 # lateral tire forces
@@ -65,7 +61,7 @@ def formula_lateral(alpha, gamma, F_z, params: dict):
     S_vy = np.sign(gamma) * F_z * (tire_p_vy1 + tire_p_vy3 * np.fabs(gamma))
 
     alpha_y = alpha + S_hy
-    mu_y = tire_p_dy1 * (1 - tire_p_dy3 * gamma**2)
+    mu_y = tire_p_dy1 * (1 - tire_p_dy3 * gamma ** 2)
 
     C_y = tire_p_cy1
     D_y = mu_y * F_z
@@ -74,16 +70,7 @@ def formula_lateral(alpha, gamma, F_z, params: dict):
     B_y = K_y / (C_y * D_y)
 
     # magic tire formula
-    F_y = (
-        D_y
-        * np.sin(
-            C_y
-            * np.arctan(
-                B_y * alpha_y - E_y * (B_y * alpha_y - np.arctan(B_y * alpha_y))
-            )
-        )
-        + S_vy
-    )
+    F_y = D_y * np.sin(C_y * np.arctan(B_y * alpha_y - E_y * (B_y * alpha_y - np.arctan(B_y * alpha_y)))) + S_vy
 
     res = []
     res.append(F_y)
@@ -113,20 +100,13 @@ def formula_longitudinal_comb(kappa, alpha, F0_x, params: dict):
     D_xalpha = F0_x / (
         np.cos(
             C_xalpha
-            * np.arctan(
-                B_xalpha * S_hxalpha
-                - E_xalpha * (B_xalpha * S_hxalpha - np.arctan(B_xalpha * S_hxalpha))
-            )
+            * np.arctan(B_xalpha * S_hxalpha - E_xalpha * (B_xalpha * S_hxalpha - np.arctan(B_xalpha * S_hxalpha)))
         )
     )
 
     # magic tire formula
     return D_xalpha * np.cos(
-        C_xalpha
-        * np.arctan(
-            B_xalpha * alpha_s
-            - E_xalpha * (B_xalpha * alpha_s - np.arctan(B_xalpha * alpha_s))
-        )
+        C_xalpha * np.arctan(B_xalpha * alpha_s - E_xalpha * (B_xalpha * alpha_s - np.arctan(B_xalpha * alpha_s)))
     )
 
 
@@ -158,30 +138,18 @@ def formula_lateral_comb(kappa, alpha, gamma, mu_y, F_z, F0_y, params: dict):
     D_ykappa = F0_y / (
         np.cos(
             C_ykappa
-            * np.arctan(
-                B_ykappa * S_hykappa
-                - E_ykappa * (B_ykappa * S_hykappa - np.arctan(B_ykappa * S_hykappa))
-            )
+            * np.arctan(B_ykappa * S_hykappa - E_ykappa * (B_ykappa * S_hykappa - np.arctan(B_ykappa * S_hykappa)))
         )
     )
 
-    D_vykappa = (
-        mu_y
-        * F_z
-        * (tire_r_vy1 + tire_r_vy3 * gamma)
-        * np.cos(np.arctan(tire_r_vy4 * alpha))
-    )
+    D_vykappa = mu_y * F_z * (tire_r_vy1 + tire_r_vy3 * gamma) * np.cos(np.arctan(tire_r_vy4 * alpha))
     S_vykappa = D_vykappa * np.sin(tire_r_vy5 * np.arctan(tire_r_vy6 * kappa))
 
     # magic tire formula
     return (
         D_ykappa
         * np.cos(
-            C_ykappa
-            * np.arctan(
-                B_ykappa * kappa_s
-                - E_ykappa * (B_ykappa * kappa_s - np.arctan(B_ykappa * kappa_s))
-            )
+            C_ykappa * np.arctan(B_ykappa * kappa_s - E_ykappa * (B_ykappa * kappa_s - np.arctan(B_ykappa * kappa_s)))
         )
         + S_vykappa
     )

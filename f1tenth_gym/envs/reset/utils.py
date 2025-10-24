@@ -65,24 +65,19 @@ def sample_around_waypoint(
             # increment distance
             x_diff = reference_line.xs[pnt_id] - reference_line.xs[pnt_id - 1]
             y_diff = reference_line.ys[pnt_id] - reference_line.ys[pnt_id - 1]
-            dist = dist + np.linalg.norm(
-                [y_diff, x_diff]
-            )  # approx distance by summing linear segments
+            dist = dist + np.linalg.norm([y_diff, x_diff])  # approx distance by summing linear segments
             # look for sampling interval
             if first_id is None and dist >= min_dist:  # not found first id yet
                 first_id = pnt_id
                 interval_len = 0
-            if (
-                first_id is not None and dist <= max_dist
-            ):  # found first id, increment interval length
+            if first_id is not None and dist <= max_dist:  # found first id, increment interval length
                 interval_len += 1
             pnt_id += 1
         # sample next waypoint
-        current_wp_id = (first_id + np.random.randint(0, interval_len + 1)) % (
-            n_waypoints
-        )
+        current_wp_id = (first_id + np.random.randint(0, interval_len + 1)) % (n_waypoints)
 
     return np.array(poses)
+
 
 def sample_around_pose(
     pose: np.ndarray,

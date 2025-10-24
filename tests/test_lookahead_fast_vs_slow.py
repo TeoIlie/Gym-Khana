@@ -6,20 +6,19 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 from f1tenth_gym.envs.track.cubic_spline import CubicSpline2D
-from f1tenth_gym.envs.observation import (
-    sample_lookahead_curvatures,
-    sample_lookahead_curvatures_fast
-)
+from f1tenth_gym.envs.observation import sample_lookahead_curvatures, sample_lookahead_curvatures_fast
 
 
 class MockRaceline:
     """Mock raceline object (simulates Raceline with spline attribute)."""
+
     def __init__(self, spline):
         self.spline = spline
 
 
 class MockTrack:
     """Mock track object for testing curvature sampling."""
+
     def __init__(self, spline):
         # Track has centerline, which has spline (CubicSpline2D)
         self.centerline = MockRaceline(spline)
@@ -31,19 +30,19 @@ def create_test_tracks():
 
     # Track 1: Circle
     radius = 10.0
-    theta = np.linspace(0, 2*np.pi, 100)[:-1]
+    theta = np.linspace(0, 2 * np.pi, 100)[:-1]
     x = radius * np.cos(theta)
     y = radius * np.sin(theta)
     spline = CubicSpline2D(x, y)
-    tracks['circle'] = MockTrack(spline)
+    tracks["circle"] = MockTrack(spline)
 
     # Track 2: Figure-8 (lemniscate)
-    t = np.linspace(0, 2*np.pi, 200)[:-1]
+    t = np.linspace(0, 2 * np.pi, 200)[:-1]
     a = 5.0
-    x = a * np.cos(t) / (1 + np.sin(t)**2)
-    y = a * np.sin(t) * np.cos(t) / (1 + np.sin(t)**2)
+    x = a * np.cos(t) / (1 + np.sin(t) ** 2)
+    y = a * np.sin(t) * np.cos(t) / (1 + np.sin(t) ** 2)
     spline = CubicSpline2D(x, y)
-    tracks['figure8'] = MockTrack(spline)
+    tracks["figure8"] = MockTrack(spline)
 
     # Track 3: Oval (straights + curves)
     points = []
@@ -54,14 +53,14 @@ def create_test_tracks():
     r = 8.0
     points.extend([[20 + r * np.cos(t), r + r * np.sin(t)] for t in theta])
     # Straight section back
-    points.extend([[x, 2*r] for x in np.linspace(20, 0, 50)])
+    points.extend([[x, 2 * r] for x in np.linspace(20, 0, 50)])
     # Curved section 2
-    theta = np.linspace(np.pi, 2*np.pi, 30)
+    theta = np.linspace(np.pi, 2 * np.pi, 30)
     points.extend([[r * np.cos(t), r + r * np.sin(t)] for t in theta])
 
     points = np.array(points)
     spline = CubicSpline2D(points[:, 0], points[:, 1])
-    tracks['oval'] = MockTrack(spline)
+    tracks["oval"] = MockTrack(spline)
 
     return tracks
 
@@ -76,10 +75,10 @@ def test_numerical_equivalence():
 
     # Test parameters
     test_configs = [
-        {'n_points': 5, 'ds': 0.2},
-        {'n_points': 10, 'ds': 0.3},
-        {'n_points': 20, 'ds': 0.5},
-        {'n_points': 15, 'ds': 0.1},
+        {"n_points": 5, "ds": 0.2},
+        {"n_points": 10, "ds": 0.3},
+        {"n_points": 20, "ds": 0.5},
+        {"n_points": 15, "ds": 0.1},
     ]
 
     all_passed = True
@@ -91,8 +90,8 @@ def test_numerical_equivalence():
         track_length = track.centerline.spline.s[-1]
 
         for config in test_configs:
-            n_points = config['n_points']
-            ds = config['ds']
+            n_points = config["n_points"]
+            ds = config["ds"]
 
             # Test at multiple positions along the track
             test_positions = [0.0, track_length * 0.25, track_length * 0.5, track_length * 0.75]
@@ -110,7 +109,7 @@ def test_numerical_equivalence():
                 max_abs_diff = max(max_abs_diff, np.max(abs_diff))
 
                 # Relative difference (avoid division by zero)
-                with np.errstate(divide='ignore', invalid='ignore'):
+                with np.errstate(divide="ignore", invalid="ignore"):
                     rel_diff = np.abs((curv_slow - curv_fast) / (curv_slow + 1e-10))
                     rel_diff = np.where(np.isfinite(rel_diff), rel_diff, 0.0)
                     max_rel_diff = max(max_rel_diff, np.max(rel_diff))
@@ -122,8 +121,10 @@ def test_numerical_equivalence():
             passed = (max_abs_diff < tolerance_abs) and (max_rel_diff < tolerance_rel)
             status = "✓" if passed else "✗"
 
-            print(f"  {status} n={n_points:2d}, ds={ds:.1f}m  →  "
-                  f"Max abs diff: {max_abs_diff:.2e}, Max rel diff: {max_rel_diff:.2%}")
+            print(
+                f"  {status} n={n_points:2d}, ds={ds:.1f}m  →  "
+                f"Max abs diff: {max_abs_diff:.2e}, Max rel diff: {max_rel_diff:.2%}"
+            )
 
             if not passed:
                 all_passed = False
@@ -176,11 +177,7 @@ def test_performance_comparison():
         # Compute speedup
         speedup = time_slow / time_fast
 
-        results[track_name] = {
-            'time_slow': time_slow,
-            'time_fast': time_fast,
-            'speedup': speedup
-        }
+        results[track_name] = {"time_slow": time_slow, "time_fast": time_fast, "speedup": speedup}
 
         print(f"\n{track_name.upper()} Track ({n_iterations} iterations):")
         print(f"  Regular implementation: {time_slow*1000:.2f} ms  ({time_slow*1e6/n_iterations:.2f} µs/call)")
@@ -188,7 +185,7 @@ def test_performance_comparison():
         print(f"  Speedup: {speedup:.1f}x")
 
     print("\n" + "=" * 70)
-    avg_speedup = np.mean([r['speedup'] for r in results.values()])
+    avg_speedup = np.mean([r["speedup"] for r in results.values()])
     print(f"Average speedup: {avg_speedup:.1f}x")
     print("=" * 70)
 
@@ -203,7 +200,7 @@ def test_edge_cases():
 
     # Create a simple circular track
     radius = 10.0
-    theta = np.linspace(0, 2*np.pi, 100)[:-1]
+    theta = np.linspace(0, 2 * np.pi, 100)[:-1]
     x = radius * np.cos(theta)
     y = radius * np.sin(theta)
     spline = CubicSpline2D(x, y)
@@ -264,10 +261,10 @@ def visualize_comparison():
     print("=" * 70)
 
     # Create a figure-8 track
-    t = np.linspace(0, 2*np.pi, 200)[:-1]
+    t = np.linspace(0, 2 * np.pi, 200)[:-1]
     a = 5.0
-    x = a * np.cos(t) / (1 + np.sin(t)**2)
-    y = a * np.sin(t) * np.cos(t) / (1 + np.sin(t)**2)
+    x = a * np.cos(t) / (1 + np.sin(t) ** 2)
+    y = a * np.sin(t) * np.cos(t) / (1 + np.sin(t) ** 2)
     spline = CubicSpline2D(x, y)
     track = MockTrack(spline)
 
@@ -299,28 +296,25 @@ def visualize_comparison():
     fig, axes = plt.subplots(3, 1, figsize=(12, 10))
 
     # Plot 1: Regular implementation
-    im1 = axes[0].imshow(slow_results.T, aspect='auto', cmap='RdBu_r',
-                         extent=[0, track_length, n_points, 0])
-    axes[0].set_xlabel('Arc length position s [m]')
-    axes[0].set_ylabel('Lookahead point index')
-    axes[0].set_title('sample_lookahead_curvatures (Regular)')
-    plt.colorbar(im1, ax=axes[0], label='Curvature [1/m]')
+    im1 = axes[0].imshow(slow_results.T, aspect="auto", cmap="RdBu_r", extent=[0, track_length, n_points, 0])
+    axes[0].set_xlabel("Arc length position s [m]")
+    axes[0].set_ylabel("Lookahead point index")
+    axes[0].set_title("sample_lookahead_curvatures (Regular)")
+    plt.colorbar(im1, ax=axes[0], label="Curvature [1/m]")
 
     # Plot 2: Fast implementation
-    im2 = axes[1].imshow(fast_results.T, aspect='auto', cmap='RdBu_r',
-                         extent=[0, track_length, n_points, 0])
-    axes[1].set_xlabel('Arc length position s [m]')
-    axes[1].set_ylabel('Lookahead point index')
-    axes[1].set_title('sample_lookahead_curvatures_fast (Numba-optimized)')
-    plt.colorbar(im2, ax=axes[1], label='Curvature [1/m]')
+    im2 = axes[1].imshow(fast_results.T, aspect="auto", cmap="RdBu_r", extent=[0, track_length, n_points, 0])
+    axes[1].set_xlabel("Arc length position s [m]")
+    axes[1].set_ylabel("Lookahead point index")
+    axes[1].set_title("sample_lookahead_curvatures_fast (Numba-optimized)")
+    plt.colorbar(im2, ax=axes[1], label="Curvature [1/m]")
 
     # Plot 3: Absolute difference
-    im3 = axes[2].imshow(differences.T, aspect='auto', cmap='hot',
-                         extent=[0, track_length, n_points, 0])
-    axes[2].set_xlabel('Arc length position s [m]')
-    axes[2].set_ylabel('Lookahead point index')
-    axes[2].set_title('Absolute Difference |slow - fast|')
-    plt.colorbar(im3, ax=axes[2], label='Absolute difference [1/m]')
+    im3 = axes[2].imshow(differences.T, aspect="auto", cmap="hot", extent=[0, track_length, n_points, 0])
+    axes[2].set_xlabel("Arc length position s [m]")
+    axes[2].set_ylabel("Lookahead point index")
+    axes[2].set_title("Absolute Difference |slow - fast|")
+    plt.colorbar(im3, ax=axes[2], label="Absolute difference [1/m]")
 
     plt.tight_layout()
     plt.show()

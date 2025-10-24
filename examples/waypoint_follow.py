@@ -53,9 +53,7 @@ def nearest_point_on_trajectory(point, trajectory):
 
 
 @njit(fastmath=False, cache=True)
-def first_point_on_trajectory_intersecting_circle(
-    point, radius, trajectory, t=0.0, wrap=False
-):
+def first_point_on_trajectory_intersecting_circle(point, radius, trajectory, t=0.0, wrap=False):
     """
     starts at beginning of trajectory, and find the first point one radius away from the given point along the trajectory.
 
@@ -72,20 +70,11 @@ def first_point_on_trajectory_intersecting_circle(
     for i in range(start_i, trajectory.shape[0] - 1):
         start = trajectory[i, :]
         end = trajectory[i + 1, :] + 1e-6
-        V = np.ascontiguousarray(end - start).astype(
-            np.float32
-        )  # NOTE: specify type or numba complains
+        V = np.ascontiguousarray(end - start).astype(np.float32)  # NOTE: specify type or numba complains
 
         a = np.dot(V, V)
-        b = np.float32(2.0) * np.dot(
-            V, start - point
-        )  # NOTE: specify type or numba complains
-        c = (
-            np.dot(start, start)
-            + np.dot(point, point)
-            - np.float32(2.0) * np.dot(start, point)
-            - radius * radius
-        )
+        b = np.float32(2.0) * np.dot(V, start - point)  # NOTE: specify type or numba complains
+        c = np.dot(start, start) + np.dot(point, point) - np.float32(2.0) * np.dot(start, point) - radius * radius
         discriminant = b * b - 4 * a * c
 
         if discriminant < 0:
@@ -125,15 +114,8 @@ def first_point_on_trajectory_intersecting_circle(
             V = (end - start).astype(np.float32)
 
             a = np.dot(V, V)
-            b = np.float32(2.0) * np.dot(
-                V, start - point
-            )  # NOTE: specify type or numba complains
-            c = (
-                np.dot(start, start)
-                + np.dot(point, point)
-                - np.float32(2.0) * np.dot(start, point)
-                - radius * radius
-            )
+            b = np.float32(2.0) * np.dot(V, start - point)  # NOTE: specify type or numba complains
+            c = np.dot(start, start) + np.dot(point, point) - np.float32(2.0) * np.dot(start, point) - radius * radius
             discriminant = b * b - 4 * a * c
 
             if discriminant < 0:
@@ -167,7 +149,7 @@ def get_actuation(pose_theta, lookahead_point, position, lookahead_distance, whe
     speed = lookahead_point[2]
     if np.abs(waypoint_y) < 1e-6:
         return speed, 0.0
-    radius = 1 / (2.0 * waypoint_y / lookahead_distance**2)
+    radius = 1 / (2.0 * waypoint_y / lookahead_distance ** 2)
     steering_angle = np.arctan(wheelbase / radius)
     return speed, steering_angle
 
@@ -179,9 +161,7 @@ class PurePursuitPlanner:
 
     def __init__(self, track, wb):
         self.wheelbase = wb
-        self.waypoints = np.stack(
-            [track.raceline.xs, track.raceline.ys, track.raceline.vxs]
-        ).T
+        self.waypoints = np.stack([track.raceline.xs, track.raceline.ys, track.raceline.vxs]).T
         self.max_reacquire = 20.0
 
         self.drawn_waypoints = []
@@ -196,9 +176,9 @@ class PurePursuitPlanner:
         loads waypoints
         """
         # NOTE: specify type or numba complains
-        self.waypoints = np.loadtxt(
-            conf.wpt_path, delimiter=conf.wpt_delim, skiprows=conf.wpt_rowskip
-        ).astype(np.float32)
+        self.waypoints = np.loadtxt(conf.wpt_path, delimiter=conf.wpt_delim, skiprows=conf.wpt_rowskip).astype(
+            np.float32
+        )
 
     def render_lookahead_point(self, e):
         """
@@ -207,9 +187,7 @@ class PurePursuitPlanner:
         if self.lookahead_point is not None:
             points = self.lookahead_point[:2][None]  # shape (1, 2)~
             if self.lookahead_point_render is None:
-                self.lookahead_point_render = e.render_points(
-                    points, color=(0, 0, 128), size=2
-                )
+                self.lookahead_point_render = e.render_points(points, color=(0, 0, 128), size=2)
             else:
                 self.lookahead_point_render.setData(points)
 
@@ -220,15 +198,11 @@ class PurePursuitPlanner:
         if self.current_index is not None:
             points = self.waypoints[self.current_index : self.current_index + 10, :2]
             if self.local_plan_render is None:
-                self.local_plan_render = e.render_lines(
-                    points, color=(0, 128, 0), size=1
-                )
+                self.local_plan_render = e.render_lines(points, color=(0, 128, 0), size=1)
             else:
                 self.local_plan_render.updateItems(points)
 
-    def _get_current_waypoint(
-        self, waypoints, lookahead_distance, position, theta
-    ) -> Tuple[np.ndarray, int]:
+    def _get_current_waypoint(self, waypoints, lookahead_distance, position, theta) -> Tuple[np.ndarray, int]:
         """
         Returns the current waypoint to follow given the current pose.
 
@@ -269,9 +243,7 @@ class PurePursuitPlanner:
         gives actuation given observation
         """
         position = np.array([pose_x, pose_y])
-        lookahead_point, i = self._get_current_waypoint(
-            self.waypoints, lookahead_distance, position, pose_theta
-        )
+        lookahead_point, i = self._get_current_waypoint(self.waypoints, lookahead_distance, position, pose_theta)
 
         if lookahead_point is None:
             return 4.0, 0.0
@@ -326,10 +298,7 @@ def main():
 
     planner = PurePursuitPlanner(
         track=track,
-        wb=(
-            F110Env.fullscale_vehicle_params()["lf"]
-            + F110Env.fullscale_vehicle_params()["lr"]
-        ),
+        wb=(F110Env.fullscale_vehicle_params()["lf"] + F110Env.fullscale_vehicle_params()["lr"]),
     )
 
     env.unwrapped.add_render_callback(track.raceline.render_waypoints)

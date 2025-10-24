@@ -56,7 +56,7 @@ class ScanTests(unittest.TestCase):
             test_pose = self.test_poses[i]
             new_scan[i, :] = scan_sim.scan(pose=test_pose, rng=scan_rng)
         diff = self.sample_scans[map_name] - new_scan
-        mse = np.mean(diff**2)
+        mse = np.mean(diff ** 2)
 
         if debug:
             # plotting

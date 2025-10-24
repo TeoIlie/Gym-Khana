@@ -48,9 +48,7 @@ class TextObject:
 
         self.text = self.font.render("", True, (125, 125, 125))
 
-    def _position_resolver(
-        self, position: str | tuple[int, int], display: pygame.Surface
-    ) -> tuple[int, int]:
+    def _position_resolver(self, position: str | tuple[int, int], display: pygame.Surface) -> tuple[int, int]:
         """
         This function takes strings like "bottom center" and converts them into a location for the text to be displayed.
         If position is tuple, then passthrough.
@@ -121,9 +119,7 @@ class TextObject:
             else:
                 raise NotImplementedError(f"Position {position} not implemented.")
         else:
-            raise ValueError(
-                f"Position expected to be a tuple[int, int] or a string. Got {position}."
-            )
+            raise ValueError(f"Position expected to be a tuple[int, int] or a string. Got {position}.")
 
     def render(self, text: str, display: pygame.Surface) -> None:
         """
@@ -134,7 +130,7 @@ class TextObject:
         text : str
             text to be displayed
         display : pygame.Surface
-            display surface                    
+            display surface
         """
         self.text = self.font.render(text, True, (125, 125, 125))
         position_tuple = self._position_resolver(self.position, display)
@@ -150,9 +146,7 @@ class Map:
         orig_width, orig_height = map_img.shape
         scaled_width = int(orig_width * zoom_level)
         scaled_height = int(orig_height * zoom_level)
-        map_img = cv2.resize(
-            map_img, dsize=(scaled_width, scaled_height), interpolation=cv2.INTER_AREA
-        )
+        map_img = cv2.resize(map_img, dsize=(scaled_width, scaled_height), interpolation=cv2.INTER_AREA)
 
         # convert shape from (W, H) to (W, H, 3)
         track_map = np.stack([map_img, map_img, map_img], axis=-1)
@@ -210,12 +204,8 @@ class Car:
 
     def render(self, display: pygame.Surface):
         vertices = get_vertices(self.pose, self.car_length, self.car_width)
-        vertices[:, 0] = (vertices[:, 0] - self.origin[0]) / (
-            self.resolution * self.ppu
-        )
-        vertices[:, 1] = (vertices[:, 1] - self.origin[1]) / (
-            self.resolution * self.ppu
-        )
+        vertices[:, 0] = (vertices[:, 0] - self.origin[0]) / (self.resolution * self.ppu)
+        vertices[:, 1] = (vertices[:, 1] - self.origin[1]) / (self.resolution * self.ppu)
 
         self.rect = pygame.draw.polygon(display, self.color, vertices)
 
@@ -233,12 +223,8 @@ class Car:
             arrow_length = self.wheel_size / self.resolution
 
             for mid_point in [front_left, front_right]:
-                end_point = mid_point + 0.5 * arrow_length * np.array(
-                    [np.cos(self.steering), np.sin(self.steering)]
-                )
-                base_point = mid_point - 0.5 * arrow_length * np.array(
-                    [np.cos(self.steering), np.sin(self.steering)]
-                )
+                end_point = mid_point + 0.5 * arrow_length * np.array([np.cos(self.steering), np.sin(self.steering)])
+                base_point = mid_point - 0.5 * arrow_length * np.array([np.cos(self.steering), np.sin(self.steering)])
 
                 pygame.draw.line(
                     display,

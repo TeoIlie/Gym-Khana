@@ -125,9 +125,7 @@ class Track:
         """
         try:
             track_dir = find_track_dir(track)
-            track_spec = Track.load_spec(
-                track=track, filespec=str(track_dir / f"{track_dir.stem}_map.yaml")
-            )
+            track_spec = Track.load_spec(track=track, filespec=str(track_dir / f"{track_dir.stem}_map.yaml"))
             track_spec.resolution = track_spec.resolution * track_scale
             track_spec.origin = (
                 track_spec.origin[0] * track_scale,
@@ -137,9 +135,7 @@ class Track:
 
             # load occupancy grid
             map_filename = pathlib.Path(track_spec.image)
-            image = Image.open(track_dir / str(map_filename)).transpose(
-                Transpose.FLIP_TOP_BOTTOM
-            )
+            image = Image.open(track_dir / str(map_filename)).transpose(Transpose.FLIP_TOP_BOTTOM)
 
             occupancy_map = np.array(image).astype(np.float32)
             occupancy_map[occupancy_map <= 128] = 0.0
@@ -198,10 +194,8 @@ class Track:
         try:
             if type(path) is str:
                 path = pathlib.Path(path)
-        
-            track_spec = Track.load_spec(
-                track=path.stem, filespec=path
-            )
+
+            track_spec = Track.load_spec(track=path.stem, filespec=path)
             track_spec.resolution = track_spec.resolution * track_scale
             track_spec.origin = (
                 track_spec.origin[0] * track_scale,
@@ -211,7 +205,7 @@ class Track:
 
             # load occupancy grid
             # Image path is from path + image name from track_spec
-            image_path = path.parent / track_spec.image  
+            image_path = path.parent / track_spec.image
             image = Image.open(image_path).transpose(Transpose.FLIP_TOP_BOTTOM)
             occupancy_map = np.array(image).astype(np.float32)
             occupancy_map[occupancy_map <= 128] = 0.0
@@ -380,10 +374,10 @@ class Track:
 
         if precise:
             # This is more precise, but causes errors - the search sometimes does not find the correct spot on the map
-            s, ey = line.spline.calc_arclength(x, y, s_guess) 
+            s, ey = line.spline.calc_arclength(x, y, s_guess)
         else:
             # This is slightly less accurate, but the global search doesn't cause errors
-            s, ey = line.spline.calc_arclength_inaccurate(x, y) # slightly more inaccurate, but much faster
+            s, ey = line.spline.calc_arclength_inaccurate(x, y)  # slightly more inaccurate, but much faster
 
         # Wrap around
         s = s % line.spline.s[-1]
@@ -420,7 +414,9 @@ class Track:
                 print(f"[DEBUG Frenet] s_guess={s_guess:.2f}m → s_optimized={s:.2f}m")
                 print(f"[DEBUG Frenet] Validation: s_robust={s_robust:.2f}m (global search)")
                 print(f"[DEBUG Frenet] ey_precise={ey:.3f}m, ey_robust={ey_robust:.3f}m")
-                print(f"[DEBUG Frenet] Discrepancy: Δs={s_error:.2f}m, Δey={ey_error:.3f}m, dist={actual_distance:.3f}m")
+                print(
+                    f"[DEBUG Frenet] Discrepancy: Δs={s_error:.2f}m, Δey={ey_error:.3f}m, dist={actual_distance:.3f}m"
+                )
 
                 # Optimization failure detection
                 if s_error > 20.0:
@@ -497,7 +493,7 @@ class Track:
         vehicle_color: tuple[int, int, int] = (255, 0, 255),  # Magenta for vehicle
         projected_color: tuple[int, int, int] = (0, 255, 255),  # Cyan for projected point
         line_color: tuple[int, int, int] = (255, 128, 0),  # Orange for connection line
-        size: int = 8
+        size: int = 8,
     ) -> None:
         """
         Render debug visualization of Frenet coordinate projection.
@@ -530,7 +526,7 @@ class Track:
         if self.debug_render_vehicle is None:
             self.debug_render_vehicle = e.render_points(vehicle_pt, color=vehicle_color, size=size)
         else:
-            if hasattr(self.debug_render_vehicle, 'setData'):
+            if hasattr(self.debug_render_vehicle, "setData"):
                 self.debug_render_vehicle.setData(vehicle_pt[:, 0], vehicle_pt[:, 1])
             else:
                 self.debug_render_vehicle = e.render_points(vehicle_pt, color=vehicle_color, size=size)
@@ -540,7 +536,7 @@ class Track:
         if self.debug_render_projected is None:
             self.debug_render_projected = e.render_points(projected_pt, color=projected_color, size=size)
         else:
-            if hasattr(self.debug_render_projected, 'setData'):
+            if hasattr(self.debug_render_projected, "setData"):
                 self.debug_render_projected.setData(projected_pt[:, 0], projected_pt[:, 1])
             else:
                 self.debug_render_projected = e.render_points(projected_pt, color=projected_color, size=size)
@@ -549,19 +545,13 @@ class Track:
         line_pts = np.vstack([self.debug_vehicle_point, self.debug_projected_point])
         if self.debug_render_line is None:
             self.debug_render_line = e.render_lines(
-                line_pts,  # Shape: (2, 2) - two points with x,y coords
-                color=line_color,
-                size=2
+                line_pts, color=line_color, size=2  # Shape: (2, 2) - two points with x,y coords
             )
         else:
-            if hasattr(self.debug_render_line, 'setData'):
+            if hasattr(self.debug_render_line, "setData"):
                 self.debug_render_line.setData(line_pts[:, 0], line_pts[:, 1])
             else:
-                self.debug_render_line = e.render_lines(
-                    line_pts,
-                    color=line_color,
-                    size=2
-                )
+                self.debug_render_line = e.render_lines(line_pts, color=line_color, size=2)
 
     def render_lookahead_curvatures(
         self,
@@ -570,7 +560,7 @@ class Track:
         n_points: int,
         ds: float,
         color: tuple[int, int, int] = (0, 0, 255),
-        size: int = 6
+        size: int = 6,
     ) -> None:
         """
         Render lookahead curvature sampling points ahead of vehicle.
@@ -600,7 +590,7 @@ class Track:
         - Requires centerline with valid spline to be initialized
         """
         # Check if centerline exists and has spline
-        if self.centerline is None or not hasattr(self.centerline, 'spline'):
+        if self.centerline is None or not hasattr(self.centerline, "spline"):
             return  # Early return if no centerline to visualize
 
         centerline = self.centerline
@@ -632,7 +622,7 @@ class Track:
             else:
                 # Update existing plot item using setData()
                 # This works for both PyQt (uses setData) and Pygame (returns None, so recreates)
-                if hasattr(self.lookahead_render, 'setData'):
+                if hasattr(self.lookahead_render, "setData"):
                     # PyQt renderer: update existing PlotDataItem
                     self.lookahead_render.setData(points_array[:, 0], points_array[:, 1])
                 else:

@@ -90,7 +90,7 @@ def vehicle_dynamics_st(x: np.ndarray, u_init: np.ndarray, params: dict):
                 params["v_switch"],
                 params["a_max"],
                 params["v_min"],  # p.v_min
-                params["v_max"],  # 
+                params["v_max"],  #
             ),
         ]
     )
@@ -135,17 +135,10 @@ def vehicle_dynamics_st(x: np.ndarray, u_init: np.ndarray, params: dict):
                 STEER_VEL,  # DELTA_DOT
                 ACCL,  # V_DOT
                 PSI_DOT,  # PSI_DOT
-                (
-                    (params["mu"] * params["m"])
-                    / (params["I"] * (params["lf"] + params["lr"]))
-                )
+                ((params["mu"] * params["m"]) / (params["I"] * (params["lf"] + params["lr"])))
                 * (
                     params["lf"] * params["C_Sf"] * (glr) * DELTA
-                    + (
-                        params["lr"] * params["C_Sr"] * (glf)
-                        - params["lf"] * params["C_Sf"] * (glr)
-                    )
-                    * BETA
+                    + (params["lr"] * params["C_Sr"] * (glf) - params["lf"] * params["C_Sf"] * (glr)) * BETA
                     - (
                         params["lf"] * params["lf"] * params["C_Sf"] * (glr)
                         + params["lr"] * params["lr"] * params["C_Sr"] * (glf)
@@ -156,11 +149,7 @@ def vehicle_dynamics_st(x: np.ndarray, u_init: np.ndarray, params: dict):
                 * (
                     params["C_Sf"] * (glr) * DELTA
                     - (params["C_Sr"] * (glf) + params["C_Sf"] * (glr)) * BETA
-                    + (
-                        params["C_Sr"] * (glf) * params["lr"]
-                        - params["C_Sf"] * (glr) * params["lf"]
-                    )
-                    * (PSI_DOT / V)
+                    + (params["C_Sr"] * (glf) * params["lr"] - params["C_Sf"] * (glr) * params["lf"]) * (PSI_DOT / V)
                 )
                 - PSI_DOT,  # BETA_DOT
             ]

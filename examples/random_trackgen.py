@@ -75,9 +75,7 @@ def create_track():
     # Create checkpoints
     checkpoints = []
     for c in range(CHECKPOINTS):
-        alpha = 2 * math.pi * c / CHECKPOINTS + np.random.uniform(
-            0, 2 * math.pi * 1 / CHECKPOINTS
-        )
+        alpha = 2 * math.pi * c / CHECKPOINTS + np.random.uniform(0, 2 * math.pi * 1 / CHECKPOINTS)
         rad = np.random.uniform(TRACK_RAD / 3, TRACK_RAD)
         if c == 0:
             alpha = 0
@@ -150,9 +148,7 @@ def create_track():
         i -= 1
         if i == 0:
             return False
-        pass_through_start = (
-            track[i][0] > start_alpha and track[i - 1][0] <= start_alpha
-        )
+        pass_through_start = track[i][0] > start_alpha and track[i - 1][0] <= start_alpha
         if pass_through_start and i2 == -1:
             i2 = i
         elif pass_through_start and i1 == -1:
@@ -171,8 +167,7 @@ def create_track():
 
     # Length of perpendicular jump to put together head and tail
     well_glued_together = np.sqrt(
-        np.square(first_perp_x * (track[0][2] - track[-1][2]))
-        + np.square(first_perp_y * (track[0][3] - track[-1][3]))
+        np.square(first_perp_x * (track[0][2] - track[-1][2])) + np.square(first_perp_y * (track[0][3] - track[-1][3]))
     )
     if well_glued_together > TRACK_DETAIL_STEP:
         return False
@@ -248,15 +243,9 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--seed", type=int, default=123, help="The seed for the numpy rng"
-    )
-    parser.add_argument(
-        "--n-maps", type=int, default=3, help="Number of maps to create"
-    )
-    parser.add_argument(
-        "--outdir", type=pathlib.Path, default="./maps", help="Out directory"
-    )
+    parser.add_argument("--seed", type=int, default=123, help="The seed for the numpy rng")
+    parser.add_argument("--n-maps", type=int, default=3, help="Number of maps to create")
+    parser.add_argument("--outdir", type=pathlib.Path, default="./maps", help="Out directory")
     args = parser.parse_args()
 
     main(args)

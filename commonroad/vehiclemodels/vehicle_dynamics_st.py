@@ -102,7 +102,7 @@ def vehicle_dynamics_st(x, uInit, p):
             -mu
             * m
             / (x[3] * I * (lr + lf))
-            * (lf**2 * C_Sf * (g * lr - u[1] * h) + lr**2 * C_Sr * (g * lf + u[1] * h))
+            * (lf ** 2 * C_Sf * (g * lr - u[1] * h) + lr ** 2 * C_Sr * (g * lf + u[1] * h))
             * x[5]
             + mu * m / (I * (lr + lf)) * (lr * C_Sr * (g * lf + u[1] * h) - lf * C_Sf * (g * lr - u[1] * h)) * x[6]
             + mu * m / (I * (lr + lf)) * lf * C_Sf * (g * lr - u[1] * h) * x[2],

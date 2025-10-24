@@ -28,8 +28,7 @@ class MapResetFn(ResetFn):
         self.move_laterally = move_laterally
         # Mask is a 2D array of booleans of where the agents can be placed
         # Should acount for max_dist from obstacles
-        self.mask = self.get_mask() 
-
+        self.mask = self.get_mask()
 
     def sample(self) -> np.ndarray:
         # Random ample an x-y position from the mask
@@ -39,7 +38,7 @@ class MapResetFn(ResetFn):
         pose_y = valid_y[idx] * self.track.spec.resolution + self.track.spec.origin[1]
         pose_theta = np.random.uniform(-np.pi, np.pi)
         pose = np.array([pose_x, pose_y, pose_theta])
-        
+
         poses = sample_around_pose(
             pose=pose,
             n_agents=self.n_agents,
@@ -47,6 +46,7 @@ class MapResetFn(ResetFn):
             max_dist=self.max_dist,
         )
         return poses
+
 
 class AllMapResetFn(MapResetFn):
     def __init__(
@@ -71,9 +71,9 @@ class AllMapResetFn(MapResetFn):
         # Create mask from occupancy grid enlarged by max_dist
         dilation_size = int(self.max_dist / self.track.spec.resolution)
         kernel = np.ones((dilation_size, dilation_size), np.uint8)
-        inverted_occ_map = (255 - self.track.occupancy_map)
+        inverted_occ_map = 255 - self.track.occupancy_map
         dilated = cv2.dilate(inverted_occ_map, kernel, iterations=1)
-        dilated_inverted = (255 - dilated)
+        dilated_inverted = 255 - dilated
         return dilated_inverted == 255
 
     def sample(self) -> np.ndarray:

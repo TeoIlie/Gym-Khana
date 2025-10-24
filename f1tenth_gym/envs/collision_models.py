@@ -267,7 +267,5 @@ def get_vertices(pose, length, width):
     rr = rr / rr[3]
     fl = fl / fl[3]
     fr = fr / fr[3]
-    vertices = np.asarray(
-        [[rl[0], rl[1]], [rr[0], rr[1]], [fr[0], fr[1]], [fl[0], fl[1]]]
-    )
+    vertices = np.asarray([[rl[0], rl[1]], [rr[0], rr[1]], [fr[0], fr[1]], [fl[0], fl[1]]])
     return vertices

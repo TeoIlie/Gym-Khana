@@ -187,34 +187,14 @@ def vehicle_dynamics_mb(x: np.ndarray, u_init: np.ndarray, params: dict):
     vel = np.sqrt(x[3] ** 2 + x[10] ** 2)
 
     # vertical tire forces
-    F_z_LF = (
-        x[16]
-        + params["R_w"] * (np.cos(x[13]) - 1)
-        - 0.5 * params["T_f"] * np.sin(x[13])
-    ) * params["K_zt"]
-    F_z_RF = (
-        x[16]
-        + params["R_w"] * (np.cos(x[13]) - 1)
-        + 0.5 * params["T_f"] * np.sin(x[13])
-    ) * params["K_zt"]
-    F_z_LR = (
-        x[21]
-        + params["R_w"] * (np.cos(x[18]) - 1)
-        - 0.5 * params["T_r"] * np.sin(x[18])
-    ) * params["K_zt"]
-    F_z_RR = (
-        x[21]
-        + params["R_w"] * (np.cos(x[18]) - 1)
-        + 0.5 * params["T_r"] * np.sin(x[18])
-    ) * params["K_zt"]
+    F_z_LF = (x[16] + params["R_w"] * (np.cos(x[13]) - 1) - 0.5 * params["T_f"] * np.sin(x[13])) * params["K_zt"]
+    F_z_RF = (x[16] + params["R_w"] * (np.cos(x[13]) - 1) + 0.5 * params["T_f"] * np.sin(x[13])) * params["K_zt"]
+    F_z_LR = (x[21] + params["R_w"] * (np.cos(x[18]) - 1) - 0.5 * params["T_r"] * np.sin(x[18])) * params["K_zt"]
+    F_z_RR = (x[21] + params["R_w"] * (np.cos(x[18]) - 1) + 0.5 * params["T_r"] * np.sin(x[18])) * params["K_zt"]
 
     # obtain individual tire speeds
-    u_w_lf = (x[3] + 0.5 * params["T_f"] * x[5]) * np.cos(x[2]) + (
-        x[10] + params["lf"] * x[5]
-    ) * np.sin(x[2])
-    u_w_rf = (x[3] - 0.5 * params["T_f"] * x[5]) * np.cos(x[2]) + (
-        x[10] + params["lf"] * x[5]
-    ) * np.sin(x[2])
+    u_w_lf = (x[3] + 0.5 * params["T_f"] * x[5]) * np.cos(x[2]) + (x[10] + params["lf"] * x[5]) * np.sin(x[2])
+    u_w_rf = (x[3] - 0.5 * params["T_f"] * x[5]) * np.cos(x[2]) + (x[10] + params["lf"] * x[5]) * np.sin(x[2])
     u_w_lr = x[3] + 0.5 * params["T_r"] * x[5]
     u_w_rr = x[3] - 0.5 * params["T_r"] * x[5]
 
@@ -253,25 +233,21 @@ def vehicle_dynamics_mb(x: np.ndarray, u_init: np.ndarray, params: dict):
     else:
         alpha_LF = (
             np.arctan(
-                (x[10] + params["lf"] * x[5] - x[14] * (params["R_w"] - x[16]))
-                / (x[3] + 0.5 * params["T_f"] * x[5])
+                (x[10] + params["lf"] * x[5] - x[14] * (params["R_w"] - x[16])) / (x[3] + 0.5 * params["T_f"] * x[5])
             )
             - x[2]
         )
         alpha_RF = (
             np.arctan(
-                (x[10] + params["lf"] * x[5] - x[14] * (params["R_w"] - x[16]))
-                / (x[3] - 0.5 * params["T_f"] * x[5])
+                (x[10] + params["lf"] * x[5] - x[14] * (params["R_w"] - x[16])) / (x[3] - 0.5 * params["T_f"] * x[5])
             )
             - x[2]
         )
         alpha_LR = np.arctan(
-            (x[10] - params["lr"] * x[5] - x[19] * (params["R_w"] - x[21]))
-            / (x[3] + 0.5 * params["T_r"] * x[5])
+            (x[10] - params["lr"] * x[5] - x[19] * (params["R_w"] - x[21])) / (x[3] + 0.5 * params["T_r"] * x[5])
         )
         alpha_RR = np.arctan(
-            (x[10] - params["lr"] * x[5] - x[19] * (params["R_w"] - x[21]))
-            / (x[3] - 0.5 * params["T_r"] * x[5])
+            (x[10] - params["lr"] * x[5] - x[19] * (params["R_w"] - x[21])) / (x[3] - 0.5 * params["T_r"] * x[5])
         )
 
     # auxiliary suspension movement
@@ -342,18 +318,10 @@ def vehicle_dynamics_mb(x: np.ndarray, u_init: np.ndarray, params: dict):
     F_x_RR = formula_longitudinal_comb(s_rr, alpha_RR, F0_x_RR, params)
 
     # compute lateral tire forces using the magic formula for combined slip
-    F_y_LF = formula_lateral_comb(
-        s_lf, alpha_LF, gamma_LF, mu_y_LF, F_z_LF, F0_y_LF, params
-    )
-    F_y_RF = formula_lateral_comb(
-        s_rf, alpha_RF, gamma_RF, mu_y_RF, F_z_RF, F0_y_RF, params
-    )
-    F_y_LR = formula_lateral_comb(
-        s_lr, alpha_LR, gamma_LR, mu_y_LR, F_z_LR, F0_y_LR, params
-    )
-    F_y_RR = formula_lateral_comb(
-        s_rr, alpha_RR, gamma_RR, mu_y_RR, F_z_RR, F0_y_RR, params
-    )
+    F_y_LF = formula_lateral_comb(s_lf, alpha_LF, gamma_LF, mu_y_LF, F_z_LF, F0_y_LF, params)
+    F_y_RF = formula_lateral_comb(s_rf, alpha_RF, gamma_RF, mu_y_RF, F_z_RF, F0_y_RF, params)
+    F_y_LR = formula_lateral_comb(s_lr, alpha_LR, gamma_LR, mu_y_LR, F_z_LR, F0_y_LR, params)
+    F_y_RR = formula_lateral_comb(s_rr, alpha_RR, gamma_RR, mu_y_RR, F_z_RR, F0_y_RR, params)
 
     # auxiliary movements for compliant joint equations
     delta_z_f = params["h_s"] - params["R_w"] + x[16] - x[11]
@@ -371,16 +339,8 @@ def vehicle_dynamics_mb(x: np.ndarray, u_init: np.ndarray, params: dict):
     dot_delta_y_f = x[10] + params["lf"] * x[5] - x[15]
     dot_delta_y_r = x[10] - params["lr"] * x[5] - x[20]
 
-    delta_f = (
-        delta_z_f * np.sin(x[6])
-        - x[27] * np.cos(x[6])
-        - (params["h_raf"] - params["R_w"]) * np.sin(delta_phi_f)
-    )
-    delta_r = (
-        delta_z_r * np.sin(x[6])
-        - x[28] * np.cos(x[6])
-        - (params["h_rar"] - params["R_w"]) * np.sin(delta_phi_r)
-    )
+    delta_f = delta_z_f * np.sin(x[6]) - x[27] * np.cos(x[6]) - (params["h_raf"] - params["R_w"]) * np.sin(delta_phi_f)
+    delta_r = delta_z_r * np.sin(x[6]) - x[28] * np.cos(x[6]) - (params["h_rar"] - params["R_w"]) * np.sin(delta_phi_r)
 
     dot_delta_f = (
         (delta_z_f * np.cos(x[6]) + x[27] * np.sin(x[6])) * x[7]
@@ -429,12 +389,7 @@ def vehicle_dynamics_mb(x: np.ndarray, u_init: np.ndarray, params: dict):
     )
 
     # auxiliary variables sprung mass
-    sumX = (
-        F_x_LR
-        + F_x_RR
-        + (F_x_LF + F_x_RF) * np.cos(x[2])
-        - (F_y_LF + F_y_RF) * np.sin(x[2])
-    )
+    sumX = F_x_LR + F_x_RR + (F_x_LF + F_x_RF) * np.cos(x[2]) - (F_y_LF + F_y_RF) * np.sin(x[2])
 
     sumN = (
         (F_y_LF + F_y_RF) * params["lf"] * np.cos(x[2])
@@ -445,9 +400,7 @@ def vehicle_dynamics_mb(x: np.ndarray, u_init: np.ndarray, params: dict):
         - (F_y_LR + F_y_RR) * params["lr"]
     )
 
-    sumY_s = (F_RAF + F_RAR) * np.cos(x[6]) + (F_SLF + F_SLR + F_SRF + F_SRR) * np.sin(
-        x[6]
-    )
+    sumY_s = (F_RAF + F_RAR) * np.cos(x[6]) + (F_SLF + F_SLR + F_SRF + F_SRR) * np.sin(x[6])
 
     sumL = (
         0.5 * F_SLF * params["T_f"]
@@ -456,37 +409,18 @@ def vehicle_dynamics_mb(x: np.ndarray, u_init: np.ndarray, params: dict):
         - 0.5 * F_SRR * params["T_r"]
         - F_RAF
         / np.cos(x[6])
-        * (
-            params["h_s"]
-            - x[11]
-            - params["R_w"]
-            + x[16]
-            - (params["h_raf"] - params["R_w"]) * np.cos(x[13])
-        )
+        * (params["h_s"] - x[11] - params["R_w"] + x[16] - (params["h_raf"] - params["R_w"]) * np.cos(x[13]))
         - F_RAR
         / np.cos(x[6])
-        * (
-            params["h_s"]
-            - x[11]
-            - params["R_w"]
-            + x[21]
-            - (params["h_rar"] - params["R_w"]) * np.cos(x[18])
-        )
+        * (params["h_s"] - x[11] - params["R_w"] + x[21] - (params["h_rar"] - params["R_w"]) * np.cos(x[18]))
     )
 
-    sumZ_s = (F_SLF + F_SLR + F_SRF + F_SRR) * np.cos(x[6]) - (F_RAF + F_RAR) * np.sin(
-        x[6]
-    )
+    sumZ_s = (F_SLF + F_SLR + F_SRF + F_SRR) * np.cos(x[6]) - (F_RAF + F_RAR) * np.sin(x[6])
 
     sumM_s = (
         params["lf"] * (F_SLF + F_SRF)
         - params["lr"] * (F_SLR + F_SRR)
-        + (
-            (F_x_LF + F_x_RF) * np.cos(x[2])
-            - (F_y_LF + F_y_RF) * np.sin(x[2])
-            + F_x_LR
-            + F_x_RR
-        )
+        + ((F_x_LF + F_x_RF) * np.cos(x[2]) - (F_y_LF + F_y_RF) * np.sin(x[2]) + F_x_LR + F_x_RR)
         * (params["h_s"] - x[11])
     )
 
@@ -495,38 +429,17 @@ def vehicle_dynamics_mb(x: np.ndarray, u_init: np.ndarray, params: dict):
         0.5 * F_SRF * params["T_f"]
         - 0.5 * F_SLF * params["T_f"]
         - F_RAF * (params["h_raf"] - params["R_w"])
-        + F_z_LF
-        * (
-            params["R_w"] * np.sin(x[13])
-            + 0.5 * params["T_f"] * np.cos(x[13])
-            - params["K_lt"] * F_y_LF
-        )
-        - F_z_RF
-        * (
-            -params["R_w"] * np.sin(x[13])
-            + 0.5 * params["T_f"] * np.cos(x[13])
-            + params["K_lt"] * F_y_RF
-        )
-        - ((F_y_LF + F_y_RF) * np.cos(x[2]) + (F_x_LF + F_x_RF) * np.sin(x[2]))
-        * (params["R_w"] - x[16])
+        + F_z_LF * (params["R_w"] * np.sin(x[13]) + 0.5 * params["T_f"] * np.cos(x[13]) - params["K_lt"] * F_y_LF)
+        - F_z_RF * (-params["R_w"] * np.sin(x[13]) + 0.5 * params["T_f"] * np.cos(x[13]) + params["K_lt"] * F_y_RF)
+        - ((F_y_LF + F_y_RF) * np.cos(x[2]) + (F_x_LF + F_x_RF) * np.sin(x[2])) * (params["R_w"] - x[16])
     )
 
     sumL_ur = (
         0.5 * F_SRR * params["T_r"]
         - 0.5 * F_SLR * params["T_r"]
         - F_RAR * (params["h_rar"] - params["R_w"])
-        + F_z_LR
-        * (
-            params["R_w"] * np.sin(x[18])
-            + 0.5 * params["T_r"] * np.cos(x[18])
-            - params["K_lt"] * F_y_LR
-        )
-        - F_z_RR
-        * (
-            -params["R_w"] * np.sin(x[18])
-            + 0.5 * params["T_r"] * np.cos(x[18])
-            + params["K_lt"] * F_y_RR
-        )
+        + F_z_LR * (params["R_w"] * np.sin(x[18]) + 0.5 * params["T_r"] * np.cos(x[18]) - params["K_lt"] * F_y_LR)
+        - F_z_RR * (-params["R_w"] * np.sin(x[18]) + 0.5 * params["T_r"] * np.cos(x[18]) + params["K_lt"] * F_y_RR)
         - (F_y_LR + F_y_RR) * (params["R_w"] - x[21])
     )
 
@@ -565,11 +478,7 @@ def vehicle_dynamics_mb(x: np.ndarray, u_init: np.ndarray, params: dict):
         f_ks = vehicle_dynamics_ks_cog(np.array(x_ks), u, params)
         f[0:5] = np.array([f_ks[0], f_ks[1], f_ks[2], f_ks[3], f_ks[4]])
         # derivative of slip angle and yaw rate
-        d_beta = (params["lr"] * u[0]) / (
-            lwb
-            * np.cos(x[2]) ** 2
-            * (1 + (np.tan(x[2]) ** 2 * params["lr"] / lwb) ** 2)
-        )
+        d_beta = (params["lr"] * u[0]) / (lwb * np.cos(x[2]) ** 2 * (1 + (np.tan(x[2]) ** 2 * params["lr"] / lwb) ** 2))
         dd_psi = (
             1
             / lwb
@@ -629,41 +538,17 @@ def vehicle_dynamics_mb(x: np.ndarray, u_init: np.ndarray, params: dict):
         T_E = 0.0
 
     # wheel dynamics  (T  new parameter for torque splitting)
-    f[23] = (
-        1
-        / params["I_y_w"]
-        * (
-            -params["R_w"] * F_x_LF
-            + 0.5 * params["T_sb"] * T_B
-            + 0.5 * params["T_se"] * T_E
-        )
-    )
-    f[24] = (
-        1
-        / params["I_y_w"]
-        * (
-            -params["R_w"] * F_x_RF
-            + 0.5 * params["T_sb"] * T_B
-            + 0.5 * params["T_se"] * T_E
-        )
-    )
+    f[23] = 1 / params["I_y_w"] * (-params["R_w"] * F_x_LF + 0.5 * params["T_sb"] * T_B + 0.5 * params["T_se"] * T_E)
+    f[24] = 1 / params["I_y_w"] * (-params["R_w"] * F_x_RF + 0.5 * params["T_sb"] * T_B + 0.5 * params["T_se"] * T_E)
     f[25] = (
         1
         / params["I_y_w"]
-        * (
-            -params["R_w"] * F_x_LR
-            + 0.5 * (1 - params["T_sb"]) * T_B
-            + 0.5 * (1 - params["T_se"]) * T_E
-        )
+        * (-params["R_w"] * F_x_LR + 0.5 * (1 - params["T_sb"]) * T_B + 0.5 * (1 - params["T_se"]) * T_E)
     )
     f[26] = (
         1
         / params["I_y_w"]
-        * (
-            -params["R_w"] * F_x_RR
-            + 0.5 * (1 - params["T_sb"]) * T_B
-            + 0.5 * (1 - params["T_se"]) * T_E
-        )
+        * (-params["R_w"] * F_x_RR + 0.5 * (1 - params["T_sb"]) * T_B + 0.5 * (1 - params["T_se"]) * T_E)
     )
 
     # negative wheel spin forbidden

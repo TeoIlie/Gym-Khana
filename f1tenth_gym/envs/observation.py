@@ -36,10 +36,10 @@ def sample_lookahead_curvatures(track, current_s: float, n_points: int, ds: floa
         If track, centerline, or spline is None/invalid
     """
     # Validate inputs
-    if track is None or not hasattr(track, 'centerline') or track.centerline is None:
+    if track is None or not hasattr(track, "centerline") or track.centerline is None:
         raise ValueError("Track and centerline must be valid")
 
-    if not hasattr(track.centerline, 'spline'):
+    if not hasattr(track.centerline, "spline"):
         raise ValueError("Centerline must have a spline")
 
     if n_points <= 0:
@@ -69,8 +69,9 @@ def sample_lookahead_curvatures(track, current_s: float, n_points: int, ds: floa
 
 
 @njit(cache=True)
-def _sample_curvatures_numba(current_s: float, n_points: int, ds: float, track_length: float,
-                             spline_x: np.ndarray, spline_c: np.ndarray) -> np.ndarray:
+def _sample_curvatures_numba(
+    current_s: float, n_points: int, ds: float, track_length: float, spline_x: np.ndarray, spline_c: np.ndarray
+) -> np.ndarray:
     """
     Numba-optimized curvature sampling using pre-extracted spline coefficients.
 
@@ -112,7 +113,7 @@ def _sample_curvatures_numba(current_s: float, n_points: int, ds: float, track_l
 
         # Calculate curvature using spline coefficients (state_index=4 for curvature)
         x_offset = s_ahead - spline_x[segment]
-        exp_x = np.array([x_offset**3, x_offset**2, x_offset, 1.0])
+        exp_x = np.array([x_offset ** 3, x_offset ** 2, x_offset, 1.0])
 
         # Extract curvature coefficients (index 4 is curvature in the spline state)
         vec = spline_c[:, segment % spline_c.shape[1], 4]
@@ -151,10 +152,10 @@ def sample_lookahead_curvatures_fast(track, current_s: float, n_points: int = 10
         If track, centerline, or spline is None/invalid
     """
     # Validate inputs (same as non-optimized version)
-    if track is None or not hasattr(track, 'centerline') or track.centerline is None:
+    if track is None or not hasattr(track, "centerline") or track.centerline is None:
         raise ValueError("Track and centerline must be valid")
 
-    if not hasattr(track.centerline, 'spline'):
+    if not hasattr(track.centerline, "spline"):
         raise ValueError("Centerline must have a spline")
 
     if n_points <= 0:
@@ -210,9 +211,7 @@ class OriginalObservation(Observation):
     def space(self):
         num_agents = self.env.unwrapped.num_agents
         scan_size = self.env.unwrapped.sim.agents[0].scan_simulator.num_beams
-        scan_range = (
-            self.env.unwrapped.sim.agents[0].scan_simulator.max_range + 0.5
-        )  # add 1.0 to avoid small errors
+        scan_range = self.env.unwrapped.sim.agents[0].scan_simulator.max_range + 0.5  # add 1.0 to avoid small errors
         large_num = 1e30  # large number to avoid unbounded obs space (ie., low=-inf or high=inf)
 
         obs_space = gym.spaces.Dict(
@@ -260,15 +259,9 @@ class OriginalObservation(Observation):
                     shape=(num_agents,),
                     dtype=np.float32,
                 ),
-                "collisions": gym.spaces.Box(
-                    low=0.0, high=1.0, shape=(num_agents,), dtype=np.float32
-                ),
-                "lap_times": gym.spaces.Box(
-                    low=0.0, high=large_num, shape=(num_agents,), dtype=np.float32
-                ),
-                "lap_counts": gym.spaces.Box(
-                    low=0.0, high=large_num, shape=(num_agents,), dtype=np.float32
-                ),
+                "collisions": gym.spaces.Box(low=0.0, high=1.0, shape=(num_agents,), dtype=np.float32),
+                "lap_times": gym.spaces.Box(low=0.0, high=large_num, shape=(num_agents,), dtype=np.float32),
+                "lap_counts": gym.spaces.Box(low=0.0, high=large_num, shape=(num_agents,), dtype=np.float32),
             }
         )
 
@@ -276,9 +269,7 @@ class OriginalObservation(Observation):
 
     def observe(self):
         # state indices
-        xi, yi, deltai, vxi, yawi, yaw_ratei, slipi = range(
-            7
-        )  # 7 largest state size (ST Model)
+        xi, yi, deltai, vxi, yawi, yaw_ratei, slipi = range(7)  # 7 largest state size (ST Model)
 
         observations = {
             "ego_idx": self.env.unwrapped.sim.ego_idx,
@@ -321,9 +312,7 @@ class OriginalObservation(Observation):
 
         # cast to match observation space
         for key in observations.keys():
-            if isinstance(observations[key], np.ndarray) or isinstance(
-                observations[key], list
-            ):
+            if isinstance(observations[key], np.ndarray) or isinstance(observations[key], list):
                 observations[key] = np.array(observations[key], dtype=np.float32)
 
         return observations
@@ -342,46 +331,20 @@ class FeaturesObservation(Observation):
         complete_space = {}
         for agent_id in self.env.unwrapped.agent_ids:
             agent_dict = {
-                "scan": gym.spaces.Box(
-                    low=0.0, high=scan_range, shape=(scan_size,), dtype=np.float32
-                ),
-                "pose_x": gym.spaces.Box(
-                    low=-large_num, high=large_num, shape=(), dtype=np.float32
-                ),
-                "pose_y": gym.spaces.Box(
-                    low=-large_num, high=large_num, shape=(), dtype=np.float32
-                ),
-                "pose_theta": gym.spaces.Box(
-                    low=-large_num, high=large_num, shape=(), dtype=np.float32
-                ),
-                "linear_vel_x": gym.spaces.Box(
-                    low=-large_num, high=large_num, shape=(), dtype=np.float32
-                ),
-                "linear_vel_y": gym.spaces.Box(
-                    low=-large_num, high=large_num, shape=(), dtype=np.float32
-                ),
-                "ang_vel_z": gym.spaces.Box(
-                    low=-large_num, high=large_num, shape=(), dtype=np.float32
-                ),
-                "delta": gym.spaces.Box(
-                    low=-large_num, high=large_num, shape=(), dtype=np.float32
-                ),
-                "beta": gym.spaces.Box(
-                    low=-large_num, high=large_num, shape=(), dtype=np.float32
-                ),
-                "collision": gym.spaces.Box(
-                    low=0.0, high=1.0, shape=(), dtype=np.float32
-                ),
-                "lap_time": gym.spaces.Box(
-                    low=0.0, high=large_num, shape=(), dtype=np.float32
-                ),
-                "lap_count": gym.spaces.Box(
-                    low=0.0, high=large_num, shape=(), dtype=np.float32
-                ),
+                "scan": gym.spaces.Box(low=0.0, high=scan_range, shape=(scan_size,), dtype=np.float32),
+                "pose_x": gym.spaces.Box(low=-large_num, high=large_num, shape=(), dtype=np.float32),
+                "pose_y": gym.spaces.Box(low=-large_num, high=large_num, shape=(), dtype=np.float32),
+                "pose_theta": gym.spaces.Box(low=-large_num, high=large_num, shape=(), dtype=np.float32),
+                "linear_vel_x": gym.spaces.Box(low=-large_num, high=large_num, shape=(), dtype=np.float32),
+                "linear_vel_y": gym.spaces.Box(low=-large_num, high=large_num, shape=(), dtype=np.float32),
+                "ang_vel_z": gym.spaces.Box(low=-large_num, high=large_num, shape=(), dtype=np.float32),
+                "delta": gym.spaces.Box(low=-large_num, high=large_num, shape=(), dtype=np.float32),
+                "beta": gym.spaces.Box(low=-large_num, high=large_num, shape=(), dtype=np.float32),
+                "collision": gym.spaces.Box(low=0.0, high=1.0, shape=(), dtype=np.float32),
+                "lap_time": gym.spaces.Box(low=0.0, high=large_num, shape=(), dtype=np.float32),
+                "lap_count": gym.spaces.Box(low=0.0, high=large_num, shape=(), dtype=np.float32),
             }
-            complete_space[agent_id] = gym.spaces.Dict(
-                {k: agent_dict[k] for k in self.features}
-            )
+            complete_space[agent_id] = gym.spaces.Dict({k: agent_dict[k] for k in self.features})
 
         obs_space = gym.spaces.Dict(complete_space)
         return obs_space
@@ -466,7 +429,7 @@ class VectorObservation(Observation):
             "prev_steering_cmd": 1,
             "prev_vel_cmd": 1,
             "curr_vel_cmd": 1,
-            "lookahead_curvatures": 10
+            "lookahead_curvatures": 10,
         }
 
         complete_space_size = sum([obs_size_dict[k] for k in self.features])
@@ -500,21 +463,21 @@ class VectorObservation(Observation):
         lookahead_curvatures = np.zeros(10, dtype=np.float32)  # Lookahead curvatures (zeros default when unavailable)
 
         # Check if track and centerline are available
-        track = getattr(self.env.unwrapped, 'track', None)
-        if track is not None and getattr(track, 'centerline', None) is not None:
+        track = getattr(self.env.unwrapped, "track", None)
+        if track is not None and getattr(track, "centerline", None) is not None:
             try:
 
                 # Convert Cartesion coordinates to Frenet
-                s, ey, ephi = track.cartesian_to_frenet(x, y, theta, use_raceline=False, debug=self.env.unwrapped.debug_frenet_projection)
+                s, ey, ephi = track.cartesian_to_frenet(
+                    x, y, theta, use_raceline=False, debug=self.env.unwrapped.debug_frenet_projection
+                )
 
                 frenet_u = float(ephi)  # heading error (vehicle heading - track heading)
-                frenet_n = float(ey)    # lateral distance from centerline (left=-ve, right=+ve)
+                frenet_n = float(ey)  # lateral distance from centerline (left=-ve, right=+ve)
 
                 # Sample lookahead curvatures using configured parameters n, ds
                 lookahead_curvatures = sample_lookahead_curvatures_fast(
-                    track, s,
-                    n_points=self.env.unwrapped.lookahead_n_points,
-                    ds=self.env.unwrapped.lookahead_ds
+                    track, s, n_points=self.env.unwrapped.lookahead_n_points, ds=self.env.unwrapped.lookahead_ds
                 )
 
             except Exception as e:
@@ -595,16 +558,16 @@ def observation_factory(env, type: str | None, **kwargs) -> Observation:
         return VectorObservation(env, features=features)
     elif type == "drift":
         features = [
-            "linear_vel_x", 
-            "linear_vel_y", 
-            "ang_vel_z", 
-            "delta", 
-            "frenet_u", 
-            "frenet_n", 
-            "prev_steering_cmd", 
-            "prev_vel_cmd", 
-            "curr_vel_cmd", 
-            "lookahead_curvatures"
+            "linear_vel_x",
+            "linear_vel_y",
+            "ang_vel_z",
+            "delta",
+            "frenet_u",
+            "frenet_n",
+            "prev_steering_cmd",
+            "prev_vel_cmd",
+            "curr_vel_cmd",
+            "lookahead_curvatures",
         ]
         return VectorObservation(env, features=features)
     else:
