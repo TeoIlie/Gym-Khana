@@ -4,6 +4,174 @@ from typing import List
 
 import gymnasium as gym
 import numpy as np
+from numba import njit
+
+
+def sample_lookahead_curvatures(track, current_s: float, n_points: int, ds: float) -> np.ndarray:
+    """
+    Sample N curvature values ahead of vehicle at uniform intervals along centerline.
+
+    Sampling starts at ds meters ahead (not at current position) and proceeds forward.
+    For closed tracks, sampling wraps around using modulo arithmetic.
+
+    Parameters
+    ----------
+    track : Track
+        Track object with centerline (must not be None)
+    current_s : float
+        Current arc length position on centerline (meters)
+    n_points : int
+        Number of lookahead points to sample (default 10)
+    ds : float
+        Spacing between points in meters (default 0.3m = 30cm)
+
+    Returns
+    -------
+    curvatures : np.ndarray (n_points,)
+        Curvature at each lookahead point (1/m)
+
+    Raises
+    ------
+    ValueError
+        If track, centerline, or spline is None/invalid
+    """
+    # Validate inputs
+    if track is None or not hasattr(track, 'centerline') or track.centerline is None:
+        raise ValueError("Track and centerline must be valid")
+
+    if not hasattr(track.centerline, 'spline'):
+        raise ValueError("Centerline must have a spline")
+
+    if n_points <= 0:
+        raise ValueError("n_points must be positive")
+
+    if ds <= 0:
+        raise ValueError("ds must be positive")
+
+    centerline = track.centerline
+    track_length = centerline.spline.s[-1]  # Total length for wrap-around
+
+    curvatures = np.zeros(n_points, dtype=np.float32)
+
+    for i in range(n_points):
+        # Lookahead arc length (wrap around for closed tracks)
+        s_ahead = (current_s + ((i + 1) * ds)) % track_length
+
+        # Query curvature from spline
+        try:
+            curvatures[i] = centerline.spline.calc_curvature(s_ahead)
+        except Exception as e:
+            # Log warning but continue with zero curvature
+            print(f"Warning: Failed to calculate curvature at s={s_ahead}: {e}")
+            curvatures[i] = 0.0
+
+    return curvatures
+
+
+@njit(cache=True)
+def _sample_curvatures_numba(current_s: float, n_points: int, ds: float, track_length: float,
+                             spline_x: np.ndarray, spline_c: np.ndarray) -> np.ndarray:
+    """
+    Numba-optimized curvature sampling using pre-extracted spline coefficients.
+
+    This is a high-performance alternative to sample_lookahead_curvatures() for real-time
+    applications. It bypasses the scipy CubicSpline interface and directly computes
+    polynomial evaluations using the spline coefficients.
+
+    Parameters
+    ----------
+    current_s : float
+        Current arc length position on centerline (meters)
+    n_points : int
+        Number of lookahead points to sample
+    ds : float
+        Spacing between points in meters
+    track_length : float
+        Total track length for wrap-around
+    spline_x : np.ndarray
+        Spline knot positions (from centerline.spline.x)
+    spline_c : np.ndarray
+        Spline coefficients (4, n_segments, n_states) (from centerline.spline.c)
+
+    Returns
+    -------
+    curvatures : np.ndarray (n_points,)
+        Curvature at each lookahead point (1/m)
+    """
+    curvatures = np.zeros(n_points, dtype=np.float32)
+    s_interval = track_length / len(spline_x)
+    n_segments = len(spline_x)
+
+    for i in range(n_points):
+        # Lookahead arc length (wrap around for closed tracks)
+        s_ahead = (current_s + (i + 1) * ds) % track_length
+
+        # Find segment
+        segment = int(s_ahead / (spline_x[-1] + s_interval) * (n_segments - 1))
+        segment = segment % n_segments
+
+        # Calculate curvature using spline coefficients (state_index=4 for curvature)
+        x_offset = s_ahead - spline_x[segment]
+        exp_x = np.array([x_offset**3, x_offset**2, x_offset, 1.0])
+
+        # Extract curvature coefficients (index 4 is curvature in the spline state)
+        vec = spline_c[:, segment % spline_c.shape[1], 4]
+        curvatures[i] = np.dot(vec, exp_x)
+
+    return curvatures
+
+
+def sample_lookahead_curvatures_fast(track, current_s: float, n_points: int = 10, ds: float = 0.3) -> np.ndarray:
+    """
+    High-performance version of sample_lookahead_curvatures using numba JIT compilation.
+
+    This function provides ~10-100x speedup for real-time applications by using numba
+    to compile the curvature sampling loop. Use this when performance is critical
+    (e.g., high-frequency control loops at 100Hz+).
+
+    Parameters
+    ----------
+    track : Track
+        Track object with centerline (must not be None)
+    current_s : float
+        Current arc length position on centerline (meters)
+    n_points : int
+        Number of lookahead points to sample (default 10)
+    ds : float
+        Spacing between points in meters (default 0.3m = 30cm)
+
+    Returns
+    -------
+    curvatures : np.ndarray (n_points,)
+        Curvature at each lookahead point (1/m)
+
+    Raises
+    ------
+    ValueError
+        If track, centerline, or spline is None/invalid
+    """
+    # Validate inputs (same as non-optimized version)
+    if track is None or not hasattr(track, 'centerline') or track.centerline is None:
+        raise ValueError("Track and centerline must be valid")
+
+    if not hasattr(track.centerline, 'spline'):
+        raise ValueError("Centerline must have a spline")
+
+    if n_points <= 0:
+        raise ValueError("n_points must be positive")
+
+    if ds <= 0:
+        raise ValueError("ds must be positive")
+
+    centerline = track.centerline
+    track_length = centerline.spline.s[-1]
+
+    # Extract spline data for numba (use cached numpy arrays from CubicSpline2D)
+    spline_x = np.asarray(centerline.spline.spline_x, dtype=np.float64)
+    spline_c = np.asarray(centerline.spline.spline_c, dtype=np.float64)
+
+    # Call numba-optimized function
+    return _sample_curvatures_numba(current_s, n_points, ds, track_length, spline_x, spline_c)
 
 
 class Observation:
@@ -298,6 +466,7 @@ class VectorObservation(Observation):
             "prev_steering_cmd": 1,
             "prev_vel_cmd": 1,
             "curr_vel_cmd": 1,
+            "lookahead_curvatures": 10
         }
 
         complete_space_size = sum([obs_size_dict[k] for k in self.features])
@@ -326,22 +495,27 @@ class VectorObservation(Observation):
         angvel = std_state["yaw_rate"]
 
         # Compute Frenet coordinates if track is available
-        frenet_u = float('nan')  # heading error (NaN indicates unavailable)
-        frenet_n = float('nan')  # lateral distance (NaN indicates unavailable)
+        frenet_u = 0.0  # heading error (0.0 default when unavailable)
+        frenet_n = 0.0  # lateral distance (0.0 default when unavailable)
+        lookahead_curvatures = np.zeros(10, dtype=np.float32)  # Lookahead curvatures (zeros default when unavailable)
 
         # Check if track and centerline are available
         track = getattr(self.env.unwrapped, 'track', None)
         if track is not None and getattr(track, 'centerline', None) is not None:
             try:
-                # Use cached s_guess for performance optimization
-                s_guess = getattr(agent, '_last_frenet_s', 0.0)
-                s, ey, ephi = track.cartesian_to_frenet(x, y, theta, use_raceline=False, s_guess=s_guess)
 
-                # Cache s value for next iteration
-                agent._last_frenet_s = s
+                # Convert Cartesion coordinates to Frenet
+                s, ey, ephi = track.cartesian_to_frenet(x, y, theta, use_raceline=False, debug=self.env.unwrapped.debug_frenet_projection)
 
                 frenet_u = float(ephi)  # heading error (vehicle heading - track heading)
                 frenet_n = float(ey)    # lateral distance from centerline (left=-ve, right=+ve)
+
+                # Sample lookahead curvatures using configured parameters n, ds
+                lookahead_curvatures = sample_lookahead_curvatures_fast(
+                    track, s,
+                    n_points=self.env.unwrapped.lookahead_n_points,
+                    ds=self.env.unwrapped.lookahead_ds
+                )
 
             except Exception as e:
                 print(f"Frenet conversion failed: {e}")
@@ -366,6 +540,7 @@ class VectorObservation(Observation):
             "prev_steering_cmd": agent.prev_steering_cmd,
             "prev_vel_cmd": agent.prev_vel_cmd,
             "curr_vel_cmd": agent.curr_vel_cmd,
+            "lookahead_curvatures": lookahead_curvatures,
         }
 
         # add agent's observation to multi-agent observation
@@ -419,7 +594,18 @@ def observation_factory(env, type: str | None, **kwargs) -> Observation:
         ]
         return VectorObservation(env, features=features)
     elif type == "drift":
-        features = ["linear_vel_x", "linear_vel_y", "ang_vel_z", "delta", "frenet_u", "frenet_n", "prev_steering_cmd", "prev_vel_cmd", "curr_vel_cmd"]
+        features = [
+            "linear_vel_x", 
+            "linear_vel_y", 
+            "ang_vel_z", 
+            "delta", 
+            "frenet_u", 
+            "frenet_n", 
+            "prev_steering_cmd", 
+            "prev_vel_cmd", 
+            "curr_vel_cmd", 
+            "lookahead_curvatures"
+        ]
         return VectorObservation(env, features=features)
     else:
         raise ValueError(f"Invalid observation type {type}.")

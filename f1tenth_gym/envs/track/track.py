@@ -69,6 +69,16 @@ class Track:
         self.centerline = centerline
         self.raceline = raceline
 
+        # Render handle for lookahead curvature visualization
+        self.lookahead_render = None
+
+        # Debug: Store last projected point for visualization
+        self.debug_projected_point = None
+        self.debug_vehicle_point = None
+        self.debug_render_projected = None
+        self.debug_render_vehicle = None
+        self.debug_render_line = None
+
     @staticmethod
     def load_spec(track: str, filespec: str) -> TrackSpec:
         """
@@ -342,8 +352,11 @@ class Track:
 
         return x, y, psi
 
-    def cartesian_to_frenet(self, x, y, phi, use_raceline=False, s_guess=0):
+    def cartesian_to_frenet(self, x, y, phi, use_raceline=False, s_guess=0, precise=False, debug=False):
         """
+        WARNING: Only use "precise=True" if you pass an excellent s_guess.
+        More work required to validate this even works.
+
         Convert Cartesian coordinates to Frenet coordinates.
 
         x: x-coordinate (Cartesian coord from std_state["x"])
@@ -351,6 +364,7 @@ class Track:
         phi: yaw angle (from std_state["yaw"])
         use_raceline: Calculate with respect to raceline or centerline
         s_guess: Initial guess for arc length calculation
+        debug: Enable debug logging and validation
 
         returns:
             s: arc length distance along the centerline/raceline
@@ -358,8 +372,19 @@ class Track:
             ephi: heading deviation (angle between vehicle and track heading) in radians
         """
         line = self.raceline if use_raceline else self.centerline
-        # s, ey = line.spline.calc_arclength_inaccurate(x, y) # inaccurate, but much faster
-        s, ey = line.spline.calc_arclength(x, y, s_guess)
+
+        # Store vehicle position for visualization
+        self.debug_vehicle_point = np.array([x, y], dtype=np.float32)
+
+        # Optimization-based arclength calculation
+
+        if precise:
+            # This is more precise, but causes errors - the search sometimes does not find the correct spot on the map
+            s, ey = line.spline.calc_arclength(x, y, s_guess) 
+        else:
+            # This is slightly less accurate, but the global search doesn't cause errors
+            s, ey = line.spline.calc_arclength_inaccurate(x, y) # slightly more inaccurate, but much faster
+
         # Wrap around
         s = s % line.spline.s[-1]
 
@@ -371,6 +396,53 @@ class Track:
         dy = y - y_eval
         distance_sign = np.sign(np.dot([dx, dy], normal))
         ey = ey * distance_sign
+
+        # Store projected point for visualization
+        self.debug_projected_point = np.array([x_eval, y_eval], dtype=np.float32)
+
+        # Validation: Check if optimization likely failed
+        actual_distance = np.hypot(dx, dy)
+
+        if debug:
+            track_length = line.spline.s[-1]
+
+            # Always compute robust method for comparison when using precise mode
+            if precise:
+                # Validate optimization against global search
+                s_robust, ey_robust = line.spline.calc_arclength_inaccurate(x, y)
+                s_robust = s_robust % track_length
+
+                s_error = abs(s - s_robust)
+                ey_error = abs(ey - ey_robust)
+
+                print(f"[DEBUG Frenet] Method: PRECISE (optimization)")
+                print(f"[DEBUG Frenet] Vehicle: ({x:.2f}, {y:.2f}) -> Projected: ({x_eval:.2f}, {y_eval:.2f})")
+                print(f"[DEBUG Frenet] s_guess={s_guess:.2f}m → s_optimized={s:.2f}m")
+                print(f"[DEBUG Frenet] Validation: s_robust={s_robust:.2f}m (global search)")
+                print(f"[DEBUG Frenet] ey_precise={ey:.3f}m, ey_robust={ey_robust:.3f}m")
+                print(f"[DEBUG Frenet] Discrepancy: Δs={s_error:.2f}m, Δey={ey_error:.3f}m, dist={actual_distance:.3f}m")
+
+                # Optimization failure detection
+                if s_error > 20.0:
+                    print(f"[WARNING] Optimization converged to WRONG location! ({s_error:.2f}m error)")
+                    print(f"[WARNING] → Likely stuck in wrong local minimum. Use precise=False for robustness.")
+                elif s_error > 5.0:
+                    print(f"[INFO] Moderate discrepancy ({s_error:.2f}m). Optimization may be in different basin.")
+
+                if ey_error > 1.0:
+                    print(f"[WARNING] Large lateral deviation error ({ey_error:.3f}m)")
+
+            else:
+                # Robust method is ground truth - just report results
+                print(f"[DEBUG Frenet] Method: ROBUST (global search)")
+                print(f"[DEBUG Frenet] Vehicle: ({x:.2f}, {y:.2f}) -> Projected: ({x_eval:.2f}, {y_eval:.2f})")
+                print(f"[DEBUG Frenet] s={s:.2f}m, ey={ey:.3f}m, distance={actual_distance:.3f}m")
+                print(f"[DEBUG Frenet] Note: s_guess parameter is ignored by robust method")
+
+            # Common warnings (applies to both methods)
+            if actual_distance > 10.0:
+                print(f"[WARNING] Vehicle FAR from track! Distance={actual_distance:.2f}m (typical track width ~10m)")
+                print(f"[WARNING] → Vehicle may be off-track or in collision")
 
         phi = phi - yaw
         return s, ey, np.arctan2(np.sin(phi), np.cos(phi))
@@ -418,3 +490,151 @@ class Track:
         """
         self.render_centerline(e)
         self.render_raceline(e)
+
+    def render_frenet_projection(
+        self,
+        e: EnvRenderer,
+        vehicle_color: tuple[int, int, int] = (255, 0, 255),  # Magenta for vehicle
+        projected_color: tuple[int, int, int] = (0, 255, 255),  # Cyan for projected point
+        line_color: tuple[int, int, int] = (255, 128, 0),  # Orange for connection line
+        size: int = 8
+    ) -> None:
+        """
+        Render debug visualization of Frenet coordinate projection.
+
+        Shows:
+        - Vehicle position (magenta)
+        - Projected point on centerline (cyan)
+        - Line connecting them (orange)
+
+        This helps diagnose if cartesian_to_frenet is finding the correct closest point.
+
+        Parameters
+        ----------
+        e : EnvRenderer
+            Environment renderer object
+        vehicle_color : tuple[int, int, int]
+            RGB color for vehicle position marker
+        projected_color : tuple[int, int, int]
+            RGB color for projected point marker
+        line_color : tuple[int, int, int]
+            RGB color for connection line
+        size : int
+            Size of rendered points in pixels
+        """
+        if self.debug_vehicle_point is None or self.debug_projected_point is None:
+            return  # No data to render yet
+
+        # Render vehicle position
+        vehicle_pt = self.debug_vehicle_point.reshape(1, 2)
+        if self.debug_render_vehicle is None:
+            self.debug_render_vehicle = e.render_points(vehicle_pt, color=vehicle_color, size=size)
+        else:
+            if hasattr(self.debug_render_vehicle, 'setData'):
+                self.debug_render_vehicle.setData(vehicle_pt[:, 0], vehicle_pt[:, 1])
+            else:
+                self.debug_render_vehicle = e.render_points(vehicle_pt, color=vehicle_color, size=size)
+
+        # Render projected point
+        projected_pt = self.debug_projected_point.reshape(1, 2)
+        if self.debug_render_projected is None:
+            self.debug_render_projected = e.render_points(projected_pt, color=projected_color, size=size)
+        else:
+            if hasattr(self.debug_render_projected, 'setData'):
+                self.debug_render_projected.setData(projected_pt[:, 0], projected_pt[:, 1])
+            else:
+                self.debug_render_projected = e.render_points(projected_pt, color=projected_color, size=size)
+
+        # Render connection line (2 points: vehicle and projected)
+        line_pts = np.vstack([self.debug_vehicle_point, self.debug_projected_point])
+        if self.debug_render_line is None:
+            self.debug_render_line = e.render_lines(
+                line_pts,  # Shape: (2, 2) - two points with x,y coords
+                color=line_color,
+                size=2
+            )
+        else:
+            if hasattr(self.debug_render_line, 'setData'):
+                self.debug_render_line.setData(line_pts[:, 0], line_pts[:, 1])
+            else:
+                self.debug_render_line = e.render_lines(
+                    line_pts,
+                    color=line_color,
+                    size=2
+                )
+
+    def render_lookahead_curvatures(
+        self,
+        e: EnvRenderer,
+        vehicle_s: float,
+        n_points: int,
+        ds: float,
+        color: tuple[int, int, int] = (0, 0, 255),
+        size: int = 6
+    ) -> None:
+        """
+        Render lookahead curvature sampling points ahead of vehicle.
+
+        Visualizes the points where curvature is sampled for drift control,
+        matching the behavior of sample_lookahead_curvatures() in observation.py.
+
+        Parameters
+        ----------
+        e : EnvRenderer
+            Environment renderer object
+        vehicle_s : float
+            Current arc length position of vehicle on centerline (meters)
+        n_points : int, optional
+            Number of lookahead points to render (default 10)
+        ds : float, optional
+            Spacing between points in meters (default 0.3m = 30cm)
+        color : tuple[int, int, int], optional
+            RGB color tuple for points (default yellow: (255, 255, 0))
+        size : int, optional
+            Size of rendered points in pixels (default 4)
+
+        Notes
+        -----
+        - Points are sampled starting at (vehicle_s + ds), not at current position
+        - For closed tracks, sampling wraps around using modulo arithmetic
+        - Requires centerline with valid spline to be initialized
+        """
+        # Check if centerline exists and has spline
+        if self.centerline is None or not hasattr(self.centerline, 'spline'):
+            return  # Early return if no centerline to visualize
+
+        centerline = self.centerline
+        track_length = centerline.spline.s[-1]  # Total length for wrap-around
+
+        # Collect points to render
+        points = []
+        for i in range(n_points):
+            # Lookahead arc length (wrap around for closed tracks)
+            # Match the formula from observation.py line 58
+            s_ahead = (vehicle_s + ((i + 1) * ds)) % track_length
+
+            # Convert s to x,y position
+            try:
+                x, y = centerline.spline.calc_position(s_ahead)
+                points.append([x, y])
+            except Exception:
+                # Skip invalid points gracefully
+                continue
+
+        # Render all valid points
+        if len(points) > 0:
+            points_array = np.array(points, dtype=np.float32)
+
+            # Handle caching to prevent point accumulation
+            if self.lookahead_render is None:
+                # First render: create new plot item
+                self.lookahead_render = e.render_points(points_array, color=color, size=size)
+            else:
+                # Update existing plot item using setData()
+                # This works for both PyQt (uses setData) and Pygame (returns None, so recreates)
+                if hasattr(self.lookahead_render, 'setData'):
+                    # PyQt renderer: update existing PlotDataItem
+                    self.lookahead_render.setData(points_array[:, 0], points_array[:, 1])
+                else:
+                    # Pygame renderer: returns None, so always recreate
+                    self.lookahead_render = e.render_points(points_array, color=color, size=size)

@@ -10,6 +10,22 @@ def vehicle_dynamics_st(x: np.ndarray, u_init: np.ndarray, params: dict):
     Single Track Vehicle Dynamics.
     From https://gitlab.lrz.de/tum-cps/commonroad-vehicle-models/-/blob/master/vehicleModels_commonRoad.pdf, section 7
 
+    Difference from commonroad imp (commonroad/vehiclemodels/vehicle_dynamics_st.py):
+    1. Framework conversion (Python classes -> NumPy/Numba)
+        a. parameters are stored in a params dict instead of a p object
+        b. state vector x stored as a np array instead of a list, and gives them clearer names
+    2. Kinematic threshold change
+        a. switch to kinematic/dynamics happens for V < 0.5, instead of x[3] < 0.1
+    3. slip angle derivatives (BETA_HAT, BETA_DOT) are computed differently from commonroad (d_beta, dd_psi)
+        a. All the BETA_HAT variable is doing is performing a modulus operation to bound the value
+    4. Dynamic model equations
+        a. these are the same but restructured
+        b. glr and glf are precomputed
+        c. Readability is improved
+        d. np array returned instead of list
+    5. Added method get_standardized_state_st to extract state info
+    6. Math libraries - all math function calls are replaced with np function calls (for ex. np.cos replaces math.cos)
+
         Args:
             x (numpy.ndarray (7, )): vehicle state vector (x0, x1, x2, x3, x4, x5, x6)
                 x0: x position in global coordinates
@@ -44,13 +60,13 @@ def vehicle_dynamics_st(x: np.ndarray, u_init: np.ndarray, params: dict):
             f (numpy.ndarray): right hand side of differential equations
     """
     # States
-    X = x[0]
-    Y = x[1]
-    DELTA = x[2]
-    V = x[3]
-    PSI = x[4]
-    PSI_DOT = x[5]
-    BETA = x[6]
+    X = x[0]  # x1
+    Y = x[1]  # x2
+    DELTA = x[2]  # x3
+    V = x[3]  # x4?
+    PSI = x[4]  # yaw angle
+    PSI_DOT = x[5]  # yaw rate
+    BETA = x[6]  # slip angle
     # We have to wrap the slip angle to [-pi, pi]
     # BETA = np.arctan2(np.sin(BETA), np.cos(BETA))
 
@@ -63,18 +79,18 @@ def vehicle_dynamics_st(x: np.ndarray, u_init: np.ndarray, params: dict):
             steering_constraint(
                 DELTA,
                 u_init[0],
-                params["s_min"],
-                params["s_max"],
-                params["sv_min"],
-                params["sv_max"],
+                params["s_min"],  # p.min  - steering min
+                params["s_max"],  # p.max  - steering max
+                params["sv_min"],  # p.v_min  - steering velocity min
+                params["sv_max"],  # p.v_max  - steering velocity max
             ),
             accl_constraints(
                 V,
                 u_init[1],
                 params["v_switch"],
                 params["a_max"],
-                params["v_min"],
-                params["v_max"],
+                params["v_min"],  # p.v_min
+                params["v_max"],  # 
             ),
         ]
     )
@@ -85,8 +101,8 @@ def vehicle_dynamics_st(x: np.ndarray, u_init: np.ndarray, params: dict):
     # switch to kinematic model for small velocities
     if V < 0.5:
         # wheelbase
-        lwb = params["lf"] + params["lr"]
-        BETA_HAT = np.arctan(np.tan(DELTA) * params["lr"] / lwb)
+        lwb = params["lf"] + params["lr"]  # p.a + p.b
+        BETA_HAT = np.arctan(np.tan(DELTA) * params["lr"] / lwb)  # this is used to modulate
         BETA_DOT = (
             (1 / (1 + (np.tan(DELTA) * (params["lr"] / lwb)) ** 2))
             * (params["lr"] / (lwb * np.cos(DELTA) ** 2))
@@ -110,8 +126,8 @@ def vehicle_dynamics_st(x: np.ndarray, u_init: np.ndarray, params: dict):
         )
     else:
         # system dynamics
-        glr = g * params["lr"] - ACCL * params["h"]
-        glf = g * params["lf"] + ACCL * params["h"]
+        glr = g * params["lr"] - ACCL * params["h"]  # rear load transfer
+        glf = g * params["lf"] + ACCL * params["h"]  # front load transfer
         f = np.array(
             [
                 V * np.cos(PSI + BETA),  # X_DOT
@@ -150,6 +166,7 @@ def vehicle_dynamics_st(x: np.ndarray, u_init: np.ndarray, params: dict):
             ]
         )
 
+    # return f is the time derivatives of the input state x
     return f
 
 

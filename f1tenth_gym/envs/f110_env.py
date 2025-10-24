@@ -102,6 +102,13 @@ class F110Env(gym.Env):
         self.action_type = CarAction(self.config["control_input"], params=self.params)
         self.num_beams = self.config["num_beams"]
 
+        # rendering and debug configuration
+        self.render_track_lines = self.config["render_track_lines"]
+        self.render_lookahead_curvatures = self.config["render_lookahead_curvatures"]
+        self.lookahead_n_points = self.config["lookahead_n_points"]
+        self.lookahead_ds = self.config["lookahead_ds"]
+        self.debug_frenet_projection = self.config["debug_frenet_projection"]
+
         # radius to consider done
         self.start_thresh = 0.5  # 10cm
 
@@ -188,8 +195,56 @@ class F110Env(gym.Env):
         )
 
         # automatically add track line rendering callback if configured
-        if self.config.get("render_track_lines", False):
+        if self.render_track_lines:
             self.add_render_callback(self.track.render_both_lines)
+
+        # automatically add lookahead curvature rendering callback if configured
+        if self.render_lookahead_curvatures:
+            # Initialize cache for rendering callback's own s tracking
+            self.add_render_callback(self._render_lookahead_curvatures_callback)
+
+        # automatically add frenet projection debug visualization if configured
+        if self.debug_frenet_projection:
+            self.add_render_callback(self.track.render_frenet_projection)
+
+    def _render_lookahead_curvatures_callback(self, e) -> None:
+        """
+        Render callback for lookahead curvature visualization.
+
+        This method is called during rendering to display the lookahead
+        curvature sampling points ahead of the ego vehicle on the centerline.
+        Visualizes the points where curvature is sampled for drift control.
+
+        Parameters
+        ----------
+        e : EnvRenderer
+            Environment renderer object
+
+        Notes
+        -----
+        - Only executed when env.render() is called, not during env.step() - confirmed this!
+        - Silently skips on errors to avoid breaking rendering
+        - Uses config parameters: lookahead_n_points, lookahead_ds
+        - Maintains its own s_guess cache for accurate Frenet conversion
+        """
+        try:
+            # Get ego agent state
+            agent = self.sim.agents[self.ego_idx]
+            x, y, theta = agent.state[0], agent.state[1], agent.state[4]
+
+            # Convert to Frenet coordinates to get arc length s
+            s, _, _ = self.track.cartesian_to_frenet(x, y, theta, use_raceline=False)
+
+            # Render the lookahead curvature points
+            self.track.render_lookahead_curvatures(
+                e=e,
+                vehicle_s=s,
+                n_points=self.lookahead_n_points,
+                ds=self.lookahead_ds
+            )
+        except Exception:
+            # Silently skip on errors to avoid breaking rendering
+            pass
 
     @classmethod
     def fullscale_vehicle_params(cls) -> dict:
@@ -410,7 +465,7 @@ class F110Env(gym.Env):
             "sv_min": -3.2,
             "sv_max": 3.2,
             "v_switch": 7.319,
-            "a_max": 9.51,
+            "a_max": 9.51, # TODO possible set to 5 m/s^2 as per the "On learning..." paper
             "v_min": -5.0,
             "v_max": 20.0,
             "width": 0.31,
@@ -496,6 +551,10 @@ class F110Env(gym.Env):
             "scale": 1.0,
             "num_beams": 1080,
             "render_track_lines": False,
+            "render_lookahead_curvatures": False,
+            "lookahead_n_points": 10,
+            "lookahead_ds": 0.3,
+            "debug_frenet_projection": False,
         }
 
     def configure(self, config: dict) -> None:

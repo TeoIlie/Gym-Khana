@@ -71,6 +71,7 @@ Run formatting mannually with `black .`. Linting also runs automatically due to 
   3. Set `"render_lookahead_curvatures": True` (it is `False` by default) to visualize lookahead curvature sampling points ahead of the vehicle in **yellow**. Optional parameters:
      - `"lookahead_n_points": 10` - Number of lookahead points (default: 10)
      - `"lookahead_ds": 0.3` - Spacing between points in meters (default: 0.3m)
+  4. Set `"debug_frenet_projection" = True` to visualize the Frenet coordinates are correct 
 
 ## Important files:
 * `f1tenth_gym/envs/base_classes.py:503` defines the `step` method. 
