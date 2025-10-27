@@ -30,6 +30,10 @@ class Raceline:
         velocity along the raceline
     axs : np.ndarray
         acceleration along the raceline
+    w_lefts : np.ndarray
+        left track width at each waypoint
+    w_rights : np.ndarray
+        right track width at each waypoint
     length : float
         length of the raceline
     spline : CubicSpline2D
@@ -46,6 +50,8 @@ class Raceline:
         kappas: Optional[np.ndarray] = None,
         accxs: Optional[np.ndarray] = None,
         spline: Optional[CubicSpline2D] = None,
+        w_lefts: Optional[np.ndarray] = None,
+        w_rights: Optional[np.ndarray] = None,
     ):
         assert xs.shape == ys.shape == velxs.shape, "inconsistent shapes for x, y, vel"
 
@@ -57,6 +63,8 @@ class Raceline:
         self.ks = kappas
         self.vxs = velxs
         self.axs = accxs
+        self.w_lefts = w_lefts
+        self.w_rights = w_rights
 
         # approximate track length by linear-interpolation of x,y waypoints
         # note: we could use 'ss' but sometimes it is normalized to [0,1], so we recompute it here
@@ -95,31 +103,44 @@ class Raceline:
         """
         assert filepath.exists(), f"input filepath does not exist ({filepath})"
         waypoints = np.loadtxt(filepath, delimiter=delimiter)
-        assert waypoints.shape[1] == 4, "expected waypoints as [x, y, w_left, w_right]"
+        assert waypoints.shape[1] == 4, "expected waypoints as [x, y, w_right, w_left]"
 
         # fit cubic spline to waypoints
         xx, yy = waypoints[:, 0], waypoints[:, 1]
+        w_right_raw, w_left_raw = waypoints[:, 2], waypoints[:, 3]
+
         # scale waypoints
         xx, yy = xx * track_scale, yy * track_scale
+        w_right_raw, w_left_raw = w_right_raw * track_scale, w_left_raw * track_scale
 
         # close loop
         xx = np.append(xx, xx[0])
         yy = np.append(yy, yy[0])
+        w_right_raw = np.append(w_right_raw, w_right_raw[0])
+        w_left_raw = np.append(w_left_raw, w_left_raw[0])
+
         spline = CubicSpline2D(x=xx, y=yy)
         ds = 0.1
 
-        ss, xs, ys, yaws, ks = [], [], [], [], []
+        ss, xs, ys, yaws, ks, w_rights, w_lefts = [], [], [], [], [], [], []
 
         for i_s in np.arange(0, spline.s[-1], ds):
             x, y = spline.calc_position(i_s)
             yaw = spline.calc_yaw(i_s)
             k = spline.calc_curvature(i_s)
 
+            # Find closest waypoint for width interpolation
+            closest_idx = np.argmin(np.hypot(xx - x, yy - y))
+            w_right = w_right_raw[closest_idx]
+            w_left = w_left_raw[closest_idx]
+
             xs.append(x)
             ys.append(y)
             yaws.append(yaw)
             ks.append(k)
             ss.append(i_s)
+            w_rights.append(w_right)
+            w_lefts.append(w_left)
 
         return Raceline(
             ss=np.array(ss).astype(np.float32),
@@ -130,6 +151,8 @@ class Raceline:
             velxs=np.ones_like(ss).astype(np.float32) * fixed_speed,  # constant speed
             accxs=np.zeros_like(ss).astype(np.float32),  # constant acceleration
             spline=spline,
+            w_lefts=np.array(w_lefts).astype(np.float32),
+            w_rights=np.array(w_rights).astype(np.float32),
         )
 
     @staticmethod

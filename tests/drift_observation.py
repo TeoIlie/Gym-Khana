@@ -10,13 +10,13 @@ def format_float(x):
         return f"{x:.4f}"
 
 
-lookahead_n_points = 10
+lookahead_n_points = 2
 
 # create env
 env = gym.make(
     "f1tenth_gym:f1tenth-v0",
     config={
-        "map": "Spielberg",  # Open area for drift practice
+        "map": "IMS",  # Open area for drift practice
         "num_agents": 1,  # Single agent for focused learning
         "timestep": 0.01,  # High-frequency control (100Hz)
         "integrator": "rk4",  # Accurate physics integration
@@ -26,7 +26,7 @@ env = gym.make(
         "reset_config": {"type": "rl_random_static"},
         "render_lookahead_curvatures": True,  # Enable lookahead curvature visualization
         "lookahead_n_points": lookahead_n_points,  # Number of lookahead points
-        "lookahead_ds": 10,  # Spacing between points (meters)
+        "lookahead_ds": 0.2,  # Spacing between points (meters)
         "debug_frenet_projection": True,  # Enable Frenet projection debug visualization
         "params": F110Env.f1tenth_std_vehicle_params(),
         "render_track_lines": True,
@@ -71,9 +71,10 @@ for step in range(10000):  # Reduced for testing
     prev_vel_cmd = obs[7]
     curr_vel_cmd = obs[8]
     curvatures = obs[9 : 9 + lookahead_n_points]
+    widths = obs[9 + lookahead_n_points : 9 + (2 * lookahead_n_points)]
 
     print(
-        f"Step {step+1:6d}:\n"
+        f"\nStep {step+1:6d}:\n"
         f"  vx={vx:6.2f}, vy={vy:6.2f}, yaw_rate={yaw_rate:6.2f}, delta={delta:6.4f}\n"
         f"  heading error (degrees)={heading_error_degrees:6.2f}, lateral distance={lateral_dist:6.2f}\n"
         f"  previous steering cmd={prev_steer_cmd:6.4f}\n"
@@ -82,8 +83,11 @@ for step in range(10000):  # Reduced for testing
         f"  curvature lookahead:"
     )
     for i, value in enumerate(curvatures, start=1):
-        print(f"  Point {i} = {format_float(value)}")
-    # print(f"Curvature lookahead={type(obs[9])}")
+        print(f"    Point {i} = {format_float(value)}")
+
+    print(f"  widths lookahead:")
+    for i, value in enumerate(widths, start=1):
+        print(f"    Point {i} = {format_float(value)}")
 
     # render
     env.render()

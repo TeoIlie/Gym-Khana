@@ -126,7 +126,7 @@ def sample_lookahead_curvatures_fast(track, current_s: float, n_points: int = 10
     """
     High-performance version of sample_lookahead_curvatures using numba JIT compilation.
 
-    This function provides ~10-100x speedup for real-time applications by using numba
+    This function provides ~20x speedup for real-time applications by using numba
     to compile the curvature sampling loop. Use this when performance is critical
     (e.g., high-frequency control loops at 100Hz+).
 
@@ -173,6 +173,237 @@ def sample_lookahead_curvatures_fast(track, current_s: float, n_points: int = 10
 
     # Call numba-optimized function
     return _sample_curvatures_numba(current_s, n_points, ds, track_length, spline_x, spline_c)
+
+
+def sample_lookahead_widths(track, current_s: float, n_points: int, ds: float) -> np.ndarray:
+    """
+    Sample N track width values ahead of vehicle at uniform intervals along centerline.
+
+    Sampling starts at ds meters ahead (not at current position) and proceeds forward.
+    For closed tracks, sampling wraps around using modulo arithmetic.
+
+    Parameters
+    ----------
+    track : Track
+        Track object with centerline (must not be None)
+    current_s : float
+        Current arc length position on centerline (meters)
+    n_points : int
+        Number of lookahead points to sample (default 10)
+    ds : float
+        Spacing between points in meters (default 0.3m = 30cm)
+
+    Returns
+    -------
+    widths : np.ndarray (n_points,)
+        Total track width (w_left + w_right) at each lookahead point (meters)
+
+    Raises
+    ------
+    ValueError
+        If track, centerline, or width data is None/invalid
+    """
+    # Validate inputs
+    if track is None or not hasattr(track, "centerline") or track.centerline is None:
+        raise ValueError("Track and centerline must be valid")
+
+    if n_points <= 0:
+        raise ValueError("n_points must be positive")
+
+    if ds <= 0:
+        raise ValueError("ds must be positive")
+
+    centerline = track.centerline
+
+    # Check if width data is available
+    if centerline.w_lefts is None or centerline.w_rights is None:
+        # Return zeros if width data not available (graceful fallback)
+        return np.zeros(n_points, dtype=np.float32)
+
+    # Get track length for wrap-around
+    if not hasattr(centerline, "ss") or centerline.ss is None:
+        raise ValueError("Centerline must have arc length data")
+
+    track_length = centerline.ss[-1]
+    widths = np.zeros(n_points, dtype=np.float32)
+
+    for i in range(n_points):
+        # Lookahead arc length (wrap around for closed tracks)
+        s_ahead = (current_s + ((i + 1) * ds)) % track_length
+
+        # Find closest arc length in centerline data using linear search
+        try:
+            # Find index of closest arc length value
+            idx = np.argmin(np.abs(centerline.ss - s_ahead))
+
+            # Get width at this point (total width = left + right)
+            widths[i] = centerline.w_lefts[idx] + centerline.w_rights[idx]
+        except Exception as e:
+            # Log warning but continue with zero width
+            print(f"Warning: Failed to calculate width at s={s_ahead}: {e}")
+            widths[i] = 0.0
+
+    return widths
+
+
+@njit(cache=True)
+def _binary_search_nearest(arr: np.ndarray, target: float) -> int:
+    """
+    Find index of nearest value in monotonically increasing sorted array using binary search.
+
+    This provides O(log n) complexity instead of O(n) for linear search, resulting in
+    significant performance improvements for tracks with many centerline points.
+
+    Parameters
+    ----------
+    arr : np.ndarray
+        Sorted array of arc length values (monotonically increasing)
+    target : float
+        Target value to find nearest neighbor for
+
+    Returns
+    -------
+    int
+        Index of the nearest value in arr
+    """
+    n = len(arr)
+
+    # Handle edge cases
+    if target <= arr[0]:
+        return 0
+    if target >= arr[n - 1]:
+        return n - 1
+
+    # Binary search
+    left, right = 0, n - 1
+
+    while left < right - 1:
+        mid = (left + right) // 2
+        if arr[mid] <= target:
+            left = mid
+        else:
+            right = mid
+
+    # Return closer of the two candidates
+    if abs(arr[left] - target) < abs(arr[right] - target):
+        return left
+    else:
+        return right
+
+
+@njit(cache=True)
+def _sample_widths_numba(
+    current_s: float,
+    n_points: int,
+    ds: float,
+    track_length: float,
+    ss: np.ndarray,
+    w_lefts: np.ndarray,
+    w_rights: np.ndarray,
+) -> np.ndarray:
+    """
+    Numba-optimized width sampling using pre-extracted arc length and width arrays.
+
+    This is a high-performance alternative to sample_lookahead_widths() for real-time
+    applications. It uses nearest-neighbor interpolation with binary search for O(log n)
+    complexity, providing ~5-10x speedup over linear search for typical tracks.
+
+    Parameters
+    ----------
+    current_s : float
+        Current arc length position on centerline (meters)
+    n_points : int
+        Number of lookahead points to sample
+    ds : float
+        Spacing between points in meters
+    track_length : float
+        Total track length for wrap-around
+    ss : np.ndarray
+        Arc length values from centerline (must be monotonically increasing)
+    w_lefts : np.ndarray
+        Left track widths from centerline
+    w_rights : np.ndarray
+        Right track widths from centerline
+
+    Returns
+    -------
+    widths : np.ndarray (n_points,)
+        Total track width (w_left + w_right) at each lookahead point (meters)
+    """
+    widths = np.zeros(n_points, dtype=np.float32)
+
+    for i in range(n_points):
+        # Lookahead arc length (wrap around for closed tracks)
+        s_ahead = (current_s + (i + 1) * ds) % track_length
+
+        # Find nearest arc length index using binary search (O(log n))
+        min_idx = _binary_search_nearest(ss, s_ahead)
+
+        # Get total width at this point
+        widths[i] = w_lefts[min_idx] + w_rights[min_idx]
+
+    return widths
+
+
+def sample_lookahead_widths_fast(track, current_s: float, n_points: int = 10, ds: float = 0.3) -> np.ndarray:
+    """
+    High-performance version of sample_lookahead_widths using numba JIT compilation.
+
+    This function provides ~1.2x speedup for real-time applications by using numba
+    to compile the width sampling loop. Use this when performance is critical
+    (e.g., high-frequency control loops at 100Hz+).
+
+    Parameters
+    ----------
+    track : Track
+        Track object with centerline (must not be None)
+    current_s : float
+        Current arc length position on centerline (meters)
+    n_points : int
+        Number of lookahead points to sample (default 10)
+    ds : float
+        Spacing between points in meters (default 0.3m = 30cm)
+
+    Returns
+    -------
+    widths : np.ndarray (n_points,)
+        Total track width (w_left + w_right) at each lookahead point (meters)
+
+    Raises
+    ------
+    ValueError
+        If track, centerline, or width data is None/invalid
+    """
+    # Validate inputs (same as non-optimized version)
+    if track is None or not hasattr(track, "centerline") or track.centerline is None:
+        raise ValueError("Track and centerline must be valid")
+
+    if n_points <= 0:
+        raise ValueError("n_points must be positive")
+
+    if ds <= 0:
+        raise ValueError("ds must be positive")
+
+    centerline = track.centerline
+
+    # Check if width data is available
+    if centerline.w_lefts is None or centerline.w_rights is None:
+        # Return zeros if width data not available
+        return np.zeros(n_points, dtype=np.float32)
+
+    # Check if arc length data is available
+    if not hasattr(centerline, "ss") or centerline.ss is None:
+        raise ValueError("Centerline must have arc length data")
+
+    track_length = centerline.ss[-1]
+
+    # Extract data for numba
+    ss = np.asarray(centerline.ss, dtype=np.float64)
+    w_lefts = np.asarray(centerline.w_lefts, dtype=np.float64)
+    w_rights = np.asarray(centerline.w_rights, dtype=np.float64)
+
+    # Call numba-optimized function
+    return _sample_widths_numba(current_s, n_points, ds, track_length, ss, w_lefts, w_rights)
 
 
 class Observation:
@@ -410,6 +641,8 @@ class VectorObservation(Observation):
         num_agents = len(self.env.unwrapped.agent_ids)
         assert num_agents == 1, "Vector observation only supports single agent"
 
+        lookahead_points = self.env.unwrapped.lookahead_n_points
+
         # map observation features to their sizes, used to calculate obs space shape
         obs_size_dict = {
             "scan": scan_size,
@@ -429,7 +662,8 @@ class VectorObservation(Observation):
             "prev_steering_cmd": 1,
             "prev_vel_cmd": 1,
             "curr_vel_cmd": 1,
-            "lookahead_curvatures": 10,
+            "lookahead_curvatures": lookahead_points,
+            "lookahead_widths": lookahead_points,
         }
 
         complete_space_size = sum([obs_size_dict[k] for k in self.features])
@@ -460,7 +694,16 @@ class VectorObservation(Observation):
         # Compute Frenet coordinates if track is available
         frenet_u = 0.0  # heading error (0.0 default when unavailable)
         frenet_n = 0.0  # lateral distance (0.0 default when unavailable)
-        lookahead_curvatures = np.zeros(10, dtype=np.float32)  # Lookahead curvatures (zeros default when unavailable)
+
+        # Get config values for lookahead points
+        n_lookahead = self.env.unwrapped.lookahead_n_points
+        ds_lookahead = self.env.unwrapped.lookahead_ds
+
+        # Get curvatures and widths for lookahead points
+        lookahead_curvatures = np.zeros(
+            n_lookahead, dtype=np.float32
+        )  # Lookahead curvatures (zeros default when unavailable)
+        lookahead_widths = np.zeros(n_lookahead, dtype=np.float32)  # Lookahead widths (zeros default when unavailable)
 
         # Check if track and centerline are available
         track = getattr(self.env.unwrapped, "track", None)
@@ -476,9 +719,10 @@ class VectorObservation(Observation):
                 frenet_n = float(ey)  # lateral distance from centerline (left=-ve, right=+ve)
 
                 # Sample lookahead curvatures using configured parameters n, ds
-                lookahead_curvatures = sample_lookahead_curvatures_fast(
-                    track, s, n_points=self.env.unwrapped.lookahead_n_points, ds=self.env.unwrapped.lookahead_ds
-                )
+                lookahead_curvatures = sample_lookahead_curvatures_fast(track, s, n_points=n_lookahead, ds=ds_lookahead)
+
+                # Sample lookahead widths using configured parameters n, ds
+                lookahead_widths = sample_lookahead_widths_fast(track, s, n_points=n_lookahead, ds=ds_lookahead)
 
             except Exception as e:
                 print(f"Frenet conversion failed: {e}")
@@ -504,6 +748,7 @@ class VectorObservation(Observation):
             "prev_vel_cmd": agent.prev_vel_cmd,
             "curr_vel_cmd": agent.curr_vel_cmd,
             "lookahead_curvatures": lookahead_curvatures,
+            "lookahead_widths": lookahead_widths,
         }
 
         # add agent's observation to multi-agent observation
@@ -568,6 +813,7 @@ def observation_factory(env, type: str | None, **kwargs) -> Observation:
             "prev_vel_cmd",
             "curr_vel_cmd",
             "lookahead_curvatures",
+            "lookahead_widths",
         ]
         return VectorObservation(env, features=features)
     else:
