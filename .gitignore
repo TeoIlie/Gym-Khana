@@ -170,7 +170,8 @@ cython_debug/
 #.idea/
 *.zip
 
-**/maps/*
+# Commit maps so that pytests passes
+# **/maps/*
 
 # Other
 examples/wandb
