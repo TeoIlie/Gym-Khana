@@ -124,17 +124,21 @@ class RaceCar(object):
         # collision threshold for iTTC to environment
         self.ttc_thresh = 0.005
 
-        # previous steering command for observations
+        # previous, current steering command for observations
         self.prev_steering_cmd = 0.0
-
-        # current steering command for observations
         self.curr_steering_cmd = 0.0
 
-        # previous velocity command for observations
-        self.prev_vel_cmd = 0.0
+        # previous, current throttle command for observations (either target vel or accl)
+        self.prev_throttle_cmd = 0.0
+        self.curr_throttle_cmd = 0.0
 
-        # current velocity command for observations
-        self.curr_vel_cmd = 0.0
+        # previous, current actual acceleration command
+        self.prev_accl_cmd = 0.0
+        self.curr_accl_cmd = 0.0
+
+        # previous, current average wheel angular velocity (for STD model)
+        self.prev_avg_wheel_omega = 0.0
+        self.curr_avg_wheel_omega = 0.0
 
         # initialize scan sim
         if RaceCar.scan_simulator is None:
@@ -220,9 +224,15 @@ class RaceCar(object):
         # clear previous and current steering commands
         self.prev_steering_cmd = 0.0
         self.curr_steering_cmd = 0.0
-        # clear previous and current velocity commands
-        self.prev_vel_cmd = 0.0
-        self.curr_vel_cmd = 0.0
+        # clear previous and current throttle commands
+        self.prev_throttle_cmd = 0.0
+        self.curr_throttle_cmd = 0.0
+        # clear previous, current actual acceleration command
+        self.prev_accl_cmd = 0.0
+        self.curr_accl_cmd = 0.0
+        # clear previous, current average wheel angular velocity
+        self.prev_avg_wheel_omega = 0.0
+        self.curr_avg_wheel_omega = 0.0
         # init state from pose
         self.state = self.model.get_initial_state(pose=pose, params=self.params)
 
@@ -292,13 +302,13 @@ class RaceCar(object):
 
         return in_collision
 
-    def update_pose(self, raw_steer, vel):
+    def update_pose(self, raw_steer, raw_throttle):
         """
         Steps the vehicle's physical simulation by one time step
 
         Args:
             raw_steer (float): desired steering angle, or desired steering velocity
-            vel (float): desired longitudinal velocity, or desired longitudinal acceleration
+            raw_throttle (float): desired longitudinal velocity, or desired longitudinal acceleration
 
         Returns:
             current_scan
@@ -308,9 +318,13 @@ class RaceCar(object):
         self.prev_steering_cmd = self.curr_steering_cmd
         self.curr_steering_cmd = raw_steer
 
-        # velocity: update prev to curr, and current to new action input vel
-        self.prev_vel_cmd = self.curr_vel_cmd
-        self.curr_vel_cmd = vel
+        # throttle: update prev to curr, and current to new action input vel
+        self.prev_throttle_cmd = self.curr_throttle_cmd
+        self.curr_throttle_cmd = raw_throttle
+
+        # update average wheel angular velocity
+        self.prev_avg_wheel_omega = self.curr_avg_wheel_omega
+        self.curr_avg_wheel_omega = (self.state[7] + self.state[8]) / 2.0
 
         # steering delay
         steer = 0.0
@@ -325,7 +339,11 @@ class RaceCar(object):
         if self.action_type.type is None:
             raise ValueError("No Control Action Type Specified.")
 
-        accl, sv = self.action_type.act(action=(vel, steer), state=self.state, params=self.params)
+        accl, sv = self.action_type.act(action=(raw_throttle, steer), state=self.state, params=self.params)
+
+        # acceleration: update prev to curr, and current to new throttle cmd accl
+        self.prev_accl_cmd = self.curr_accl_cmd
+        self.curr_accl_cmd = accl
 
         u_np = np.array([sv, accl])
 

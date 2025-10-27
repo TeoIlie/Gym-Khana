@@ -237,4 +237,6 @@ def get_standardized_state_std(x: np.ndarray) -> dict:
     d["yaw"] = x[4]
     d["yaw_rate"] = x[5]
     d["slip"] = x[6]
+    d["omega_front"] = x[7]
+    d["omega_rear"] = x[8]
     return d

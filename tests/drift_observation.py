@@ -2,15 +2,51 @@ import gymnasium as gym
 import numpy as np
 from f1tenth_gym.envs.f110_env import F110Env
 
+# Shared params
+lookahead_n_points = 10
 
 def format_float(x):
     if abs(x) < 1e-5:
         return "Approx 0"
     else:
         return f"{x:.4f}"
+    
+def display_obs(obs):
+    # Extract observations from obs
+    vx = obs[0]
+    vy = obs[1]
+    yaw_rate = obs[2]
+    delta = obs[3]
+    heading_error_radians = obs[4]
+    heading_error_degrees = np.degrees(heading_error_radians)
+    lateral_dist = obs[5]
+    prev_steer_cmd = obs[6]
+    prev_accl_cmd = obs[7]
+    curr_accl_cmd = obs[8]
+    curvatures = obs[9 : 9 + lookahead_n_points]
+    widths = obs[9 + lookahead_n_points : 9 + (2 * lookahead_n_points)]
+    avg_wheel_speed = obs[-2]
+    prev_avg_wheel_speed = obs[-1]
 
+    print(
+        f"  vx={vx:6.2f}, vy={vy:6.2f}, yaw_rate={yaw_rate:6.2f}, delta={delta:6.4f}\n"
+        f"  heading error (degrees)={heading_error_degrees:6.2f}, lateral distance={lateral_dist:6.2f}\n"
+        f"  previous steering cmd={prev_steer_cmd:6.4f}\n"
+        f"  previous accl cmd={prev_accl_cmd:6.4f}\n"
+        f"  current accl cmd={curr_accl_cmd:6.4f}\n"
+        f"  curvature lookahead:"
+    )
+    for i, value in enumerate(curvatures, start=1):
+        print(f"    Point {i} = {format_float(value)}")
 
-lookahead_n_points = 2
+    print(f"  widths lookahead:")
+    for i, value in enumerate(widths, start=1):
+        print(f"    Point {i} = {format_float(value)}")
+
+    print(
+        f"  Average wheel ang speed={avg_wheel_speed:4.2f}\n"
+        f"  Previous average wheel ang speed={prev_avg_wheel_speed:4.2f}"
+    )
 
 # create env
 env = gym.make(
@@ -21,12 +57,12 @@ env = gym.make(
         "timestep": 0.01,  # High-frequency control (100Hz)
         "integrator": "rk4",  # Accurate physics integration
         "model": "std",  # Single Track dynamic bicycle model with tire slip
-        "control_input": ["speed", "steering_angle"],  # TODO change speed to accl
+        "control_input": ["accl", "steering_angle"],  # TODO change speed to accl
         "observation_config": {"type": "drift"},  # 6D drift state: [vx, vy, yaw_rate, delta, frenet_u, frenet_n]
         "reset_config": {"type": "rl_random_static"},
         "render_lookahead_curvatures": True,  # Enable lookahead curvature visualization
         "lookahead_n_points": lookahead_n_points,  # Number of lookahead points
-        "lookahead_ds": 0.2,  # Spacing between points (meters)
+        "lookahead_ds": 0.3,  # Spacing between points (meters)
         "debug_frenet_projection": True,  # Enable Frenet projection debug visualization
         "params": F110Env.f1tenth_std_vehicle_params(),
         "render_track_lines": True,
@@ -38,56 +74,17 @@ env = gym.make(
 print(f"Drifting observation space: {env.observation_space}")
 
 obs, info = env.reset()
-print(f"Observation type: {type(obs)}")
-print(f"Initial observation after env reset: {obs}")
+print(f"Initial observation after env reset:")
+display_obs(obs)
 
-# Test with action to see non-zero values
 # For single agent, action should be 2D array: shape (1, 2)
-action = np.array([[0.0, 0.2]])  # steering, velocity targets
-# note that internally any action is converted to
-# Take multiple steps to see if steering catches up
+action = np.array([[0.1, 5.0]])  # steering target, acceleration
+
 for step in range(10000):  # Reduced for testing
-    # if 0 <= step <= 2:
-    #     action = np.array([[0.0, 3.0]])
-    #     print("Vel command is 3")
-    # elif 2 < step <= 4:
-    #     action = np.array([[0.0, 2.0]])
-    #     print("Vel command is 2")
-    # else:
-    #     action = np.array([[0.0, 1.0]])
-    #     print("Vel command is 1")
 
     obs, reward, done, truncated, info = env.step(action)
-
-    # Extract observations from obs
-    vx = obs[0]
-    vy = obs[1]
-    yaw_rate = obs[2]
-    delta = obs[3]
-    heading_error_radians = obs[4]
-    heading_error_degrees = np.degrees(heading_error_radians)
-    lateral_dist = obs[5]
-    prev_steer_cmd = obs[6]
-    prev_vel_cmd = obs[7]
-    curr_vel_cmd = obs[8]
-    curvatures = obs[9 : 9 + lookahead_n_points]
-    widths = obs[9 + lookahead_n_points : 9 + (2 * lookahead_n_points)]
-
-    print(
-        f"\nStep {step+1:6d}:\n"
-        f"  vx={vx:6.2f}, vy={vy:6.2f}, yaw_rate={yaw_rate:6.2f}, delta={delta:6.4f}\n"
-        f"  heading error (degrees)={heading_error_degrees:6.2f}, lateral distance={lateral_dist:6.2f}\n"
-        f"  previous steering cmd={prev_steer_cmd:6.4f}\n"
-        f"  previous velocity cmd={prev_vel_cmd:6.4f}\n"
-        f"  current velocity cmd={curr_vel_cmd:6.4f}\n"
-        f"  curvature lookahead:"
-    )
-    for i, value in enumerate(curvatures, start=1):
-        print(f"    Point {i} = {format_float(value)}")
-
-    print(f"  widths lookahead:")
-    for i, value in enumerate(widths, start=1):
-        print(f"    Point {i} = {format_float(value)}")
+    print(f"\n=====================\nStep {step+1}:\n=====================\n")
+    display_obs(obs)
 
     # render
     env.render()

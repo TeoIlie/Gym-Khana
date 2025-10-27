@@ -162,6 +162,15 @@ class F110Env(gym.Env):
         self.agent_ids = [f"agent_{i}" for i in range(self.num_agents)]
 
         assert "type" in self.observation_config, "observation_config must contain 'type' key"
+
+        # Validate drift observation requires STD model
+        if self.observation_config["type"] == "drift" and self.model != DynamicModel.STD:
+            raise ValueError(
+                "The 'drift' observation type requires the single_track_drift (STD) model. "
+                f"Current model: {self.model}. "
+                "Please set model='std' (or model=DynamicModel.STD) when creating the environment."
+            )
+
         self.observation_type = observation_factory(env=self, **self.observation_config)
         self.observation_space = self.observation_type.space()
 

@@ -660,10 +660,12 @@ class VectorObservation(Observation):
             "frenet_u": 1,
             "frenet_n": 1,
             "prev_steering_cmd": 1,
-            "prev_vel_cmd": 1,
-            "curr_vel_cmd": 1,
+            "prev_accl_cmd": 1,
+            "curr_accl_cmd": 1,
             "lookahead_curvatures": lookahead_points,
             "lookahead_widths": lookahead_points,
+            "avg_wheel_omega": 1,
+            "prev_avg_wheel_omega": 1,
         }
 
         complete_space_size = sum([obs_size_dict[k] for k in self.features])
@@ -690,6 +692,10 @@ class VectorObservation(Observation):
         vx = std_state["v_x"]
         vy = std_state["v_y"]
         angvel = std_state["yaw_rate"]
+
+        # Get current and previous average wheel angular velocity (computed in update_pose)
+        avg_wheel_omega = agent.curr_avg_wheel_omega
+        prev_avg_wheel_omega = agent.prev_avg_wheel_omega
 
         # Compute Frenet coordinates if track is available
         frenet_u = 0.0  # heading error (0.0 default when unavailable)
@@ -745,10 +751,12 @@ class VectorObservation(Observation):
             "frenet_u": frenet_u,
             "frenet_n": frenet_n,
             "prev_steering_cmd": agent.prev_steering_cmd,
-            "prev_vel_cmd": agent.prev_vel_cmd,
-            "curr_vel_cmd": agent.curr_vel_cmd,
+            "prev_accl_cmd": agent.prev_accl_cmd,
+            "curr_accl_cmd": agent.curr_accl_cmd,
             "lookahead_curvatures": lookahead_curvatures,
             "lookahead_widths": lookahead_widths,
+            "avg_wheel_omega": avg_wheel_omega,
+            "prev_avg_wheel_omega": prev_avg_wheel_omega,
         }
 
         # add agent's observation to multi-agent observation
@@ -810,10 +818,12 @@ def observation_factory(env, type: str | None, **kwargs) -> Observation:
             "frenet_u",
             "frenet_n",
             "prev_steering_cmd",
-            "prev_vel_cmd",
-            "curr_vel_cmd",
+            "prev_accl_cmd",
+            "curr_accl_cmd",
             "lookahead_curvatures",
             "lookahead_widths",
+            "avg_wheel_omega",
+            "prev_avg_wheel_omega",
         ]
         return VectorObservation(env, features=features)
     else:
