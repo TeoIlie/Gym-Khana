@@ -69,6 +69,34 @@ def sample_lookahead_curvatures(track, current_s: float, n_points: int, ds: floa
 
 
 @njit(cache=True)
+def _find_spline_segment(spline_x: np.ndarray, s: float) -> int:
+    """
+    Find the spline segment index for a given arc length s using binary search.
+
+    Returns the index i such that spline_x[i] <= s < spline_x[i+1]
+    """
+    n = len(spline_x)
+
+    # Handle edge cases
+    if s <= spline_x[0]:
+        return 0
+    if s >= spline_x[n - 1]:
+        return n - 2  # Last valid segment
+
+    # Binary search
+    left, right = 0, n - 1
+
+    while left < right - 1:
+        mid = (left + right) // 2
+        if spline_x[mid] <= s:
+            left = mid
+        else:
+            right = mid
+
+    return left
+
+
+@njit(cache=True)
 def _sample_curvatures_numba(
     current_s: float, n_points: int, ds: float, track_length: float, spline_x: np.ndarray, spline_c: np.ndarray
 ) -> np.ndarray:
@@ -77,7 +105,7 @@ def _sample_curvatures_numba(
 
     This is a high-performance alternative to sample_lookahead_curvatures() for real-time
     applications. It bypasses the scipy CubicSpline interface and directly computes
-    polynomial evaluations using the spline coefficients.
+    curvature from spline derivatives for accuracy.
 
     Parameters
     ----------
@@ -90,7 +118,7 @@ def _sample_curvatures_numba(
     track_length : float
         Total track length for wrap-around
     spline_x : np.ndarray
-        Spline knot positions (from centerline.spline.x)
+        Spline knot positions (arc lengths from centerline.spline.x)
     spline_c : np.ndarray
         Spline coefficients (4, n_segments, n_states) (from centerline.spline.c)
 
@@ -100,25 +128,37 @@ def _sample_curvatures_numba(
         Curvature at each lookahead point (1/m)
     """
     curvatures = np.zeros(n_points, dtype=np.float32)
-    s_interval = track_length / len(spline_x)
-    n_segments = len(spline_x)
 
     for i in range(n_points):
         # Lookahead arc length (wrap around for closed tracks)
         s_ahead = (current_s + (i + 1) * ds) % track_length
 
-        # Find segment
-        segment = int(s_ahead / (spline_x[-1] + s_interval) * (n_segments - 1))
-        segment = segment % n_segments
+        # Find segment using binary search (handles non-uniform knot spacing)
+        segment = _find_spline_segment(spline_x, s_ahead)
 
-        # Calculate curvature using spline coefficients (state_index=4 for curvature)
+        # Calculate curvature from spline derivatives for accuracy
+        # For cubic spline: f(t) = c3*t³ + c2*t² + c1*t + c0
+        # f'(t) = 3*c3*t² + 2*c2*t + c1
+        # f''(t) = 6*c3*t + 2*c2
         x_offset = s_ahead - spline_x[segment]
-        exp_x = np.array([x_offset ** 3, x_offset ** 2, x_offset, 1.0])
 
-        # Extract curvature coefficients (index 4 is curvature in the spline state)
-        vec = spline_c[:, segment % spline_c.shape[1], 4]
-        # Manually unroll dot product for better numba performance
-        curvatures[i] = vec[0] * exp_x[0] + vec[1] * exp_x[1] + vec[2] * exp_x[2] + vec[3] * exp_x[3]
+        # Get x and y spline coefficients [c3, c2, c1, c0]
+        cx = spline_c[:, segment % spline_c.shape[1], 0]  # x coefficients
+        cy = spline_c[:, segment % spline_c.shape[1], 1]  # y coefficients
+
+        # Compute first derivatives: dx/ds, dy/ds
+        dx = 3.0 * cx[0] * x_offset ** 2 + 2.0 * cx[1] * x_offset + cx[2]
+        dy = 3.0 * cy[0] * x_offset ** 2 + 2.0 * cy[1] * x_offset + cy[2]
+
+        # Compute second derivatives: d²x/ds², d²y/ds²
+        ddx = 6.0 * cx[0] * x_offset + 2.0 * cx[1]
+        ddy = 6.0 * cy[0] * x_offset + 2.0 * cy[1]
+
+        # Curvature formula: κ = (dx·d²y - dy·d²x) / (dx² + dy²)^(3/2)
+        numerator = ddy * dx - ddx * dy
+        denominator = (dx ** 2 + dy ** 2) ** 1.5
+
+        curvatures[i] = numerator / denominator
 
     return curvatures
 

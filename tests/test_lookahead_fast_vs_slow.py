@@ -2,6 +2,7 @@
 Test to validate that sample_lookahead_curvatures_fast produces identical
 results to sample_lookahead_curvatures while being significantly faster.
 """
+import os
 import time
 import numpy as np
 import matplotlib.pyplot as plt
@@ -81,7 +82,7 @@ def test_numerical_equivalence():
         {"n_points": 15, "ds": 0.1},
     ]
 
-    all_passed = True
+    failures = []
 
     for track_name, track in tracks.items():
         print(f"\n{track_name.upper()} Track:")
@@ -127,17 +128,17 @@ def test_numerical_equivalence():
             )
 
             if not passed:
-                all_passed = False
-                print(f"      WARNING: Differences exceed tolerance!")
+                failures.append(
+                    f"{track_name} track (n={n_points}, ds={ds}): "
+                    f"abs_diff={max_abs_diff:.2e}, rel_diff={max_rel_diff:.2%}"
+                )
 
-    print("\n" + "=" * 70)
-    if all_passed:
-        print("✓ All numerical equivalence tests PASSED")
-    else:
-        print("✗ Some numerical equivalence tests FAILED")
     print("=" * 70)
 
-    return all_passed
+    # Use pytest assertion
+    assert len(failures) == 0, f"Numerical equivalence failed for {len(failures)} configuration(s):\n" + "\n".join(
+        f"  - {f}" for f in failures
+    )
 
 
 def test_performance_comparison():
@@ -153,7 +154,7 @@ def test_performance_comparison():
     ds = 0.3
     n_iterations = 1000
 
-    results = {}
+    speedups = []
 
     for track_name, track in tracks.items():
         track_length = track.centerline.spline.s[-1]
@@ -176,20 +177,20 @@ def test_performance_comparison():
 
         # Compute speedup
         speedup = time_slow / time_fast
-
-        results[track_name] = {"time_slow": time_slow, "time_fast": time_fast, "speedup": speedup}
+        speedups.append(speedup)
 
         print(f"\n{track_name.upper()} Track ({n_iterations} iterations):")
         print(f"  Regular implementation: {time_slow*1000:.2f} ms  ({time_slow*1e6/n_iterations:.2f} µs/call)")
         print(f"  Fast implementation:    {time_fast*1000:.2f} ms  ({time_fast*1e6/n_iterations:.2f} µs/call)")
         print(f"  Speedup: {speedup:.1f}x")
 
+    avg_speedup = np.mean(speedups)
     print("\n" + "=" * 70)
-    avg_speedup = np.mean([r["speedup"] for r in results.values()])
     print(f"Average speedup: {avg_speedup:.1f}x")
     print("=" * 70)
 
-    return results
+    # Assert that fast implementation is actually faster
+    assert avg_speedup > 1.0, f"Fast implementation should be faster (got {avg_speedup:.1f}x speedup)"
 
 
 def test_edge_cases():
@@ -216,7 +217,8 @@ def test_edge_cases():
         ("Many points", track_length * 0.25, 50, 0.1),
     ]
 
-    all_passed = True
+    failures = []
+    tolerance = 1e-5
 
     for name, current_s, n_points, ds in test_cases:
         try:
@@ -228,7 +230,6 @@ def test_edge_cases():
 
             # Check numerical agreement
             max_diff = np.max(np.abs(curv_slow - curv_fast))
-            tolerance = 1e-5
 
             passed = max_diff < tolerance
             status = "✓" if passed else "✗"
@@ -236,25 +237,23 @@ def test_edge_cases():
             print(f"  {status} {name:25s}  max_diff={max_diff:.2e}")
 
             if not passed:
-                all_passed = False
+                failures.append(f"{name}: max_diff={max_diff:.2e} (tolerance={tolerance:.2e})")
                 print(f"      Slow: {curv_slow}")
                 print(f"      Fast: {curv_fast}")
 
         except Exception as e:
             print(f"  ✗ {name:25s}  ERROR: {e}")
-            all_passed = False
+            failures.append(f"{name}: Exception - {e}")
 
     print("=" * 70)
-    if all_passed:
-        print("✓ All edge case tests PASSED")
-    else:
-        print("✗ Some edge case tests FAILED")
-    print("=" * 70)
 
-    return all_passed
+    # Use pytest assertion
+    assert len(failures) == 0, f"Edge case tests failed for {len(failures)} case(s):\n" + "\n".join(
+        f"  - {f}" for f in failures
+    )
 
 
-def visualize_comparison():
+def test_visualization():
     """Create visualization comparing outputs of both implementations."""
     print("\n" + "=" * 70)
     print("Generating Comparison Visualization")
@@ -317,48 +316,61 @@ def visualize_comparison():
     plt.colorbar(im3, ax=axes[2], label="Absolute difference [1/m]")
 
     plt.tight_layout()
-    plt.show()
+    output_dir = os.path.join(os.path.dirname(__file__), "..", "tests", "test_figures")
+    os.makedirs(output_dir, exist_ok=True)
+    plt.savefig(os.path.join(output_dir, "curvature_fast_slow_validation.png"), dpi=300, bbox_inches="tight")
+    plt.close(fig)  # Close the figure to free memory
 
     max_diff = np.max(differences)
     mean_diff = np.mean(differences)
 
     print(f"  Maximum difference: {max_diff:.2e}")
     print(f"  Mean difference:    {mean_diff:.2e}")
+    print("=" * 70)
 
-    # Verify differences are negligible
-    assert max_diff < 1e-5, f"Maximum difference {max_diff} exceeds tolerance"
-    print("  ✓ Differences are negligible (< 1e-5)")
+    # Use pytest assertion
+    tolerance = 1e-5
+    assert max_diff < tolerance, (
+        f"Maximum difference {max_diff:.2e} exceeds tolerance {tolerance:.2e}. " f"Mean difference: {mean_diff:.2e}"
+    )
 
 
 if __name__ == "__main__":
+    """
+    Run tests manually for debugging purposes.
+    For proper test execution, use: pytest test_lookahead_fast_vs_slow.py
+    """
     print("\n" + "=" * 70)
     print("LOOKAHEAD CURVATURE SAMPLING: FAST vs SLOW COMPARISON")
     print("=" * 70)
+    print("Running tests manually (use pytest for proper test execution)")
+    print("=" * 70)
 
-    # Run all tests
-    equivalence_passed = test_numerical_equivalence()
-    edge_cases_passed = test_edge_cases()
-    performance_results = test_performance_comparison()
+    # Run all tests - they will raise AssertionError if they fail
+    try:
+        test_numerical_equivalence()
+        print("\n✓ Numerical equivalence test passed")
+    except AssertionError as e:
+        print(f"\n✗ Numerical equivalence test failed:\n{e}")
 
     try:
-        visualize_comparison()
-        visualization_passed = True
+        test_edge_cases()
+        print("\n✓ Edge cases test passed")
     except AssertionError as e:
-        print(f"✗ Visualization test FAILED: {e}")
-        visualization_passed = False
+        print(f"\n✗ Edge cases test failed:\n{e}")
 
-    # Summary
+    try:
+        test_performance_comparison()
+        print("\n✓ Performance comparison test passed")
+    except AssertionError as e:
+        print(f"\n✗ Performance comparison test failed:\n{e}")
+
+    try:
+        test_visualization()
+        print("\n✓ Visualization test passed")
+    except AssertionError as e:
+        print(f"\n✗ Visualization test failed:\n{e}")
+
     print("\n" + "=" * 70)
-    print("FINAL SUMMARY")
-    print("=" * 70)
-    print(f"  Numerical equivalence: {'✓ PASS' if equivalence_passed else '✗ FAIL'}")
-    print(f"  Edge cases:           {'✓ PASS' if edge_cases_passed else '✗ FAIL'}")
-    print(f"  Visualization:        {'✓ PASS' if visualization_passed else '✗ FAIL'}")
-    print("=" * 70)
-
-    if equivalence_passed and edge_cases_passed and visualization_passed:
-        print("✓ ALL TESTS PASSED - Fast implementation is equivalent and faster!")
-        print("\nRecommendation: Use sample_lookahead_curvatures_fast() for real-time applications")
-    else:
-        print("✗ SOME TESTS FAILED - Review results above")
+    print("Manual test run complete. Use 'pytest test_lookahead_fast_vs_slow.py' for proper test execution.")
     print("=" * 70)

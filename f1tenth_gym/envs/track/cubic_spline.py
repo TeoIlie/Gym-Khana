@@ -148,10 +148,10 @@ class CubicSpline2D:
         return heading
 
     def _calc_kappa_from_xy(self, x, y):
-        dx_dt = np.gradient(x, 2)
-        dy_dt = np.gradient(y, 2)
-        d2x_dt2 = np.gradient(dx_dt, 2)
-        d2y_dt2 = np.gradient(dy_dt, 2)
+        dx_dt = np.gradient(x)
+        dy_dt = np.gradient(y)
+        d2x_dt2 = np.gradient(dx_dt)
+        d2y_dt2 = np.gradient(dy_dt)
         curvature = -(d2x_dt2 * dy_dt - dx_dt * d2y_dt2) / (dx_dt * dx_dt + dy_dt * dy_dt) ** 1.5
         return curvature
 
@@ -192,8 +192,10 @@ class CubicSpline2D:
         k : float
             curvature for given s.
         """
-        segment = self.find_segment_for_s(s)
-        k = self.predict_with_spline(s, segment, 4)[0]
+        # Compute curvature from spline derivatives for accuracy
+        dx, dy = self.spline(s, 1)[:2]
+        ddx, ddy = self.spline(s, 2)[:2]
+        k = (ddy * dx - ddx * dy) / ((dx ** 2 + dy ** 2) ** (3 / 2))
         return k
 
     def find_curvature(self, s: float) -> Optional[float]:
@@ -229,11 +231,11 @@ class CubicSpline2D:
         yaw : float
             yaw angle (tangent vector) for given s.
         """
-        segment = self.find_segment_for_s(s)
-        cos = self.predict_with_spline(s, segment, 2)[0]
-        sin = self.predict_with_spline(s, segment, 3)[0]
-        # yaw = (math.atan2(sin, cos) + 2 * math.pi) % (2 * math.pi)
-        yaw = np.arctan2(sin, cos)
+        # Compute yaw from spline derivatives for accuracy
+        dx, dy = self.spline(s, 1)[:2]
+        yaw = np.arctan2(dy, dx)
+        # Convert yaw to [0, 2pi]
+        yaw = yaw % (2 * np.pi)
         return yaw
 
     def calc_arclength(self, x: float, y: float, s_guess: float = 0.0) -> tuple[float, float]:

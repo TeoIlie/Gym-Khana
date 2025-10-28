@@ -59,7 +59,7 @@ def test_circle():
 
 def test_sine_wave():
     """Test curvature on a sine wave at inflection point (known analytical formula)."""
-    # y = A*sin(ω*x), curvature κ = A*ω²*sin(ω*x) / (1 + A²*ω²*cos²(ω*x))^(3/2)
+    # y = A*sin(ω*x), curvature κ = -A*ω²*sin(ω*x) / (1 + A²*ω²*cos²(ω*x))^(3/2)
     A = 2.0  # amplitude
     omega = 2 * np.pi / 10  # wavelength = 10m
 
@@ -68,15 +68,20 @@ def test_sine_wave():
 
     spline = CubicSpline2D(x, y)
 
-    # Check curvature at x=0 (inflection point: where analytical solution is simple)
-    # At x=0: sin(0)=0, cos(0)=1, so κ = 0 / 1 = 0
-    s_at_zero, _ = spline.calc_arclength(0, 0, s_guess=0)
-    k_at_zero = spline.calc_curvature(s_at_zero)
+    # Check curvature at x=10 (interior inflection point, avoiding boundary artifacts)
+    # At x=10: ω*x = 2π, so sin(2π)=0, cos(2π)=1, therefore κ = 0
+    # Note: We test at an interior point because CubicSpline2D uses periodic boundary
+    # conditions for closed racing tracks, which can create artifacts at boundaries
+    # for non-closed curves like this sine wave
+    x_test = 10.0
+    y_test = A * np.sin(omega * x_test)
+    s_test, _ = spline.calc_arclength(x_test, y_test, s_guess=spline.s[-1] / 2)
+    k_test = spline.calc_curvature(s_test)
 
-    print(f"Sine wave - Curvature at inflection (x=0): {k_at_zero:.6f} (expected ~0)")
+    print(f"Sine wave - Curvature at interior inflection (x={x_test}): {k_test:.6f} (expected ~0)")
 
     # At inflection point, curvature should be near zero
-    assert abs(k_at_zero) < 0.01, f"Sine wave at x=0 should have ~zero curvature, got {k_at_zero}"
+    assert abs(k_test) < 0.01, f"Sine wave at x={x_test} should have ~zero curvature, got {k_test}"
 
 
 def test_lookahead_sampling():
@@ -161,7 +166,7 @@ def test_curvature_visualization():
     plt.tight_layout()
     output_dir = os.path.join(os.path.dirname(__file__), "..", "tests", "test_figures")
     os.makedirs(output_dir, exist_ok=True)
-    plt.savefig(os.path.join(output_dir, "curvature_validation.png"), dpi=300, bbox_inches='tight')
+    plt.savefig(os.path.join(output_dir, "curvature_validation.png"), dpi=300, bbox_inches="tight")
     # /home/teodor/1.Projects/F1TENTH_Gym/tests/test_figures
     # Verify we got reasonable curvature values
     assert len(curvatures) == len(s_samples), "Curvature samples mismatch"
