@@ -55,6 +55,8 @@ def vehicle_dynamics_std(x: np.ndarray, u_init: np.ndarray, params: dict):
     lwb = params["lf"] + params["lr"]
 
     # mix models parameters
+    # TODO consider changing these if they are not realistic for a 1/10 scale vehicle
+    # the car seems to be a bit sluggish starting without a lot of accl
     v_s = 0.2
     v_b = 0.05
     v_min = v_s / 2  # note this is different from the v_min defined in params, and used for steering constraints

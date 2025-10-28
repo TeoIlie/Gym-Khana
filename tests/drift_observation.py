@@ -22,18 +22,16 @@ def display_obs(obs):
     lateral_dist = obs[5]
     prev_steer_cmd = obs[6]
     prev_accl_cmd = obs[7]
-    curr_accl_cmd = obs[8]
+    prev_avg_wheel_omega = obs[8]
     curvatures = obs[9 : 9 + lookahead_n_points]
     widths = obs[9 + lookahead_n_points : 9 + (2 * lookahead_n_points)]
-    avg_wheel_speed = obs[-2]
-    prev_avg_wheel_speed = obs[-1]
 
     print(
         f"  vx={vx:6.2f}, vy={vy:6.2f}, yaw_rate={yaw_rate:6.2f}, delta={delta:6.4f}\n"
         f"  heading error (degrees)={heading_error_degrees:6.2f}, lateral distance={lateral_dist:6.2f}\n"
         f"  previous steering cmd={prev_steer_cmd:6.4f}\n"
         f"  previous accl cmd={prev_accl_cmd:6.4f}\n"
-        f"  current accl cmd={curr_accl_cmd:6.4f}\n"
+        f"  previous average wheel ang speed={prev_avg_wheel_omega:6.4f}\n"
         f"  curvature lookahead:"
     )
     for i, value in enumerate(curvatures, start=1):
@@ -43,50 +41,46 @@ def display_obs(obs):
     for i, value in enumerate(widths, start=1):
         print(f"    Point {i} = {format_float(value)}")
 
-    print(
-        f"  Average wheel ang speed={avg_wheel_speed:4.2f}\n"
-        f"  Previous average wheel ang speed={prev_avg_wheel_speed:4.2f}"
+if __name__ == "__main__":
+    # create env
+    env = gym.make(
+        "f1tenth_gym:f1tenth-v0",
+        config={
+            "map": "IMS",  # Open area for drift practice
+            "num_agents": 1,  # Single agent for focused learning
+            "timestep": 0.01,  # High-frequency control (100Hz)
+            "integrator": "rk4",  # Accurate physics integration
+            "model": "std",  # Single Track dynamic bicycle model with tire slip
+            "control_input": ["accl", "steering_angle"],  # TODO change speed to accl
+            "observation_config": {"type": "drift"},  # 6D drift state: [vx, vy, yaw_rate, delta, frenet_u, frenet_n]
+            "reset_config": {"type": "rl_random_static"},
+            "render_lookahead_curvatures": True,  # Enable lookahead curvature visualization
+            "lookahead_n_points": lookahead_n_points,  # Number of lookahead points
+            "lookahead_ds": 0.3,  # Spacing between points (meters)
+            "debug_frenet_projection": True,  # Enable Frenet projection debug visualization
+            "params": F110Env.f1tenth_std_vehicle_params(),
+            "render_track_lines": True,
+        },
+        render_mode="human",
     )
 
-# create env
-env = gym.make(
-    "f1tenth_gym:f1tenth-v0",
-    config={
-        "map": "IMS",  # Open area for drift practice
-        "num_agents": 1,  # Single agent for focused learning
-        "timestep": 0.01,  # High-frequency control (100Hz)
-        "integrator": "rk4",  # Accurate physics integration
-        "model": "std",  # Single Track dynamic bicycle model with tire slip
-        "control_input": ["accl", "steering_angle"],  # TODO change speed to accl
-        "observation_config": {"type": "drift"},  # 6D drift state: [vx, vy, yaw_rate, delta, frenet_u, frenet_n]
-        "reset_config": {"type": "rl_random_static"},
-        "render_lookahead_curvatures": True,  # Enable lookahead curvature visualization
-        "lookahead_n_points": lookahead_n_points,  # Number of lookahead points
-        "lookahead_ds": 0.3,  # Spacing between points (meters)
-        "debug_frenet_projection": True,  # Enable Frenet projection debug visualization
-        "params": F110Env.f1tenth_std_vehicle_params(),
-        "render_track_lines": True,
-    },
-    render_mode="human",
-)
+    # print observation info
+    print(f"Drifting observation space: {env.observation_space}")
 
-# print observation info
-print(f"Drifting observation space: {env.observation_space}")
-
-obs, info = env.reset()
-print(f"Initial observation after env reset:")
-display_obs(obs)
-
-# For single agent, action should be 2D array: shape (1, 2)
-action = np.array([[0.1, 5.0]])  # steering target, acceleration
-
-for step in range(10000):  # Reduced for testing
-
-    obs, reward, done, truncated, info = env.step(action)
-    print(f"\n=====================\nStep {step+1}:\n=====================\n")
+    obs, info = env.reset()
+    print(f"Initial observation after env reset:")
     display_obs(obs)
 
-    # render
-    env.render()
+    # For single agent, action should be 2D array: shape (1, 2)
+    action = np.array([[0.1, 5.0]])  # action format: steering target, acceleration
 
-env.close()
+    for step in range(10000):  # Reduced for testing
+
+        obs, reward, done, truncated, info = env.step(action)
+        print(f"\n=====================\nStep {step+1}:\n=====================\n")
+        display_obs(obs)
+
+        # render
+        env.render()
+
+    env.close()

@@ -83,6 +83,7 @@ class TestTrack(unittest.TestCase):
                 # it will raise an assertion error if the file format are not valid
                 Raceline.from_centerline_file(file_centerline)
 
+    @unittest.skip("Skipping download test to avoid creating temporary directories")
     def test_download_racetrack(self):
         import shutil
 

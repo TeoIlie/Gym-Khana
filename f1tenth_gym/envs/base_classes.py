@@ -29,6 +29,7 @@ Author: Hongrui Zheng
 
 from __future__ import annotations
 import numpy as np
+import warnings
 from .dynamic_models import DynamicModel
 from .action import CarAction
 from .collision_models import collision_multiple, get_vertices
@@ -322,9 +323,19 @@ class RaceCar(object):
         self.prev_throttle_cmd = self.curr_throttle_cmd
         self.curr_throttle_cmd = raw_throttle
 
-        # update average wheel angular velocity
+        # update average wheel angular velocity (for STD model)
         self.prev_avg_wheel_omega = self.curr_avg_wheel_omega
-        self.curr_avg_wheel_omega = (self.state[7] + self.state[8]) / 2.0
+        if len(self.state) >= 9:  # STD model has 9 states including wheel angular velocities
+            self.curr_avg_wheel_omega = (self.state[7] + self.state[8]) / 2.0
+        else:
+            warnings.warn(
+                f"Wheel angular velocity observation requires the STD model (9 states), "
+                f"but current model has only {len(self.state)} states. "
+                f"avg_wheel_omega and prev_avg_wheel_omega will be set to 0.0. "
+                f"Use model='std' or model=DynamicModel.STD to enable this feature.",
+                UserWarning
+            )
+            self.curr_avg_wheel_omega = 0.0
 
         # steering delay
         steer = 0.0

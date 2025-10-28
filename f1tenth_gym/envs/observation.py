@@ -664,7 +664,7 @@ class VectorObservation(Observation):
             "curr_accl_cmd": 1,
             "lookahead_curvatures": lookahead_points,
             "lookahead_widths": lookahead_points,
-            "avg_wheel_omega": 1,
+            "curr_avg_wheel_omega": 1,
             "prev_avg_wheel_omega": 1,
         }
 
@@ -694,7 +694,7 @@ class VectorObservation(Observation):
         angvel = std_state["yaw_rate"]
 
         # Get current and previous average wheel angular velocity (computed in update_pose)
-        avg_wheel_omega = agent.curr_avg_wheel_omega
+        curr_avg_wheel_omega = agent.curr_avg_wheel_omega
         prev_avg_wheel_omega = agent.prev_avg_wheel_omega
 
         # Compute Frenet coordinates if track is available
@@ -755,7 +755,7 @@ class VectorObservation(Observation):
             "curr_accl_cmd": agent.curr_accl_cmd,
             "lookahead_curvatures": lookahead_curvatures,
             "lookahead_widths": lookahead_widths,
-            "avg_wheel_omega": avg_wheel_omega,
+            "curr_avg_wheel_omega": curr_avg_wheel_omega,
             "prev_avg_wheel_omega": prev_avg_wheel_omega,
         }
 
@@ -811,19 +811,17 @@ def observation_factory(env, type: str | None, **kwargs) -> Observation:
         return VectorObservation(env, features=features)
     elif type == "drift":
         features = [
-            "linear_vel_x",
-            "linear_vel_y",
-            "ang_vel_z",
-            "delta",
-            "frenet_u",
-            "frenet_n",
-            "prev_steering_cmd",
-            "prev_accl_cmd",
-            "curr_accl_cmd",
-            "lookahead_curvatures",
-            "lookahead_widths",
-            "avg_wheel_omega",
-            "prev_avg_wheel_omega",
+            "linear_vel_x", # longitudinal velocity vx, vehicle frame
+            "linear_vel_y", # lateral velocity vy, vehicle frame
+            "ang_vel_z", # yaw rate
+            "delta", # measured steering angle δ
+            "frenet_u", # angle between car heading, track heading, in Frenet coords
+            "frenet_n", # lateral distance from centerline, in Frenet coords
+            "prev_steering_cmd", # previous commanded steering angle δ
+            "prev_accl_cmd", # last control input ω_dot_ref (acceleration)
+            "prev_avg_wheel_omega", # previous measured wheel speed ω
+            "lookahead_curvatures", # track curvatures 
+            "lookahead_widths", # track widths
         ]
         return VectorObservation(env, features=features)
     else:
