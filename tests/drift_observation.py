@@ -5,12 +5,14 @@ from f1tenth_gym.envs.f110_env import F110Env
 # Shared params
 lookahead_n_points = 10
 
+
 def format_float(x):
     if abs(x) < 1e-5:
         return "Approx 0"
     else:
         return f"{x:.4f}"
-    
+
+
 def display_obs(obs):
     # Extract observations from obs
     vx = obs[0]
@@ -23,8 +25,9 @@ def display_obs(obs):
     prev_steer_cmd = obs[6]
     prev_accl_cmd = obs[7]
     prev_avg_wheel_omega = obs[8]
-    curvatures = obs[9 : 9 + lookahead_n_points]
-    widths = obs[9 + lookahead_n_points : 9 + (2 * lookahead_n_points)]
+    curr_vel_cmd = obs[9]
+    curvatures = obs[10 : 10 + lookahead_n_points]
+    widths = obs[10 + lookahead_n_points : 10 + (2 * lookahead_n_points)]
 
     print(
         f"  vx={vx:6.2f}, vy={vy:6.2f}, yaw_rate={yaw_rate:6.2f}, delta={delta:6.4f}\n"
@@ -32,6 +35,7 @@ def display_obs(obs):
         f"  previous steering cmd={prev_steer_cmd:6.4f}\n"
         f"  previous accl cmd={prev_accl_cmd:6.4f}\n"
         f"  previous average wheel ang speed={prev_avg_wheel_omega:6.4f}\n"
+        f"  current velocity command (integrated from accl={curr_vel_cmd:6.4f}\n"
         f"  curvature lookahead:"
     )
     for i, value in enumerate(curvatures, start=1):
@@ -40,6 +44,7 @@ def display_obs(obs):
     print(f"  widths lookahead:")
     for i, value in enumerate(widths, start=1):
         print(f"    Point {i} = {format_float(value)}")
+
 
 if __name__ == "__main__":
     # create env

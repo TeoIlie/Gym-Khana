@@ -141,6 +141,9 @@ class RaceCar(object):
         self.prev_avg_wheel_omega = 0.0
         self.curr_avg_wheel_omega = 0.0
 
+        # current commanded velocity (integrated from acceleration)
+        self.curr_vel_cmd = 0.0
+
         # initialize scan sim
         if RaceCar.scan_simulator is None:
             self.scan_rng = np.random.default_rng(seed=self.seed)
@@ -236,6 +239,8 @@ class RaceCar(object):
         self.curr_avg_wheel_omega = 0.0
         # init state from pose
         self.state = self.model.get_initial_state(pose=pose, params=self.params)
+        # initialize commanded velocity to match initial state velocity
+        self.curr_vel_cmd = self.state[3]
 
         self.steer_buffer = np.empty((0,))
         # reset scan random generator
@@ -333,7 +338,7 @@ class RaceCar(object):
                 f"but current model has only {len(self.state)} states. "
                 f"avg_wheel_omega and prev_avg_wheel_omega will be set to 0.0. "
                 f"Use model='std' or model=DynamicModel.STD to enable this feature.",
-                UserWarning
+                UserWarning,
             )
             self.curr_avg_wheel_omega = 0.0
 
@@ -355,6 +360,10 @@ class RaceCar(object):
         # acceleration: update prev to curr, and current to new throttle cmd accl
         self.prev_accl_cmd = self.curr_accl_cmd
         self.curr_accl_cmd = accl
+
+        # commanded velocity: integrate using acceleration and clip between v_min and v_max
+        self.curr_vel_cmd = self.curr_vel_cmd + accl * self.time_step
+        self.curr_vel_cmd = np.clip(self.curr_vel_cmd, self.params["v_min"], self.params["v_max"])
 
         u_np = np.array([sv, accl])
 
