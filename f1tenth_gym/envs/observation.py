@@ -117,7 +117,8 @@ def _sample_curvatures_numba(
 
         # Extract curvature coefficients (index 4 is curvature in the spline state)
         vec = spline_c[:, segment % spline_c.shape[1], 4]
-        curvatures[i] = np.dot(vec, exp_x)
+        # Manually unroll dot product for better numba performance
+        curvatures[i] = vec[0]*exp_x[0] + vec[1]*exp_x[1] + vec[2]*exp_x[2] + vec[3]*exp_x[3]
 
     return curvatures
 
