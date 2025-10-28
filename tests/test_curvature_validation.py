@@ -4,6 +4,7 @@ Test script to validate curvature calculations against known geometric shapes.
 This test suite validates that the cubic spline curvature calculations are
 mathematically correct by comparing against known analytical solutions.
 """
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from f1tenth_gym.envs.track.cubic_spline import CubicSpline2D
@@ -158,8 +159,10 @@ def test_curvature_visualization():
     ax2.legend()
 
     plt.tight_layout()
-    plt.show()
-
+    output_dir = os.path.join(os.path.dirname(__file__), "..", "tests", "test_figures")
+    os.makedirs(output_dir, exist_ok=True)
+    plt.savefig(os.path.join(output_dir, "curvature_validation.png"), dpi=300, bbox_inches='tight')
+    # /home/teodor/1.Projects/F1TENTH_Gym/tests/test_figures
     # Verify we got reasonable curvature values
     assert len(curvatures) == len(s_samples), "Curvature samples mismatch"
     assert all(np.isfinite(curvatures)), "All curvatures must be finite"
