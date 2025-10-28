@@ -17,11 +17,11 @@ def display_obs(obs):
     # Extract observations from obs
     vx = obs[0]
     vy = obs[1]
-    yaw_rate = obs[2]
-    delta = obs[3]
-    heading_error_radians = obs[4]
+    heading_error_radians = obs[2]
     heading_error_degrees = np.degrees(heading_error_radians)
-    lateral_dist = obs[5]
+    lateral_dist = obs[3]
+    yaw_rate = obs[4]
+    delta = obs[5]
     prev_steer_cmd = obs[6]
     prev_accl_cmd = obs[7]
     prev_avg_wheel_omega = obs[8]

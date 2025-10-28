@@ -814,18 +814,18 @@ def observation_factory(env, type: str | None, **kwargs) -> Observation:
         return VectorObservation(env, features=features)
     elif type == "drift":
         features = [
-            "linear_vel_x",  # longitudinal velocity vx, vehicle frame
-            "linear_vel_y",  # lateral velocity vy, vehicle frame
-            "ang_vel_z",  # yaw rate
-            "delta",  # measured steering angle δ
-            "frenet_u",  # angle between car heading, track heading, in Frenet coords
-            "frenet_n",  # lateral distance from centerline, in Frenet coords
-            "prev_steering_cmd",  # previous commanded steering angle δ
-            "prev_accl_cmd",  # last control input ω_dot_ref (acceleration)
-            "prev_avg_wheel_omega",  # previous measured wheel speed ω
-            "curr_vel_cmd",  # current commanded velocity (integrated from acceleration)
-            "lookahead_curvatures",  # track curvatures
-            "lookahead_widths",  # track widths
+            "linear_vel_x",  # vx - longitudinal velocity, vehicle frame
+            "linear_vel_y",  # vy - lateral velocity, vehicle frame
+            "frenet_u",  # u - angle between car heading, track heading, in Frenet coords
+            "frenet_n",  # n - lateral distance from centerline, in Frenet coords
+            "ang_vel_z",  # r - yaw rate
+            "delta",  # δ - measured steering angle
+            "prev_steering_cmd",  # δ_ref - previous commanded steering angle
+            "prev_accl_cmd",  # ω_dot_ref - last control input (acceleration)
+            "prev_avg_wheel_omega",  # ω - previous measured wheel speed
+            "curr_vel_cmd",  # ω_ref - current commanded velocity (integrated from acceleration)
+            "lookahead_curvatures",  # c - track curvatures
+            "lookahead_widths",  # w - track widths
         ]
         return VectorObservation(env, features=features)
     else:
