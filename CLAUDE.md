@@ -38,7 +38,7 @@ Run commands with `python3`
 ```bash
 pytest
 ```
-The CI runs pytest for Python versions 3.9-3.12.
+The CI runs pytest for Python versions 3.10-3.12.
 
 ### Running Examples
 First source the virtual env 

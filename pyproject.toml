@@ -32,7 +32,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.9"
+python = ">=3.10"
 gymnasium = "^0.29.1"
 numpy = ">=1.18"
 pillow = ">=9.0.1"
@@ -61,7 +61,7 @@ flake8 = "^7.0.0"
 
 [tool.black]
 line-length = 120
-target-version = ['py39']
+target-version = ['py310']
 
 [tool.isort]
 profile = "black"

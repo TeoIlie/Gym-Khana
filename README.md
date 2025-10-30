@@ -1,4 +1,4 @@
-![Python 3.8 3.9](https://github.com/f1tenth/f1tenth_gym/actions/workflows/ci.yml/badge.svg)
+![Python 3.10-3.12](https://github.com/f1tenth/f1tenth_gym/actions/workflows/ci.yml/badge.svg)
 ![Docker](https://github.com/f1tenth/f1tenth_gym/actions/workflows/docker.yml/badge.svg)
 ![Code Style](https://github.com/f1tenth/f1tenth_gym/actions/workflows/lint.yml/badge.svg)
 
@@ -71,7 +71,8 @@ Run formatting mannually with `black .`. Linting also runs automatically due to 
   3. Set `"render_lookahead_curvatures": True` (it is `False` by default) to visualize lookahead curvature sampling points ahead of the vehicle in **yellow**. Optional parameters:
      - `"lookahead_n_points": 10` - Number of lookahead points (default: 10)
      - `"lookahead_ds": 0.3` - Spacing between points in meters (default: 0.3m)
-  4. Set `"debug_frenet_projection" = True` to visualize the Frenet coordinates are correct 
+  4. Set `"debug_frenet_projection" = True` to visualize the Frenet coordinates are correct
+  5. Set `"normalize"` to `True/False` for normalizing the observation space. Only `"drift"` observation type currently is able to be normalized 
 
 ## Important files:
 * `f1tenth_gym/envs/base_classes.py:503` defines the `step` method. 
