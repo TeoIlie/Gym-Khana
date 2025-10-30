@@ -676,6 +676,10 @@ class VectorObservation(Observation):
     def __init__(self, env, features: List[str]):
         super().__init__(env)
         self.features = features
+        self.bounds = {}
+        self.normalize = self.env.unwrapped.normalize
+        if self.normalize:
+            self.bounds = calculate_norm_bounds(self.env.unwrapped)
 
     def space(self):
         scan_size = self.env.unwrapped.sim.agents[0].scan_simulator.num_beams
@@ -809,18 +813,12 @@ class VectorObservation(Observation):
             "curr_vel_cmd": agent.curr_vel_cmd,
         }
 
-        # normalize
-        normalize = self.env.unwrapped.normalize
-        bounds = {}
-        if normalize:
-            bounds = calculate_norm_bounds(self.env.unwrapped)
-
         # add agent's observation to multi-agent observation
         vec_obs = []
         for k in self.features:
             curr_feat = agent_obs[k]
-            if normalize:
-                curr_feat = normalize_feature(k, curr_feat, bounds)
+            if self.normalize:
+                curr_feat = normalize_feature(k, curr_feat, self.bounds)
             if isinstance(curr_feat, (list, np.ndarray)):
                 vec_obs.extend(list(curr_feat))
             else:

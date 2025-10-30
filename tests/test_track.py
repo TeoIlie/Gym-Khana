@@ -3,7 +3,9 @@ import time
 import unittest
 
 import numpy as np
+
 from f1tenth_gym.envs.track import Raceline, Track, find_track_dir
+from f1tenth_gym.envs.track.track_utils import get_min_max_curvature, get_min_max_track_width
 
 
 class TestTrack(unittest.TestCase):
@@ -171,3 +173,140 @@ class TestTrack(unittest.TestCase):
                 np.isclose(s, s_, atol=1e-4) or np.isclose(s + track.centerline.spline.s[-1], s_, atol=1e-4)
             )
             self.assertAlmostEqual(d, d_, places=4)
+
+    def test_get_min_max_track_width(self):
+        """Test extraction of min/max track width from centerline."""
+        # Create mock track with known width values
+        w_lefts = np.array([1.0, 2.0, 3.0, 1.5], dtype=np.float32)
+        w_rights = np.array([1.5, 2.5, 3.5, 2.0], dtype=np.float32)
+        # Total widths: [2.5, 4.5, 6.5, 3.5]
+        # Expected min = 2.5, max = 6.5
+
+        centerline = Raceline(
+            xs=np.array([0.0, 1.0, 2.0, 3.0], dtype=np.float32),
+            ys=np.array([0.0, 1.0, 2.0, 3.0], dtype=np.float32),
+            velxs=np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32),
+            w_lefts=w_lefts,
+            w_rights=w_rights,
+        )
+
+        track = Track(
+            spec=None,
+            occupancy_map=np.zeros((10, 10)),
+            centerline=centerline,
+            raceline=None,
+        )
+
+        # Call the function
+        min_width, max_width = get_min_max_track_width(track)
+
+        # Verify exact values
+        self.assertEqual(min_width, 2.5, "min_width should be exactly 2.5")
+        self.assertEqual(max_width, 6.5, "max_width should be exactly 6.5")
+
+        # Verify return types
+        self.assertIsInstance(min_width, float)
+        self.assertIsInstance(max_width, float)
+
+    def test_get_min_max_track_width_error_cases(self):
+        """Test error handling for get_min_max_track_width."""
+        # Create a mock track with no centerline
+        track_no_centerline = Track(
+            spec=None,
+            occupancy_map=np.zeros((10, 10)),
+            centerline=None,
+            raceline=None,
+        )
+
+        # Should raise ValueError when centerline is None
+        with self.assertRaises(ValueError) as context:
+            get_min_max_track_width(track_no_centerline)
+        self.assertIn("centerline not available", str(context.exception).lower())
+
+        # Create a mock track with centerline but no width data
+        raceline_no_widths = Raceline(
+            xs=np.array([0.0, 1.0, 2.0]),
+            ys=np.array([0.0, 1.0, 2.0]),
+            velxs=np.array([1.0, 1.0, 1.0]),
+            w_lefts=None,  # Missing width data
+            w_rights=None,
+        )
+
+        track_no_widths = Track(
+            spec=None,
+            occupancy_map=np.zeros((10, 10)),
+            centerline=raceline_no_widths,
+            raceline=None,
+        )
+
+        # Should raise ValueError when width data is missing
+        with self.assertRaises(ValueError) as context:
+            get_min_max_track_width(track_no_widths)
+        self.assertIn("width data not available", str(context.exception).lower())
+
+    def test_get_min_max_curvature(self):
+        """Test extraction of min and max curvature from centerline."""
+        # Create mock track with known curvature values
+        # Include positive, negative, and zero curvatures
+        kappas = np.array([-2.5, 0.0, 3.0, -1.5, 4.2], dtype=np.float32)
+        # Expected min = -2.5, max = 4.2
+
+        centerline = Raceline(
+            xs=np.array([0.0, 1.0, 2.0, 3.0, 4.0], dtype=np.float32),
+            ys=np.array([0.0, 1.0, 2.0, 3.0, 4.0], dtype=np.float32),
+            velxs=np.array([1.0, 1.0, 1.0, 1.0, 1.0], dtype=np.float32),
+            kappas=kappas,
+        )
+
+        track = Track(
+            spec=None,
+            occupancy_map=np.zeros((10, 10)),
+            centerline=centerline,
+            raceline=None,
+        )
+
+        # Call the function
+        min_curv, max_curv = get_min_max_curvature(track)
+
+        # Verify values (use assertAlmostEqual for float32 precision)
+        self.assertAlmostEqual(min_curv, -2.5, places=5, msg="min curvature should be -2.5")
+        self.assertAlmostEqual(max_curv, 4.2, places=5, msg="max curvature should be 4.2")
+
+        # Verify return types
+        self.assertIsInstance(min_curv, float)
+        self.assertIsInstance(max_curv, float)
+
+    def test_get_min_max_curvature_error_cases(self):
+        """Test error handling for get_min_max_curvature."""
+        # Create a mock track with no centerline
+        track_no_centerline = Track(
+            spec=None,
+            occupancy_map=np.zeros((10, 10)),
+            centerline=None,
+            raceline=None,
+        )
+
+        # Should raise ValueError when centerline is None
+        with self.assertRaises(ValueError) as context:
+            get_min_max_curvature(track_no_centerline)
+        self.assertIn("centerline not available", str(context.exception).lower())
+
+        # Create a mock track with centerline but no curvature data
+        raceline_no_curvature = Raceline(
+            xs=np.array([0.0, 1.0, 2.0]),
+            ys=np.array([0.0, 1.0, 2.0]),
+            velxs=np.array([1.0, 1.0, 1.0]),
+            kappas=None,  # Missing curvature data
+        )
+
+        track_no_curvature = Track(
+            spec=None,
+            occupancy_map=np.zeros((10, 10)),
+            centerline=raceline_no_curvature,
+            raceline=None,
+        )
+
+        # Should raise ValueError when curvature data is missing
+        with self.assertRaises(ValueError) as context:
+            get_min_max_curvature(track_no_curvature)
+        self.assertIn("curvature data", str(context.exception).lower())
