@@ -6,6 +6,8 @@ import gymnasium as gym
 import numpy as np
 from numba import njit
 
+from f1tenth_gym.envs.utils import calculate_norm_bounds, normalize_feature
+
 
 def sample_lookahead_curvatures(track, current_s: float, n_points: int, ds: float) -> np.ndarray:
     """
@@ -147,8 +149,8 @@ def _sample_curvatures_numba(
         cy = spline_c[:, segment % spline_c.shape[1], 1]  # y coefficients
 
         # Compute first derivatives: dx/ds, dy/ds
-        dx = 3.0 * cx[0] * x_offset ** 2 + 2.0 * cx[1] * x_offset + cx[2]
-        dy = 3.0 * cy[0] * x_offset ** 2 + 2.0 * cy[1] * x_offset + cy[2]
+        dx = 3.0 * cx[0] * x_offset**2 + 2.0 * cx[1] * x_offset + cx[2]
+        dy = 3.0 * cy[0] * x_offset**2 + 2.0 * cy[1] * x_offset + cy[2]
 
         # Compute second derivatives: d²x/ds², d²y/ds²
         ddx = 6.0 * cx[0] * x_offset + 2.0 * cx[1]
@@ -156,7 +158,7 @@ def _sample_curvatures_numba(
 
         # Curvature formula: κ = (dx·d²y - dy·d²x) / (dx² + dy²)^(3/2)
         numerator = ddy * dx - ddx * dy
-        denominator = (dx ** 2 + dy ** 2) ** 1.5
+        denominator = (dx**2 + dy**2) ** 1.5
 
         curvatures[i] = numerator / denominator
 
@@ -712,9 +714,15 @@ class VectorObservation(Observation):
 
         complete_space_size = sum([obs_size_dict[k] for k in self.features])
 
+        # For normalized observations, bounds should be [-1, 1], otherwise use large_num
+        if self.env.unwrapped.normalize:
+            obs_low, obs_high = -1.0, 1.0
+        else:
+            obs_low, obs_high = -large_num, large_num
+
         obs_space = gym.spaces.Box(
-            low=-large_num,
-            high=large_num,
+            low=obs_low,
+            high=obs_high,
             shape=(complete_space_size,),
             dtype=np.float32,
         )
@@ -757,7 +765,6 @@ class VectorObservation(Observation):
         track = getattr(self.env.unwrapped, "track", None)
         if track is not None and getattr(track, "centerline", None) is not None:
             try:
-
                 # Convert Cartesion coordinates to Frenet
                 s, ey, ephi = track.cartesian_to_frenet(
                     x, y, theta, use_raceline=False, debug=self.env.unwrapped.debug_frenet_projection
@@ -802,14 +809,23 @@ class VectorObservation(Observation):
             "curr_vel_cmd": agent.curr_vel_cmd,
         }
 
+        # normalize
+        normalize = self.env.unwrapped.normalize
+        bounds = {}
+        if normalize:
+            bounds = calculate_norm_bounds(self.env.unwrapped)
+
         # add agent's observation to multi-agent observation
         vec_obs = []
         for k in self.features:
-            if isinstance(agent_obs[k], (list, np.ndarray)):
-                vec_obs.extend(list(agent_obs[k]))
+            curr_feat = agent_obs[k]
+            if normalize:
+                curr_feat = normalize_feature(k, curr_feat, bounds)
+            if isinstance(curr_feat, (list, np.ndarray)):
+                vec_obs.extend(list(curr_feat))
             else:
                 # Handle scalar values
-                vec_obs.append(agent_obs[k])
+                vec_obs.append(curr_feat)
 
         return np.array(vec_obs, dtype=np.float32)
 

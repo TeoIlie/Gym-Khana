@@ -163,13 +163,42 @@ class F110Env(gym.Env):
 
         assert "type" in self.observation_config, "observation_config must contain 'type' key"
 
+        # Handle validation related to 'drift' logic
+        obs_type = self.observation_config["type"]
+
         # Validate drift observation requires STD model
-        if self.observation_config["type"] == "drift" and self.model != DynamicModel.STD:
+        if obs_type == "drift" and self.model != DynamicModel.STD:
             raise ValueError(
                 "The 'drift' observation type requires the single_track_drift (STD) model. "
                 f"Current model: {self.model}. "
                 "Please set model='std' (or model=DynamicModel.STD) when creating the environment."
             )
+
+        # Handle normalization configuration
+        normalize = self.config["normalize"]
+
+        if normalize is None:
+            # User did not set normalize - auto-set based on observation type
+            self.normalize = obs_type == "drift"
+        else:
+            # User explicitly set normalize
+            if normalize and obs_type != "drift":
+                # If user wants normalization, but obs_type is incompatible, warn and overwrite normalize to False to prevent failures
+                print(
+                    f"Warning: Normalization is only supported for 'drift' observation type, not '{obs_type}'. "
+                    "Setting normalize=False."
+                )
+                self.normalize = False
+            elif not normalize and obs_type == "drift":
+                # If user chose drift obs_type but set normalize to False, allow the input but warn
+                print(
+                    "Warning: Normalization is recommended for 'drift' observation type but was disabled. "
+                    "Verify this is intentional."
+                )
+                self.normalize = False
+            else:
+                # In all other cases, accept user input
+                self.normalize = normalize
 
         self.observation_type = observation_factory(env=self, **self.observation_config)
         self.observation_space = self.observation_type.space()
@@ -555,6 +584,7 @@ class F110Env(gym.Env):
             "lookahead_n_points": 10,
             "lookahead_ds": 0.3,
             "debug_frenet_projection": False,
+            "normalize": None,  # None = auto-set based on observation type
         }
 
     def configure(self, config: dict) -> None:
@@ -597,7 +627,7 @@ class F110Env(gym.Env):
         temp_y[idx2] = -right_t - temp_y[idx2]
         temp_y[np.invert(np.logical_or(idx1, idx2))] = 0
 
-        dist2 = delta_pt[0, :] ** 2 + temp_y ** 2
+        dist2 = delta_pt[0, :] ** 2 + temp_y**2
         closes = dist2 <= 0.1
         for i in range(self.num_agents):
             if closes[i] and not self.near_starts[i]:
