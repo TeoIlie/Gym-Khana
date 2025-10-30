@@ -309,7 +309,7 @@ def test_visualization():
     plt.colorbar(im2, ax=axes[1], label="Curvature [1/m]")
 
     # Plot 3: Absolute difference
-    im3 = axes[2].imshow(differences.T, aspect="auto", cmap="hot", extent=[0, track_length, n_points, 0])
+    im3 = axes[2].imshow(differences.T, aspect="auto", cmap="RdBu_r", extent=[0, track_length, n_points, 0])
     axes[2].set_xlabel("Arc length position s [m]")
     axes[2].set_ylabel("Lookahead point index")
     axes[2].set_title("Absolute Difference |slow - fast|")
