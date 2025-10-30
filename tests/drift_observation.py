@@ -35,7 +35,7 @@ def display_obs(obs):
         f"  previous steering cmd={prev_steer_cmd:6.4f}\n"
         f"  previous accl cmd={prev_accl_cmd:6.4f}\n"
         f"  previous average wheel ang speed={prev_avg_wheel_omega:6.4f}\n"
-        f"  current velocity command (integrated from accl={curr_vel_cmd:6.4f}\n"
+        f"  current velocity command (integrated from accl)={curr_vel_cmd:6.4f}\n"
         f"  curvature lookahead:"
     )
     for i, value in enumerate(curvatures, start=1):
@@ -65,6 +65,7 @@ if __name__ == "__main__":
             "debug_frenet_projection": True,  # Enable Frenet projection debug visualization
             "params": F110Env.f1tenth_std_vehicle_params(),
             "render_track_lines": True,
+            "normalize": True
         },
         render_mode="human",
     )

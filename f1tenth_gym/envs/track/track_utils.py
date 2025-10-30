@@ -53,6 +53,62 @@ def find_track_dir(track_name: str) -> pathlib.Path:
     raise FileNotFoundError(f"no mapdir matching {track_name} in {[map_dir]}")
 
 
+def get_min_max_track_width(track) -> tuple[float, float]:
+    """
+    Extract min and max track widths from centerline data.
+
+    Returns
+    -------
+    tuple[float, float]
+        (min_width, max_width) in meters
+
+    Raises
+    ------
+    ValueError
+        If track centerline or width data is not available
+    """
+    if track.centerline is None:
+        raise ValueError("Track centerline not available")
+
+    if track.centerline.w_lefts is None or track.centerline.w_rights is None:
+        raise ValueError("Track width data not available")
+
+    # Total width at each waypoint = left width + right width
+    total_widths = track.centerline.w_lefts + track.centerline.w_rights
+
+    min_width = float(np.min(total_widths))
+    max_width = float(np.max(total_widths))
+
+    return min_width, max_width
+
+
+def get_min_max_curvature(track) -> tuple[float, float]:
+    """
+    Extract min and max curvature from centerline data.
+
+    Returns
+    -------
+    tuple[float, float]
+        (min_curvature, max_curvature) in 1/m
+
+    Raises
+    ------
+    ValueError
+        If track centerline or curvature data is not available
+    """
+    if track.centerline is None:
+        raise ValueError("Track centerline not available")
+
+    if track.centerline.ks is None:
+        raise ValueError("Track curvature data (ks) not available in centerline")
+
+    # Get min & max curvature
+    min_curv = float(np.min(track.centerline.ks))
+    max_curv = float(np.max(track.centerline.ks))
+
+    return min_curv, max_curv
+
+
 @njit(fastmath=False, cache=True)
 def nearest_point_on_trajectory(point: np.ndarray, trajectory: np.ndarray) -> tuple:
     """

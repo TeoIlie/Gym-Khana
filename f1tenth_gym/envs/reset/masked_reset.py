@@ -3,7 +3,7 @@ from abc import abstractmethod
 import numpy as np
 
 from .reset_fn import ResetFn
-from .utils import sample_around_waypoint
+from .reset_utils import sample_around_waypoint
 from ..track import Track, Raceline
 
 

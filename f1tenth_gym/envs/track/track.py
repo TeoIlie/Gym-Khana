@@ -11,7 +11,7 @@ from yamldataclassconfig.config import YamlDataClassConfig
 
 from . import Raceline
 from .cubic_spline import CubicSpline2D
-from .utils import find_track_dir
+from .track_utils import find_track_dir
 from ..rendering import EnvRenderer
 
 
