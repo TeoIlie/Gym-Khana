@@ -5,6 +5,7 @@ from numba import njit
 Implementation of the PAC2002 tire model
 """
 
+
 # longitudinal tire forces
 def formula_longitudinal(kappa, gamma, F_z, params: dict):
     # longitudinal coefficients
@@ -26,7 +27,7 @@ def formula_longitudinal(kappa, gamma, F_z, params: dict):
     S_vx = F_z * tire_p_vx1
 
     kappa_x = kappa + S_hx
-    mu_x = tire_p_dx1 * (1 - tire_p_dx3 * gamma ** 2)
+    mu_x = tire_p_dx1 * (1 - tire_p_dx3 * gamma**2)
 
     C_x = tire_p_cx1
     D_x = mu_x * F_z
@@ -61,7 +62,7 @@ def formula_lateral(alpha, gamma, F_z, params: dict):
     S_vy = np.sign(gamma) * F_z * (tire_p_vy1 + tire_p_vy3 * np.fabs(gamma))
 
     alpha_y = alpha + S_hy
-    mu_y = tire_p_dy1 * (1 - tire_p_dy3 * gamma ** 2)
+    mu_y = tire_p_dy1 * (1 - tire_p_dy3 * gamma**2)
 
     C_y = tire_p_cy1
     D_y = mu_y * F_z

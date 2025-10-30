@@ -185,7 +185,7 @@ class Raceline:
             waypoints[:, 2] *= track_scale
             spline = CubicSpline2D(x=waypoints[:, 1], y=waypoints[:, 2])
             ss, yaws, ks = [], [], []
-            for (x, y) in zip(waypoints[:, 1], waypoints[:, 2]):
+            for x, y in zip(waypoints[:, 1], waypoints[:, 2]):
                 i_s, _ = spline.calc_arclength(x, y)
                 yaw = spline.calc_yaw(i_s)
                 k = spline.calc_curvature(i_s)

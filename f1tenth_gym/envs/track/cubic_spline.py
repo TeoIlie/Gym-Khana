@@ -195,7 +195,7 @@ class CubicSpline2D:
         # Compute curvature from spline derivatives for accuracy
         dx, dy = self.spline(s, 1)[:2]
         ddx, ddy = self.spline(s, 2)[:2]
-        k = (ddy * dx - ddx * dy) / ((dx ** 2 + dy ** 2) ** (3 / 2))
+        k = (ddy * dx - ddx * dy) / ((dx**2 + dy**2) ** (3 / 2))
         return k
 
     def find_curvature(self, s: float) -> Optional[float]:
