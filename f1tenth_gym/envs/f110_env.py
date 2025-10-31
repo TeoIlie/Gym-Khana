@@ -29,6 +29,7 @@ import gymnasium as gym
 
 # others
 import numpy as np
+import warnings
 
 from .action import CarAction, from_single_to_multi_action_space
 
@@ -108,6 +109,7 @@ class F110Env(gym.Env):
         self.lookahead_n_points = self.config["lookahead_n_points"]
         self.lookahead_ds = self.config["lookahead_ds"]
         self.debug_frenet_projection = self.config["debug_frenet_projection"]
+        self.record_obs_min_max = self.config["record_obs_min_max"]
 
         # radius to consider done
         self.start_thresh = 0.5  # 10cm
@@ -184,16 +186,18 @@ class F110Env(gym.Env):
             # User explicitly set normalize
             if normalize and obs_type != "drift":
                 # If user wants normalization, but obs_type is incompatible, warn and overwrite normalize to False to prevent failures
-                print(
+                warnings.warn(
                     f"Warning: Normalization is only supported for 'drift' observation type, not '{obs_type}'. "
-                    "Setting normalize=False."
+                    "Setting normalize=False.",
+                    UserWarning,
                 )
                 self.normalize = False
             elif not normalize and obs_type == "drift":
                 # If user chose drift obs_type but set normalize to False, allow the input but warn
-                print(
+                warnings.warn(
                     "Warning: Normalization is recommended for 'drift' observation type but was disabled. "
-                    "Verify this is intentional."
+                    "Verify this is intentional.",
+                    UserWarning,
                 )
                 self.normalize = False
             else:
@@ -202,6 +206,34 @@ class F110Env(gym.Env):
 
         self.observation_type = observation_factory(env=self, **self.observation_config)
         self.observation_space = self.observation_type.space()
+
+        # Initialize observation min/max tracking if requested
+
+        # If user requests obseration min/max tracking for non-drift type, warn and default to no tracking
+        if self.record_obs_min_max and obs_type != "drift":
+            warnings.warn(
+                f"Observation min/max tracking only supported for 'drift' observation type, not '{obs_type}'. "
+                "Setting record_obs_min_max=False.",
+                UserWarning,
+            )
+            self.record_obs_min_max = False
+
+        # Only track observation min/max if there is normalizing
+        if self.record_obs_min_max and not self.normalize:
+            warnings.warn(
+                f"Observation min/max tracking only supported if 'normalize' is True"
+                "Setting record_obs_min_max=False.",
+                UserWarning,
+            )
+            self.record_obs_min_max = False
+
+        # Set up obs tracking if requested by user and allowed
+        if self.record_obs_min_max:
+            self.obs_min_max_tracker = {}
+            for feature in self.observation_type.features:
+                self.obs_min_max_tracker[feature] = {"min": float("inf"), "max": float("-inf")}
+            self.record_obs_min_max = True
+            self.obs_tracker_step_count = 0
 
         # action space
         self.action_space = from_single_to_multi_action_space(self.action_type.space, self.num_agents)
@@ -585,6 +617,7 @@ class F110Env(gym.Env):
             "lookahead_ds": 0.3,
             "debug_frenet_projection": False,
             "normalize": None,  # None = auto-set based on observation type
+            "record_obs_min_max": False,
         }
 
     def configure(self, config: dict) -> None:
@@ -653,6 +686,97 @@ class F110Env(gym.Env):
         self.poses_theta = self.sim.agent_poses[:, 2]
         self.collisions = self.sim.collisions
 
+    def _update_obs_min_max(self):
+        """
+        Update observation min/max tracking with current observation values.
+        Called after each step when tracking is enabled.
+        """
+
+        raw_features = getattr(self.observation_type, "_last_raw_features", None)
+        if raw_features is None:
+            return
+
+        self.obs_tracker_step_count += 1
+
+        for feature_name, feature_value in raw_features.items():
+            # Handle array-valued vs scalar features
+            if isinstance(feature_value, (list, np.ndarray)):
+                curr_min = float(np.min(feature_value))
+                curr_max = float(np.max(feature_value))
+            else:
+                curr_min = float(feature_value)
+                curr_max = float(feature_value)
+
+            # Skip invalid values (NaN or Inf)
+            if np.isnan(curr_min) or np.isnan(curr_max) or np.isinf(curr_min) or np.isinf(curr_max):
+                continue
+
+            # Update tracker
+            if curr_min < self.obs_min_max_tracker[feature_name]["min"]:
+                self.obs_min_max_tracker[feature_name]["min"] = curr_min
+            if curr_max > self.obs_min_max_tracker[feature_name]["max"]:
+                self.obs_min_max_tracker[feature_name]["max"] = curr_max
+
+    def _print_obs_min_max_stats(self):
+        """
+        Print observation min/max statistics at the end of training/evaluation.
+        Shows recorded values compared to theoretical normalization bounds.
+        """
+        TABLE_WIDTH = 120
+        FEATURE_WIDTH = 25
+        OBS_WIDTH = 12
+
+        # Print header
+        print("\n" + "=" * TABLE_WIDTH)
+        print("Observation Min/Max Statistics")
+        print(f"Tracked over {self.obs_tracker_step_count:,} timesteps")
+        print("=" * TABLE_WIDTH)
+        print(
+            f"{'Feature':<{FEATURE_WIDTH}} | {'Rec. Min':>{OBS_WIDTH}} | {'Rec. Max':>{OBS_WIDTH}} | {'Theor. Min':>{OBS_WIDTH}} | {'Theor. Max':>{OBS_WIDTH}} | {'Coverage':>{OBS_WIDTH}}"
+        )
+        print("-" * TABLE_WIDTH)
+
+        bounds_violations = []
+
+        for feature_name in self.observation_type.features:
+            # Get recorded & theoretical min/max values
+            rec_min = self.obs_min_max_tracker[feature_name]["min"]
+            rec_max = self.obs_min_max_tracker[feature_name]["max"]
+            theor_min, theor_max = self.observation_type.bounds[feature_name]
+
+            # Handle case where no valid values were recorded
+            if rec_min == float("inf") or rec_max == float("-inf"):
+                print(
+                    f"{feature_name:<{FEATURE_WIDTH}} | {'N/A':>{OBS_WIDTH}} | {'N/A':>{OBS_WIDTH}} | {'N/A':>{OBS_WIDTH}} | {'N/A':>{OBS_WIDTH}} | {'N/A':>{OBS_WIDTH}}"
+                )
+            else:
+                # Calculate coverage
+                theor_range = theor_max - theor_min
+                rec_range = rec_max - rec_min
+                coverage_str = f"{(rec_range / theor_range) * 100.0:6.1f}%" if theor_range > 0 else "N/A"
+
+                # Check for violations
+                exceeds = ""
+                eps = 1e-4
+                if rec_min < theor_min - eps or rec_max > theor_max + eps:
+                    bounds_violations.append(feature_name)
+                    exceeds = " ⚠️"
+
+                print(
+                    f"{feature_name:<{FEATURE_WIDTH}} | {rec_min:12.4f} | {rec_max:12.4f} | {theor_min:12.4f} | {theor_max:12.4f} | {coverage_str:>{OBS_WIDTH}}{exceeds}"
+                )
+
+        print("=" * TABLE_WIDTH)
+
+        if bounds_violations:
+            print("⚠️  WARNING: The following features exceeded theoretical bounds:")
+            for feature_name in bounds_violations:
+                print(f"    - {feature_name}")
+            print("   Consider updating normalization bounds in calculate_norm_bounds()")
+            print("=" * TABLE_WIDTH)
+
+        print()
+
     def _get_reward(self):
         """
         Get the reward for the current step
@@ -698,6 +822,10 @@ class F110Env(gym.Env):
 
         # observation
         obs = self.observation_type.observe()
+
+        # Track observation min/max if enabled
+        if self.record_obs_min_max:
+            self._update_obs_min_max()
 
         # times
         self.current_time = self.current_time + self.timestep
@@ -850,6 +978,10 @@ class F110Env(gym.Env):
         """
         Ensure renderer is closed upon deletion
         """
+        # Print observation statistics if tracking was enabled
+        if self.record_obs_min_max:
+            self._print_obs_min_max_stats()
+
         if self.renderer is not None:
             self.renderer.close()
         super().close()

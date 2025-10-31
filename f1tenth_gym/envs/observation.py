@@ -460,6 +460,7 @@ class Observation:
 
     def __init__(self, env):
         self.env = env
+        self._last_raw_features = None  # Store raw features before normalization/flattening
 
     @abstractmethod
     def space(self):
@@ -812,6 +813,9 @@ class VectorObservation(Observation):
             "prev_avg_wheel_omega": prev_avg_wheel_omega,
             "curr_vel_cmd": agent.curr_vel_cmd,
         }
+
+        # Store raw features before normalization/flattening (for min/max tracking)
+        self._last_raw_features = {k: agent_obs[k] for k in self.features}
 
         # add agent's observation to multi-agent observation
         vec_obs = []

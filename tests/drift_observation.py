@@ -56,7 +56,7 @@ if __name__ == "__main__":
             "timestep": 0.01,  # High-frequency control (100Hz)
             "integrator": "rk4",  # Accurate physics integration
             "model": "std",  # Single Track dynamic bicycle model with tire slip
-            "control_input": ["accl", "steering_angle"],  # TODO change speed to accl
+            "control_input": ["accl", "steering_angle"],
             "observation_config": {"type": "drift"},  # 6D drift state: [vx, vy, yaw_rate, delta, frenet_u, frenet_n]
             "reset_config": {"type": "rl_random_static"},
             "render_lookahead_curvatures": True,  # Enable lookahead curvature visualization
@@ -65,7 +65,8 @@ if __name__ == "__main__":
             "debug_frenet_projection": True,  # Enable Frenet projection debug visualization
             "params": F110Env.f1tenth_std_vehicle_params(),
             "render_track_lines": True,
-            "normalize": True
+            "normalize": True,
+            "record_obs_min_max": True,
         },
         render_mode="human",
     )
