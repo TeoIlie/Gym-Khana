@@ -82,7 +82,6 @@ if __name__ == "__main__":
     action = np.array([[0.1, 5.0]])  # action format: steering target, acceleration
 
     for step in range(10000):  # Reduced for testing
-
         obs, reward, done, truncated, info = env.step(action)
         print(f"\n=====================\nStep {step+1}:\n=====================\n")
         display_obs(obs)
