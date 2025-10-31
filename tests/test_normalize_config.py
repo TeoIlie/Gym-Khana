@@ -3,6 +3,7 @@ Test normalization configuration for drift observations.
 """
 
 import gymnasium as gym
+import pytest
 
 from f1tenth_gym.envs.f110_env import F110Env
 
@@ -38,47 +39,39 @@ def test_normalize_default_other():
     env.close()
 
 
-def test_normalize_override_true_with_non_drift(capsys):
+def test_normalize_override_true_with_non_drift():
     """Test that normalize=True with non-drift type sets to False with warning."""
-    env = gym.make(
-        "f1tenth_gym:f1tenth-v0",
-        config={
-            "map": "Spielberg",
-            "num_agents": 1,
-            "observation_config": {"type": "original"},
-            "params": F110Env.f1tenth_std_vehicle_params(),
-            "normalize": True,
-        },
-    )
-    assert env.unwrapped.normalize is False
-
-    # Check warning was printed
-    captured = capsys.readouterr()
-    assert "Warning" in captured.out
-    assert "Setting normalize=False" in captured.out
-    env.close()
+    with pytest.warns(UserWarning, match="Normalization is only supported"):
+        env = gym.make(
+            "f1tenth_gym:f1tenth-v0",
+            config={
+                "map": "Spielberg",
+                "num_agents": 1,
+                "observation_config": {"type": "original"},
+                "params": F110Env.f1tenth_std_vehicle_params(),
+                "normalize": True,
+            },
+        )
+        assert env.unwrapped.normalize is False
+        env.close()
 
 
-def test_normalize_override_false_with_drift(capsys):
+def test_normalize_override_false_with_drift():
     """Test that normalize=False with drift type keeps False but warns."""
-    env = gym.make(
-        "f1tenth_gym:f1tenth-v0",
-        config={
-            "map": "Spielberg",
-            "num_agents": 1,
-            "model": "std",
-            "observation_config": {"type": "drift"},
-            "params": F110Env.f1tenth_std_vehicle_params(),
-            "normalize": False,
-        },
-    )
-    assert env.unwrapped.normalize is False
-
-    # Check warning was printed
-    captured = capsys.readouterr()
-    assert "Warning" in captured.out
-    assert "intentional" in captured.out
-    env.close()
+    with pytest.warns(UserWarning, match="Normalization is recommended"):
+        env = gym.make(
+            "f1tenth_gym:f1tenth-v0",
+            config={
+                "map": "Spielberg",
+                "num_agents": 1,
+                "model": "std",
+                "observation_config": {"type": "drift"},
+                "params": F110Env.f1tenth_std_vehicle_params(),
+                "normalize": False,
+            },
+        )
+        assert env.unwrapped.normalize is False
+        env.close()
 
 
 def test_normalize_explicit_true_with_drift():
