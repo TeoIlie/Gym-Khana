@@ -1,6 +1,6 @@
-![Python 3.10-3.12](https://github.com/f1tenth/f1tenth_gym/actions/workflows/ci.yml/badge.svg)
-![Docker](https://github.com/f1tenth/f1tenth_gym/actions/workflows/docker.yml/badge.svg)
-![Code Style](https://github.com/f1tenth/f1tenth_gym/actions/workflows/lint.yml/badge.svg)
+![Python 3.10-3.12](https://github.com/TeoIlie/F1TENTH_Gym/actions/workflows/ci.yml/badge.svg)
+![Docker](https://github.com/TeoIlie/F1TENTH_Gym/actions/workflows/docker.yml/badge.svg)
+![Code Style](https://github.com/TeoIlie/F1TENTH_Gym/actions/workflows/lint.yml/badge.svg)
 
 # The F1TENTH Gym environment
 
@@ -16,7 +16,7 @@ We recommend installing the simulation inside a virtualenv. You can install the 
 ```bash
 virtualenv gym_env
 source gym_env/bin/activate
-git clone https://github.com/f1tenth/f1tenth_gym.git
+git clone https://github.com/TeoIlie/F1TENTH_Gym.git
 cd f1tenth_gym
 pip install -e .
 ```

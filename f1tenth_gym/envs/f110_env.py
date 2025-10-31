@@ -187,7 +187,7 @@ class F110Env(gym.Env):
             if normalize and obs_type != "drift":
                 # If user wants normalization, but obs_type is incompatible, warn and overwrite normalize to False to prevent failures
                 warnings.warn(
-                    f"Warning: Normalization is only supported for 'drift' observation type, not '{obs_type}'. "
+                    f"Normalization is only supported for 'drift' observation type, not '{obs_type}'. "
                     "Setting normalize=False.",
                     UserWarning,
                 )
@@ -195,7 +195,7 @@ class F110Env(gym.Env):
             elif not normalize and obs_type == "drift":
                 # If user chose drift obs_type but set normalize to False, allow the input but warn
                 warnings.warn(
-                    "Warning: Normalization is recommended for 'drift' observation type but was disabled. "
+                    "Normalization is recommended for 'drift' observation type but was disabled. "
                     "Verify this is intentional.",
                     UserWarning,
                 )
