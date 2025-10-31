@@ -6,8 +6,14 @@ import os
 from wandb.integration.sb3 import WandbCallback
 import wandb
 
+from f1tenth_gym.envs.f110_env import F110Env
+
+# Get the directory where this script is located
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # toggle this to train or evaluate
-train = False
+train = True
+debug_obs_norm = True
 
 if train:
     run = wandb.init(
@@ -19,23 +25,42 @@ if train:
     env = gym.make(
         "f1tenth_gym:f1tenth-v0",
         config={
-            "map": "Spielberg",
-            "num_agents": 1,
-            "timestep": 0.01,
-            "num_beams": 36,
-            "integrator": "rk4",
-            "control_input": ["speed", "steering_angle"],
-            "observation_config": {"type": "rl"},
+            "map": "IMS",  # Open area for drift practice
+            "num_agents": 1,  # Single agent for focused learning
+            "timestep": 0.01,  # High-frequency control (100Hz)
+            "integrator": "rk4",  # Accurate physics integration
+            "model": "std",  # Single Track dynamic bicycle model with tire slip
+            "control_input": ["accl", "steering_angle"],
+            "observation_config": {"type": "drift"},  # 6D drift state: [vx, vy, yaw_rate, delta, frenet_u, frenet_n]
             "reset_config": {"type": "rl_random_static"},
+            "params": F110Env.f1tenth_std_vehicle_params(),
+            "normalize": True,
+            "record_obs_min_max": debug_obs_norm,
         },
     )
 
-    # will be faster on cpu
-    model = PPO("MlpPolicy", env, verbose=1, tensorboard_log=f"runs/{run.id}", device="cpu", seed=42)
+    # set directories to /f1tenth_gym/examples/... regardless of where this is run from
+    tensorboard_dir = os.path.join(SCRIPT_DIR, "runs", run.id)
+    model_dir = os.path.join(SCRIPT_DIR, "models", run.id)
+
+    # will be faster on cpu (for now)
+    model = PPO("MlpPolicy", env, verbose=1, tensorboard_log=tensorboard_dir, device="cpu", seed=42)
     model.learn(
-        total_timesteps=1_000_000,
-        callback=WandbCallback(gradient_save_freq=0, model_save_path=f"models/{run.id}", verbose=2),
+        total_timesteps=10_000,
+        callback=WandbCallback(gradient_save_freq=0, model_save_path=model_dir, verbose=2),
     )
+
+    # If debugging observation normalization, explicitly close the environment to
+    # trigger observation statistics printing -> env is wrapped in DummyVecEnv, so we need to close the underlying env
+    if debug_obs_norm:
+        if hasattr(env, "envs"):
+            # VecEnv wrapper - close the underlying environments
+            for underlying_env in env.envs:
+                underlying_env.close()
+        else:
+            # Regular env
+            env.close()
+
     run.finish()
 
 else:
