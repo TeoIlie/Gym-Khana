@@ -178,3 +178,4 @@ examples/wandb
 examples/models
 examples/runs
 scratch
+.python-version
