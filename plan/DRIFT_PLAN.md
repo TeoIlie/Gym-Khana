@@ -21,8 +21,8 @@ In order to achieve this using this existing simulation environment, there are s
    [X] 5) Measured steering angle δ and the previous control input δ_ref 
    
    [X] 6) Measured wheel speed ω, commanded wheel speed ω_ref, and the last control input ω̇ref
-   
-   [ ] 7) Track information, represented by N points, with curvature c ∈ R^N and width w ∈ R^N . These N points are sampled uniformly in front of the vehicle at 30-centimeter intervals.                                                   
+
+   [X] 7) Track information, represented by N points, with curvature c ∈ R^N and width w ∈ R^N . These N points are sampled uniformly in front of the vehicle at 30-centimeter intervals.                                                   
  - Location: Modify f1tenth_gym/envs/observation.py or create custom observation type
                                                                                  
  2. Implement Drift-Reward Function                                              
