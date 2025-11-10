@@ -1,4 +1,5 @@
 import pathlib
+import tempfile
 import time
 import unittest
 
@@ -310,3 +311,117 @@ class TestTrack(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             get_min_max_curvature(track_no_curvature)
         self.assertIn("curvature data", str(context.exception).lower())
+
+    def test_centerline_validation_left_width_exceeds_tolerance(self):
+        """Test that centerline with w_left > w_right by >10% raises ValueError."""
+        # Create temporary centerline file
+        # Format: [x, y, w_right, w_left]
+        # w_right = 2.0, w_left = 3.0 (50% difference, exceeds 10% tolerance)
+        waypoints = np.array(
+            [
+                [0.0, 0.0, 2.0, 3.0],
+                [1.0, 0.0, 2.0, 3.0],
+                [2.0, 0.0, 2.0, 3.0],
+                [3.0, 0.0, 2.0, 3.0],
+            ]
+        )
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+            np.savetxt(f, waypoints, delimiter=",")
+            filepath = pathlib.Path(f.name)
+
+        try:
+            # Should raise ValueError due to asymmetry
+            with self.assertRaises(ValueError) as context:
+                Raceline.from_centerline_file(filepath)
+
+            error_msg = str(context.exception)
+            self.assertIn("Centerline validation failed", error_msg)
+            self.assertIn("w_right=2.000m, w_left=3.000m", error_msg)
+            self.assertIn("exceeds 10% tolerance", error_msg)
+        finally:
+            filepath.unlink()
+
+    def test_centerline_validation_right_width_exceeds_tolerance(self):
+        """Test that centerline with w_right > w_left by >10% raises ValueError."""
+        # Create temporary centerline file
+        # Format: [x, y, w_right, w_left]
+        # w_right = 3.5, w_left = 2.0 (43% difference, exceeds 10% tolerance)
+        waypoints = np.array(
+            [
+                [0.0, 0.0, 3.5, 2.0],
+                [1.0, 0.0, 3.5, 2.0],
+                [2.0, 0.0, 3.5, 2.0],
+                [3.0, 0.0, 3.5, 2.0],
+            ]
+        )
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+            np.savetxt(f, waypoints, delimiter=",")
+            filepath = pathlib.Path(f.name)
+
+        try:
+            # Should raise ValueError due to asymmetry
+            with self.assertRaises(ValueError) as context:
+                Raceline.from_centerline_file(filepath)
+
+            error_msg = str(context.exception)
+            self.assertIn("Centerline validation failed", error_msg)
+            self.assertIn("w_right=3.500m, w_left=2.000m", error_msg)
+            self.assertIn("exceeds 10% tolerance", error_msg)
+        finally:
+            filepath.unlink()
+
+    def test_centerline_validation_left_width_within_tolerance(self):
+        """Test that centerline with w_left slightly > w_right (<10%) loads successfully."""
+        # Create temporary centerline file
+        # Format: [x, y, w_right, w_left]
+        # w_right = 2.0, w_left = 2.18 (9% difference, within 10% tolerance)
+        waypoints = np.array(
+            [
+                [0.0, 0.0, 2.0, 2.18],
+                [1.0, 0.0, 2.0, 2.18],
+                [2.0, 1.0, 2.0, 2.18],
+                [3.0, 1.0, 2.0, 2.18],
+            ]
+        )
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+            np.savetxt(f, waypoints, delimiter=",")
+            filepath = pathlib.Path(f.name)
+
+        try:
+            # Should load without error (within 10% tolerance)
+            raceline = Raceline.from_centerline_file(filepath)
+            self.assertIsNotNone(raceline)
+            self.assertIsNotNone(raceline.xs)
+            self.assertIsNotNone(raceline.ys)
+        finally:
+            filepath.unlink()
+
+    def test_centerline_validation_right_width_within_tolerance(self):
+        """Test that centerline with w_right slightly > w_left (<10%) loads successfully."""
+        # Create temporary centerline file
+        # Format: [x, y, w_right, w_left]
+        # w_right = 2.2, w_left = 2.0 (9% difference, within 10% tolerance)
+        waypoints = np.array(
+            [
+                [0.0, 0.0, 2.2, 2.0],
+                [1.0, 0.0, 2.2, 2.0],
+                [2.0, 1.0, 2.2, 2.0],
+                [3.0, 1.0, 2.2, 2.0],
+            ]
+        )
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+            np.savetxt(f, waypoints, delimiter=",")
+            filepath = pathlib.Path(f.name)
+
+        try:
+            # Should load without error (within 10% tolerance)
+            raceline = Raceline.from_centerline_file(filepath)
+            self.assertIsNotNone(raceline)
+            self.assertIsNotNone(raceline.xs)
+            self.assertIsNotNone(raceline.ys)
+        finally:
+            filepath.unlink()

@@ -113,6 +113,21 @@ class Raceline:
         xx, yy = xx * track_scale, yy * track_scale
         w_right_raw, w_left_raw = w_right_raw * track_scale, w_left_raw * track_scale
 
+        # Validate centerline symmetry (within 10% tolerance)
+        # Ensures the centerline is actually centered between track boundaries
+        for i in range(len(w_right_raw)):
+            max_width = max(w_right_raw[i], w_left_raw[i])
+            if max_width > 0:  # Avoid division by zero
+                diff_ratio = abs(w_right_raw[i] - w_left_raw[i]) / max_width
+                if diff_ratio > 0.1:
+                    raise ValueError(
+                        f"Centerline validation failed at waypoint {i}: "
+                        f"w_right={w_right_raw[i]:.3f}m, w_left={w_left_raw[i]:.3f}m "
+                        f"(difference {diff_ratio*100:.1f}% exceeds 10% tolerance). "
+                        f"Centerline must be centered with symmetric track boundaries. "
+                        f"File: {filepath}"
+                    )
+
         # close loop
         xx = np.append(xx, xx[0])
         yy = np.append(yy, yy[0])
