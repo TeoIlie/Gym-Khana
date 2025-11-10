@@ -785,13 +785,17 @@ class F110Env(gym.Env):
         # penalty for each crashed agent
         # Purely collaborative reward if more than 1 agent
 
+        # initialize previous track arc length on the first call
+        # subsequently it will store the prev arc length to determine progress
         if not hasattr(self, "last_s"):
             self.last_s = [0.0] * self.num_agents
 
         reward = 0.0
         for i in range(self.num_agents):
+            # current_s calculated as distance along track centerline from start, in meters
             current_s, _ = self.track.centerline.spline.calc_arclength_inaccurate(self.poses_x[i], self.poses_y[i])
 
+            # progress is previous - current arc length
             prog = current_s - self.last_s[i]
             if prog > 0.9 * self.track.centerline.spline.s[-1]:
                 prog = (self.track.centerline.spline.s[-1] - self.last_s) + current_s

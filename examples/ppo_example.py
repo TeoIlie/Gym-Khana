@@ -46,7 +46,7 @@ if train:
     # will be faster on cpu (for now)
     model = PPO("MlpPolicy", env, verbose=1, tensorboard_log=tensorboard_dir, device="cpu", seed=42)
     model.learn(
-        total_timesteps=10_000,
+        total_timesteps=2_000_000,
         callback=WandbCallback(gradient_save_freq=0, model_save_path=model_dir, verbose=2),
     )
 
