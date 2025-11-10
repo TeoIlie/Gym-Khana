@@ -47,17 +47,11 @@ track.centerline.spline.s[i]  # Arc length at waypoint i [m]
 
 ## Implementation Requirements
 
-| Aspect | Current | Drift |
-|--------|---------|-------|
-| Wraparound | Potential bug | Fix wraparound aclength reward bug on line 796 of `f110_env.py`: Detect by `progress < -0.5 * track_length`
-| Boundary | TTC (predictive) | Explicit crossing with Frenet coordinates |
-| Collision result | Car deflected | No behavioural effect 
-| Structure | `progress - penalties` | `-1` OR `progress` (exclusive) |
-| Reset condition | TODO | Reset when agent exceeds track rollout
-| Reset function | Configurable with `reset_config` param | Set `reset_config` to `cl_random_random` if observation type is `drift`
-| Multi-agent | Collaborative | Collaborative (unchanged)
-
-### Configuration options
-The following changes should be made to the `gym` configuration options:
-1. Collision checking can be configured with new parameter `predictive_collision` to `True` (current TTC) or `False` (Frenet coords out-of-bounds)
-2. Collision behaviour can be configured with new parameter `collision_deflection` to `True` (current wall deflection) or `False` (no behavioural effect - car passes through wall)
+| Status | Aspect | Current | Drift |
+|--------|--------|---------|-------|
+| [ ] | Wraparound | Potential bug | Fix wraparound aclength reward bug on line 796 of `f110_env.py`: Detect by `progress < -0.5 * track_length`
+| [ ] | Boundary | TTC (predictive) | Explicit crossing with Frenet coordinates, via new boolean env config param `predictive_collision`, where True is the current TTC, and False is explicit via Frenet coords. Default to True, set to False if observatin type is `"drift"`, and allow user override regardless |
+| [ ] | Structure | `progress - penalties` | `-1` OR `progress` (exclusive) |
+| [ ] | Reset condition | First of: (a) Ego-agent has a collision or (b) Completed 2 laps of the track | Reset when ego-agent has a collision
+| [ ] | Reset function | Configurable with `reset_config` param | Set `reset_config` to `cl_random_random` if observation type is `drift`
+| [ ] | Multi-agent | Collaborative | Collaborative (unchanged)
