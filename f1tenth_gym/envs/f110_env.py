@@ -176,6 +176,37 @@ class F110Env(gym.Env):
                 "Please set model='std' (or model=DynamicModel.STD) when creating the environment."
             )
 
+        # Handle collision detection strategy configuration
+        predictive_collision = self.config["predictive_collision"]
+
+        if predictive_collision is None:
+            # User did not set predictive_collision - auto-set based on observation type
+            # Drift mode uses explicit Frenet-based boundary detection (False)
+            # Other modes use predictive TTC collision detection (True)
+            self.predictive_collision = obs_type != "drift"
+        else:
+            # User explicitly set predictive_collision - validate and warn if conflicts
+            if not predictive_collision and obs_type != "drift":
+                # User disabled predictive collision for non-drift mode
+                warnings.warn(
+                    f"Disabling predictive collision (TTC-based) for '{obs_type}' observation type. "
+                    "This may affect collision detection behavior. Verify this is intentional.",
+                    UserWarning,
+                )
+                self.predictive_collision = False
+            elif predictive_collision and obs_type == "drift":
+                # User enabled predictive collision for drift mode
+                warnings.warn(
+                    "Enabling predictive collision (TTC-based) for 'drift' observation type. "
+                    "Drift mode typically uses explicit Frenet-based boundary detection. "
+                    "Verify this is intentional.",
+                    UserWarning,
+                )
+                self.predictive_collision = True
+            else:
+                # In all other cases, accept user input
+                self.predictive_collision = predictive_collision
+
         # Handle normalization configuration
         normalize_obs = self.config["normalize_obs"]
 
@@ -617,6 +648,7 @@ class F110Env(gym.Env):
             "lookahead_ds": 0.3,
             "debug_frenet_projection": False,
             "normalize_obs": None,  # None = auto-set based on observation type
+            "predictive_collision": None,  # None = auto-set based on observation type
             "record_obs_min_max": False,
         }
 

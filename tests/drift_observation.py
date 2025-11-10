@@ -67,6 +67,7 @@ if __name__ == "__main__":
             "render_track_lines": True,
             "normalize_obs": True,
             "record_obs_min_max": True,
+            "predictive_collision": False,
         },
         render_mode="human",
     )
