@@ -31,7 +31,7 @@ class TestNormalizationBounds:
                 "model": "std",
                 "observation_config": {"type": "drift"},
                 "params": F110Env.f1tenth_std_vehicle_params(),
-                "normalize": True,
+                "normalize_obs": True,
             },
         )
 
@@ -236,7 +236,7 @@ class TestNormalizedObservation:
                 "model": "std",
                 "observation_config": {"type": "drift"},
                 "params": F110Env.f1tenth_std_vehicle_params(),
-                "normalize": True,
+                "normalize_obs": True,
             },
         )
 
@@ -276,7 +276,7 @@ class TestNormalizedObservation:
                 "model": "std",
                 "observation_config": {"type": "drift"},
                 "params": F110Env.f1tenth_std_vehicle_params(),
-                "normalize": False,
+                "normalize_obs": False,
             },
         )
 
@@ -311,7 +311,7 @@ class TestNormalizedObservation:
                 "model": "std",
                 "observation_config": {"type": "drift"},
                 "params": F110Env.f1tenth_std_vehicle_params(),
-                "normalize": True,
+                "normalize_obs": True,
             },
         )
 
@@ -324,7 +324,7 @@ class TestNormalizedObservation:
                 "model": "std",
                 "observation_config": {"type": "drift"},
                 "params": F110Env.f1tenth_std_vehicle_params(),
-                "normalize": True,
+                "normalize_obs": True,
             },
         )
 
@@ -369,7 +369,7 @@ class TestNormalizedObservation:
                 "model": "std",
                 "observation_config": {"type": "drift"},
                 "params": F110Env.f1tenth_std_vehicle_params(),
-                "normalize": True,
+                "normalize_obs": True,
             },
         )
 
@@ -381,7 +381,7 @@ class TestNormalizedObservation:
                 "model": "std",
                 "observation_config": {"type": "drift"},
                 "params": F110Env.f1tenth_std_vehicle_params(),
-                "normalize": False,
+                "normalize_obs": False,
             },
         )
 

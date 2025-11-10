@@ -177,32 +177,32 @@ class F110Env(gym.Env):
             )
 
         # Handle normalization configuration
-        normalize = self.config["normalize"]
+        normalize_obs = self.config["normalize_obs"]
 
-        if normalize is None:
+        if normalize_obs is None:
             # User did not set normalize - auto-set based on observation type
-            self.normalize = obs_type == "drift"
+            self.normalize_obs = obs_type == "drift"
         else:
             # User explicitly set normalize
-            if normalize and obs_type != "drift":
+            if normalize_obs and obs_type != "drift":
                 # If user wants normalization, but obs_type is incompatible, warn and overwrite normalize to False to prevent failures
                 warnings.warn(
                     f"Normalization is only supported for 'drift' observation type, not '{obs_type}'. "
                     "Setting normalize=False.",
                     UserWarning,
                 )
-                self.normalize = False
-            elif not normalize and obs_type == "drift":
+                self.normalize_obs = False
+            elif not normalize_obs and obs_type == "drift":
                 # If user chose drift obs_type but set normalize to False, allow the input but warn
                 warnings.warn(
                     "Normalization is recommended for 'drift' observation type but was disabled. "
                     "Verify this is intentional.",
                     UserWarning,
                 )
-                self.normalize = False
+                self.normalize_obs = False
             else:
                 # In all other cases, accept user input
-                self.normalize = normalize
+                self.normalize_obs = normalize_obs
 
         self.observation_type = observation_factory(env=self, **self.observation_config)
         self.observation_space = self.observation_type.space()
@@ -219,9 +219,9 @@ class F110Env(gym.Env):
             self.record_obs_min_max = False
 
         # Only track observation min/max if there is normalizing
-        if self.record_obs_min_max and not self.normalize:
+        if self.record_obs_min_max and not self.normalize_obs:
             warnings.warn(
-                f"Observation min/max tracking only supported if 'normalize' is True"
+                f"Observation min/max tracking only supported if 'normalize_obs' is True"
                 "Setting record_obs_min_max=False.",
                 UserWarning,
             )
@@ -616,7 +616,7 @@ class F110Env(gym.Env):
             "lookahead_n_points": 10,
             "lookahead_ds": 0.3,
             "debug_frenet_projection": False,
-            "normalize": None,  # None = auto-set based on observation type
+            "normalize_obs": None,  # None = auto-set based on observation type
             "record_obs_min_max": False,
         }
 

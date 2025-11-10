@@ -9,7 +9,7 @@ from f1tenth_gym.envs.f110_env import F110Env
 
 
 def test_normalize_default_drift():
-    """Test that normalize=True by default for 'drift' observation type."""
+    """Test that normalize_obs=True by default for 'drift' observation type."""
     env = gym.make(
         "f1tenth_gym:f1tenth-v0",
         config={
@@ -20,7 +20,7 @@ def test_normalize_default_drift():
             "params": F110Env.f1tenth_std_vehicle_params(),
         },
     )
-    assert env.unwrapped.normalize is True
+    assert env.unwrapped.normalize_obs is True
     env.close()
 
 
@@ -35,7 +35,7 @@ def test_normalize_default_other():
             "params": F110Env.f1tenth_std_vehicle_params(),
         },
     )
-    assert env.unwrapped.normalize is False
+    assert env.unwrapped.normalize_obs is False
     env.close()
 
 
@@ -49,10 +49,10 @@ def test_normalize_override_true_with_non_drift():
                 "num_agents": 1,
                 "observation_config": {"type": "original"},
                 "params": F110Env.f1tenth_std_vehicle_params(),
-                "normalize": True,
+                "normalize_obs": True,
             },
         )
-        assert env.unwrapped.normalize is False
+        assert env.unwrapped.normalize_obs is False
         env.close()
 
 
@@ -67,10 +67,10 @@ def test_normalize_override_false_with_drift():
                 "model": "std",
                 "observation_config": {"type": "drift"},
                 "params": F110Env.f1tenth_std_vehicle_params(),
-                "normalize": False,
+                "normalize_obs": False,
             },
         )
-        assert env.unwrapped.normalize is False
+        assert env.unwrapped.normalize_obs is False
         env.close()
 
 
@@ -84,10 +84,10 @@ def test_normalize_explicit_true_with_drift():
             "model": "std",
             "observation_config": {"type": "drift"},
             "params": F110Env.f1tenth_std_vehicle_params(),
-            "normalize": True,
+            "normalize_obs": True,
         },
     )
-    assert env.unwrapped.normalize is True
+    assert env.unwrapped.normalize_obs is True
     env.close()
 
 
@@ -100,10 +100,10 @@ def test_normalize_explicit_false_with_non_drift():
             "num_agents": 1,
             "observation_config": {"type": "original"},
             "params": F110Env.f1tenth_std_vehicle_params(),
-            "normalize": False,
+            "normalize_obs": False,
         },
     )
-    assert env.unwrapped.normalize is False
+    assert env.unwrapped.normalize_obs is False
     env.close()
 
 
@@ -117,7 +117,7 @@ def test_observation_space_bounds_with_normalize_true():
             "model": "std",
             "observation_config": {"type": "drift"},
             "params": F110Env.f1tenth_std_vehicle_params(),
-            "normalize": True,
+            "normalize_obs": True,
         },
     )
     obs_space = env.observation_space
@@ -136,7 +136,7 @@ def test_observation_space_bounds_with_normalize_false():
             "model": "std",
             "observation_config": {"type": "drift"},
             "params": F110Env.f1tenth_std_vehicle_params(),
-            "normalize": False,
+            "normalize_obs": False,
         },
     )
     obs_space = env.observation_space

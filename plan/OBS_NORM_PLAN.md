@@ -56,7 +56,7 @@
   env = gym.make('f1tenth_gym:f1tenth-v0',
       config={'observation_config': {
           'type': 'drift',
-          'normalize': True,  # or False for raw values
+          'normalize_obs': True,  # or False for raw values
           'norm_bounds': 'auto'  # or custom dict
       }}
   )

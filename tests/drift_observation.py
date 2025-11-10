@@ -65,7 +65,7 @@ if __name__ == "__main__":
             "debug_frenet_projection": True,  # Enable Frenet projection debug visualization
             "params": F110Env.f1tenth_std_vehicle_params(),
             "render_track_lines": True,
-            "normalize": True,
+            "normalize_obs": True,
             "record_obs_min_max": True,
         },
         render_mode="human",

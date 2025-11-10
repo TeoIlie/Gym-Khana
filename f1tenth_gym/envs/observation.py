@@ -678,8 +678,8 @@ class VectorObservation(Observation):
         super().__init__(env)
         self.features = features
         self.bounds = {}
-        self.normalize = self.env.unwrapped.normalize
-        if self.normalize:
+        self.normalize_obs = self.env.unwrapped.normalize_obs
+        if self.normalize_obs:
             self.bounds = calculate_norm_bounds(self.env.unwrapped)
 
     def space(self):
@@ -720,7 +720,7 @@ class VectorObservation(Observation):
         complete_space_size = sum([obs_size_dict[k] for k in self.features])
 
         # For normalized observations, bounds should be [-1, 1], otherwise use large_num
-        if self.env.unwrapped.normalize:
+        if self.env.unwrapped.normalize_obs:
             obs_low, obs_high = -1.0, 1.0
         else:
             obs_low, obs_high = -large_num, large_num
@@ -821,7 +821,7 @@ class VectorObservation(Observation):
         vec_obs = []
         for k in self.features:
             curr_feat = agent_obs[k]
-            if self.normalize:
+            if self.normalize_obs:
                 curr_feat = normalize_feature(k, curr_feat, self.bounds)
             if isinstance(curr_feat, (list, np.ndarray)):
                 vec_obs.extend(list(curr_feat))

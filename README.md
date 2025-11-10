@@ -72,7 +72,7 @@ Run formatting mannually with `black .`. Linting also runs automatically due to 
      - `"lookahead_n_points": 10` - Number of lookahead points (default: 10)
      - `"lookahead_ds": 0.3` - Spacing between points in meters (default: 0.3m)
   4. Set `"debug_frenet_projection" = True` to visualize the Frenet coordinates are correct
-  5. Set `"normalize"` to `True/False` for normalizing the observation space. Only `"drift"` observation type currently is able to be normalized 
+  5. Set `"normalize_obs"` to `True/False` for normalizing the observation space. Only `"drift"` observation type currently is able to be normalized 
   6. Set `"record_obs_min_max"` to `True/False` to record min/max observation values during training, and tweak normalization bounds defined in `utils.py::calculate_norm_bounds`
 
 ## Important files:

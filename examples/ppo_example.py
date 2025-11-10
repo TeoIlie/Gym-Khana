@@ -34,7 +34,7 @@ if train:
             "observation_config": {"type": "drift"},  # 6D drift state: [vx, vy, yaw_rate, delta, frenet_u, frenet_n]
             "reset_config": {"type": "rl_random_static"},
             "params": F110Env.f1tenth_std_vehicle_params(),
-            "normalize": True,
+            "normalize_obs": True,
             "record_obs_min_max": debug_obs_norm,
         },
     )
