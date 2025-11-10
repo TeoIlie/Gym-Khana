@@ -791,14 +791,19 @@ class F110Env(gym.Env):
             self.last_s = [0.0] * self.num_agents
 
         reward = 0.0
+        track_length = self.track.centerline.spline.s[-1]
+
         for i in range(self.num_agents):
             # current_s calculated as distance along track centerline from start, in meters
             current_s, _ = self.track.centerline.spline.calc_arclength_inaccurate(self.poses_x[i], self.poses_y[i])
 
-            # progress is previous - current arc length
+            # progress is current - previous arc length
             prog = current_s - self.last_s[i]
-            if prog > 0.9 * self.track.centerline.spline.s[-1]:
-                prog = (self.track.centerline.spline.s[-1] - self.last_s) + current_s
+
+            # Handle backward wraparound (completing a lap)
+            if prog < -0.5 * track_length:
+                prog = prog + track_length
+
             reward += prog
 
             if self.collisions[i]:

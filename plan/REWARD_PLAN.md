@@ -49,7 +49,7 @@ track.centerline.spline.s[i]  # Arc length at waypoint i [m]
 
 | Status | Aspect | Current | Drift |
 |--------|--------|---------|-------|
-| [ ] | Wraparound | Potential bug | Fix wraparound aclength reward bug on line 796 of `f110_env.py`: Detect by `progress < -0.5 * track_length`
+| [X] | Wraparound | Potential bug | Fix wraparound aclength reward bug on line 796 of `f110_env.py`: Detect by `progress < -0.5 * track_length`
 | [ ] | Boundary | TTC (predictive) | Explicit crossing with Frenet coordinates, via new boolean env config param `predictive_collision`, where True is the current TTC, and False is explicit via Frenet coords. Default to True, set to False if observatin type is `"drift"`, and allow user override regardless |
 | [ ] | Structure | `progress - penalties` | `-1` OR `progress` (exclusive) |
 | [ ] | Reset condition | First of: (a) Ego-agent has a collision or (b) Completed 2 laps of the track | Reset when ego-agent has a collision
