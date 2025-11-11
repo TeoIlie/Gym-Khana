@@ -809,18 +809,78 @@ class F110Env(gym.Env):
 
         print()
 
+    def _check_boundary_frenet(self, agent_idx: int) -> bool:
+        """
+        Check if agent has exceeded track boundaries using Frenet coordinates.
+
+        This method provides explicit boundary detection based on the agent's
+        lateral deviation from the centerline. Used when predictive_collision=False
+        (drift mode) to detect exact boundary crossings rather than predictive
+        TTC-based collisions.
+
+        Args:
+            agent_idx (int): Index of the agent to check
+
+        Returns:
+            bool: True if agent has exceeded track boundaries, False otherwise
+
+        Raises:
+            RuntimeError: If Frenet conversion fails
+            ValueError: If track boundary data is missing or invalid
+        """
+        # Get agent position
+        x = self.poses_x[agent_idx]
+        y = self.poses_y[agent_idx]
+        theta = self.poses_theta[agent_idx]
+
+        # Convert to Frenet coordinates
+        try:
+            s, ey, _ = self.track.cartesian_to_frenet(x, y, theta, use_raceline=False)
+        except Exception as e:
+            raise RuntimeError(
+                f"Frenet coordinate conversion failed for agent {agent_idx} at position ({x:.2f}, {y:.2f}). "
+                f"This is required for boundary checking with predictive_collision=False. Error: {e}"
+            ) from e
+
+        centerline = self.track.centerline
+
+        # Check if boundary data is available
+        if centerline.w_lefts is None or centerline.w_rights is None:
+            raise ValueError(
+                "Track boundary data (w_lefts, w_rights) is not available. "
+                "Frenet-based boundary checking requires track width information. "
+                "Ensure track is loaded with boundary data"
+            )
+
+        if not hasattr(centerline, "ss") or centerline.ss is None:
+            raise ValueError(
+                "Centerline arc length data (ss) is not available. "
+                "Frenet-based boundary checking requires arc length information for interpolation. "
+                "Ensure track is properly initialized"
+            )
+
+        # Find nearest waypoint index - np.argmin is efficient for this use case without numba
+        idx = np.argmin(np.abs(centerline.ss - s))
+
+        # Get track width at this position
+        w_left = centerline.w_lefts[idx]
+        w_right = centerline.w_rights[idx]
+        half_width = (w_left + w_right) / 2
+
+        # Check boundary violation
+        if abs(ey) > half_width:
+            return True  # Boundary exceeded
+
+        return False  # Within boundaries
+
     def _get_reward(self):
         """
         Get the reward for the current step
-        """
-        # reward for progress compared to last step
-        # penalty for each crashed agent
-        # Purely collaborative reward if more than 1 agent
 
-        # initialize previous track arc length on the first call
-        # subsequently it will store the prev arc length to determine progress
-        if not hasattr(self, "last_s"):
-            self.last_s = [0.0] * self.num_agents
+        Reward structure depends on collision detection mode:
+        - Predictive (TTC): progress - penalties (additive)
+        - Frenet (Drift): -1 OR progress (exclusive)
+        """
 
         reward = 0.0
         track_length = self.track.centerline.spline.s[-1]
@@ -832,14 +892,23 @@ class F110Env(gym.Env):
             # progress is current - previous arc length
             prog = current_s - self.last_s[i]
 
-            # Handle backward wraparound (completing a lap)
-            if prog < -0.5 * track_length:
-                prog = prog + track_length
+            # correct forward/backward track wraparound
+            prog = self._correct_wraparound_prog(prog, i, track_length)
 
-            reward += prog
-
-            if self.collisions[i]:
-                reward -= 1.0
+            # Apply reward based on collision detection strategy
+            if self.predictive_collision:
+                # Predictive TTC mode: additive reward structure
+                # Reward = sum(progress) - sum(collision_penalties)
+                reward += prog
+                if self.collisions[i]:
+                    reward -= 1.0
+            else:
+                # Frenet boundary mode (drift): exclusive reward structure
+                # Reward = -1 if boundary exceeded, else progress
+                if self._check_boundary_frenet(i):
+                    reward += -1.0  # Exclusive penalty for boundary violation
+                else:
+                    reward += prog  # Only get progress if within boundaries
 
             self.last_s[i] = current_s
         return reward
@@ -953,11 +1022,36 @@ class F110Env(gym.Env):
         # call reset to simulator
         self.sim.reset(poses)
 
+        # Initialize last_s to actual starting arc lengths for accurate first-step reward
+        self.last_s = []
+        for i in range(self.num_agents):
+            s, _, _ = self.track.cartesian_to_frenet(poses[i, 0], poses[i, 1], poses[i, 2], use_raceline=False)
+            self.last_s.append(s)
+
         # get no input observations
         action = np.zeros((self.num_agents, 2))
         obs, _, _, _, info = self.step(action)
 
         return obs, info
+
+    def _correct_wraparound_prog(self, prog: float, agent_idx: int, track_length: float, margin=1.05) -> float:
+        """
+        Validate that progress is within physically possible bounds.
+
+        Args:
+            prog (float): Progress in meters for current timestep
+            agent_idx (int): Index of the agent
+        """
+        # Maximum forward progress in one timestep: v_max * dt
+        max_progress = self.params["v_max"] * self.timestep * margin
+
+        if prog < -max_progress:
+            prog = prog + track_length
+
+        elif prog > max_progress:
+            prog = prog - track_length
+
+        return prog
 
     def update_map(self, map_name: str):
         """

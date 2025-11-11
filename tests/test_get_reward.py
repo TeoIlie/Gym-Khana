@@ -42,7 +42,7 @@ class TestGetRewardWraparound:
 
         # Mock calc_arclength to return position 55m (5m forward)
         original_calc = env.track.centerline.spline.calc_arclength_inaccurate
-        env.track.centerline.spline.calc_arclength_inaccurate = lambda x, y: (55.0, 0)
+        env.track.centerline.spline.calc_arclength_inaccurate = lambda x, y: (50.1, 0)
 
         reward = env._get_reward()
 
@@ -52,11 +52,11 @@ class TestGetRewardWraparound:
         print(f"\nNormal forward progress test:")
         print(f"  Track length: {track_length:.2f}m")
         print(f"  Last s: {last_s:.2f}m")
-        print(f"  Current s: 55.00m")
-        print(f"  Expected reward: ~5.00m")
+        print(f"  Current s: 50.1m")
+        print(f"  Expected reward: ~0.1m")
         print(f"  Actual reward: {reward:.2f}m")
 
-        assert np.isclose(reward, 5.0), f"Forward progress should give ~5m reward, got {reward}"
+        assert np.isclose(reward, 0.1), f"Forward progress should give ~0.1m reward, got {reward}"
 
     def test_backward_wraparound_lap_completion(self, env):
         """
@@ -128,7 +128,7 @@ class TestGetRewardWraparound:
 
         assert np.isclose(reward, expected_reward), f"Wraparound should give {expected_reward} reward, got {reward}"
 
-    def test_no_wraparound_near_finish(self, env):
+    def test_no_wraparound_(self, env):
         """Test that movement near finish line (without crossing) works correctly"""
         track_length = env.track.centerline.spline.s[-1]
 
@@ -138,17 +138,17 @@ class TestGetRewardWraparound:
         env.collisions = np.zeros(1)
 
         # Move forward 5m, still before finish
-        env.track.centerline.spline.calc_arclength_inaccurate = lambda x, y: (track_length - 5.0, 0)
+        env.track.centerline.spline.calc_arclength_inaccurate = lambda x, y: (track_length - 9.9, 0)
 
         reward = env._get_reward()
 
         print(f"\nNo wraparound (near finish):")
         print(f"  Last s: {last_s:.2f}m")
-        print(f"  Current s: {track_length - 5.0:.2f}m")
-        print(f"  Expected reward: ~5.00m")
+        print(f"  Current s: {track_length - 9.9:.2f}m")
+        print(f"  Expected reward: ~0.1m")
         print(f"  Actual reward: {reward:.2f}m")
 
-        assert np.isclose(reward, 5.0), f"Expected reward 5.0, got {reward}"
+        assert np.isclose(reward, 0.1), f"Expected reward 0.1, got {reward}"
 
     def test_collision_penalty(self, env):
         """Test that collision penalty is applied correctly"""
@@ -158,11 +158,11 @@ class TestGetRewardWraparound:
         env.collisions = np.array([1])  # Collision detected
 
         # Mock 5m forward progress
-        env.track.centerline.spline.calc_arclength_inaccurate = lambda x, y: (55.0, 0)
+        env.track.centerline.spline.calc_arclength_inaccurate = lambda x, y: (50.1, 0)
 
         reward = env._get_reward()
 
-        expected_reward = 5.0 - 1.0  # progress - collision penalty
+        expected_reward = 50.1 - last_s - 1.0  # progress - collision penalty
 
         print(f"\nCollision penalty test:")
         print(f"  Last s: {last_s:.2f}m")
@@ -200,7 +200,7 @@ class TestGetRewardWraparound:
             # Simple alternating return for two agents
             if not hasattr(mock_calc, "call_count"):
                 mock_calc.call_count = 0
-            result = (55.0, 0) if mock_calc.call_count == 0 else (103.0, 0)
+            result = (50.1, 0) if mock_calc.call_count == 0 else (100.1, 0)
             mock_calc.call_count += 1
             return result
 
@@ -208,15 +208,191 @@ class TestGetRewardWraparound:
 
         reward = env._get_reward()
 
-        expected_reward = 5.0 + 3.0  # Both agents' progress
+        expected_reward = 0.2  # Both agents' progress
 
         print(f"\nMulti-agent collaborative reward:")
-        print(f"  Agent 0: last_s={last_s_agent0:.2f}m, current_s=55.00m, progress=5.00m")
-        print(f"  Agent 1: last_s={last_s_agent1:.2f}m, current_s=103.00m, progress=3.00m")
         print(f"  Expected total: {expected_reward:.2f}m")
         print(f"  Actual reward: {reward:.2f}m")
 
         assert np.isclose(reward, expected_reward), f"Expected reward {expected_reward}, got {reward}"
+
+
+class TestCorrectWraparoundProg:
+    """Test suite for _correct_wraparound_prog() method"""
+
+    @pytest.fixture
+    def env(self):
+        """Create environment for testing"""
+        env = gym.make(
+            "f1tenth_gym:f1tenth-v0",
+            config={
+                "map": "Spielberg",
+                "num_agents": 1,
+                "timestep": 0.01,
+            },
+            render_mode=None,
+        )
+        env.reset()
+        return env.unwrapped
+
+    def test_forward_wraparound_correction(self, env):
+        """
+        Test forward wraparound: car crosses finish line going forward.
+
+        Scenario: last_s=99.9m, current_s=0.1m on 100m track
+        Raw progress: 0.1 - 99.9 = -99.8m (large negative)
+        Should correct to: -99.8 + 100 = 0.2m (actual forward progress)
+        """
+        track_length = env.track.centerline.spline.s[-1]
+
+        # Simulate crossing finish line forward
+        last_s = track_length - 0.1  # 0.1m before finish
+        current_s = 0.1  # 0.1m after start
+        prog = current_s - last_s  # Large negative value
+
+        corrected = env._correct_wraparound_prog(prog, agent_idx=0, track_length=track_length)
+        expected = 0.2  # Actual distance traveled
+
+        print(f"\n✓ Forward wraparound correction test:")
+        print(f"  Track length: {track_length:.2f}m")
+        print(f"  Last s: {last_s:.2f}m (near finish)")
+        print(f"  Current s: {current_s:.2f}m (crossed to start)")
+        print(f"  Raw progress: {prog:.2f}m")
+        print(f"  Corrected progress: {corrected:.2f}m")
+        print(f"  Expected: {expected:.2f}m")
+
+        assert np.isclose(corrected, expected, atol=0.01), (
+            f"Forward wraparound correction failed: " f"expected {expected:.2f}m, got {corrected:.2f}m"
+        )
+
+    def test_backward_wraparound_correction(self, env):
+        """
+        Test backward wraparound: car crosses finish line going backward.
+
+        Scenario: last_s=0.1m, current_s=99.9m on 100m track
+        Raw progress: 99.9 - 0.1 = 99.8m (large positive)
+        Should correct to: 99.8 - 100 = -0.2m (actual backward progress)
+        """
+        track_length = env.track.centerline.spline.s[-1]
+
+        # Simulate crossing finish line backward
+        last_s = 0.1  # 0.1m after start
+        current_s = track_length - 0.1  # 0.1m before finish (reversed across line)
+        prog = current_s - last_s  # Large positive value
+
+        corrected = env._correct_wraparound_prog(prog, agent_idx=0, track_length=track_length)
+        expected = -0.2  # Actual distance traveled backward
+
+        print(f"\n✓ Backward wraparound correction test:")
+        print(f"  Track length: {track_length:.2f}m")
+        print(f"  Last s: {last_s:.2f}m (just after start)")
+        print(f"  Current s: {current_s:.2f}m (reversed to near finish)")
+        print(f"  Raw progress: {prog:.2f}m")
+        print(f"  Corrected progress: {corrected:.2f}m")
+        print(f"  Expected: {expected:.2f}m")
+
+        assert np.isclose(corrected, expected, atol=0.01), (
+            f"Backward wraparound correction failed: " f"expected {expected:.2f}m, got {corrected:.2f}m"
+        )
+
+    def test_normal_forward_progress_no_correction(self, env):
+        """
+        Test that normal forward progress is not modified.
+
+        Progress within physics bounds should pass through unchanged.
+        """
+        track_length = env.track.centerline.spline.s[-1]
+
+        # Normal forward progress: 0.15m at v=15m/s with dt=0.01s
+        prog_normal = 0.15
+        corrected = env._correct_wraparound_prog(prog_normal, agent_idx=0, track_length=track_length)
+
+        print(f"\n✓ Normal forward progress (no correction):")
+        print(f"  Raw progress: {prog_normal:.2f}m")
+        print(f"  Corrected progress: {corrected:.2f}m")
+        print(f"  Max allowed: {env.params['v_max'] * env.timestep * 1.05:.4f}m")
+
+        assert corrected == prog_normal, (
+            f"Normal progress should not be modified: " f"expected {prog_normal}m, got {corrected}m"
+        )
+
+    def test_normal_backward_progress_no_correction(self, env):
+        """
+        Test that normal backward progress is not modified.
+
+        Small backward motion within physics bounds should pass through unchanged.
+        """
+        track_length = env.track.centerline.spline.s[-1]
+
+        # Normal backward progress: -0.04m at v=-4m/s with dt=0.01s
+        prog_backward = -0.04
+        corrected = env._correct_wraparound_prog(prog_backward, agent_idx=0, track_length=track_length)
+
+        print(f"\n✓ Normal backward progress (no correction):")
+        print(f"  Raw progress: {prog_backward:.2f}m")
+        print(f"  Corrected progress: {corrected:.2f}m")
+        print(f"  Min allowed: {-abs(env.params['v_min']) * env.timestep * 1.05:.4f}m")
+
+        assert corrected == prog_backward, (
+            f"Normal backward progress should not be modified: " f"expected {prog_backward}m, got {corrected}m"
+        )
+
+    def test_zero_progress_no_correction(self, env):
+        """Test that zero progress (stationary vehicle) is not modified."""
+        track_length = env.track.centerline.spline.s[-1]
+
+        prog_zero = 0.0
+        corrected = env._correct_wraparound_prog(prog_zero, agent_idx=0, track_length=track_length)
+
+        print(f"\n✓ Zero progress (stationary):")
+        print(f"  Raw progress: {prog_zero:.2f}m")
+        print(f"  Corrected progress: {corrected:.2f}m")
+
+        assert corrected == prog_zero, "Zero progress should not be modified"
+
+    def test_boundary_threshold_forward(self, env):
+        """
+        Test progress exactly at the forward wraparound threshold.
+
+        Progress just below the threshold should NOT trigger correction.
+        """
+        track_length = env.track.centerline.spline.s[-1]
+
+        # Exactly at threshold (should not trigger correction)
+        max_backward = abs(env.params["v_min"]) * env.timestep * 1.05
+        prog_at_threshold = -max_backward
+
+        corrected = env._correct_wraparound_prog(prog_at_threshold, agent_idx=0, track_length=track_length)
+
+        print(f"\n✓ Boundary test (at forward threshold):")
+        print(f"  Threshold: {-max_backward:.4f}m")
+        print(f"  Progress: {prog_at_threshold:.4f}m")
+        print(f"  Corrected: {corrected:.4f}m")
+
+        # At exact threshold, should NOT trigger wraparound (< not <=)
+        assert corrected == prog_at_threshold, "Progress at threshold should not be corrected"
+
+    def test_boundary_threshold_backward(self, env):
+        """
+        Test progress exactly at the backward wraparound threshold.
+
+        Progress just below the threshold should NOT trigger correction.
+        """
+        track_length = env.track.centerline.spline.s[-1]
+
+        # Exactly at threshold (should not trigger correction)
+        max_forward = env.params["v_max"] * env.timestep * 1.05
+        prog_at_threshold = max_forward
+
+        corrected = env._correct_wraparound_prog(prog_at_threshold, agent_idx=0, track_length=track_length)
+
+        print(f"\n✓ Boundary test (at backward threshold):")
+        print(f"  Threshold: {max_forward:.4f}m")
+        print(f"  Progress: {prog_at_threshold:.4f}m")
+        print(f"  Corrected: {corrected:.4f}m")
+
+        # At exact threshold, should NOT trigger wraparound (> not >=)
+        assert corrected == prog_at_threshold, "Progress at threshold should not be corrected"
 
 
 class TestGetRewardEdgeCases:
@@ -255,15 +431,14 @@ class TestGetRewardEdgeCases:
         env.collisions = np.zeros(1)
 
         # Moved backward 5m
-        env.track.centerline.spline.calc_arclength_inaccurate = lambda x, y: (95.0, 0)
+        env.track.centerline.spline.calc_arclength_inaccurate = lambda x, y: (99.9, 0)
 
         reward = env._get_reward()
 
-        expected_reward = -5.0
+        expected_reward = -0.1
 
         print(f"\nBackward motion (no wraparound):")
         print(f"  Last s: {last_s:.2f}m")
-        print(f"  Current s: 95.00m")
         print(f"  Expected reward: {expected_reward:.2f}m")
         print(f"  Actual reward: {reward:.2f}m")
 

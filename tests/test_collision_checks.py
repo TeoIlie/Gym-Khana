@@ -1,7 +1,9 @@
 # MIT License
 import time
 import unittest
+from unittest.mock import patch, MagicMock
 
+import gymnasium as gym
 import numpy as np
 from f1tenth_gym.envs.collision_models import get_vertices, collision
 
@@ -82,3 +84,203 @@ class CollisionTests(unittest.TestCase):
         fps = 1000 / elapsed
         print("gjk fps:", fps)
         # self.assertGreater(fps, 500)  This is a platform dependent test, not ideal.
+
+
+class TestFrenetBoundaryChecking(unittest.TestCase):
+    """
+    Tests for Frenet-based boundary checking (predictive_collision=False mode).
+    This mode uses explicit Frenet coordinate boundary detection instead of
+    predictive TTC-based collision detection.
+    """
+
+    def setUp(self):
+        """Create test environment with Frenet boundary checking enabled."""
+        self.env = gym.make(
+            "f1tenth_gym:f1tenth-v0",
+            config={
+                "map": "Spielberg",
+                "num_agents": 1,
+                "observation_config": {"type": None},
+                "reset_config": {"type": "rl_random_static"},
+                "predictive_collision": False,  # Enable Frenet boundary checking
+            },
+        )
+        self.env.reset()
+
+    def tearDown(self):
+        """Clean up environment."""
+        self.env.close()
+
+    def test_frenet_boundary_agent_within_bounds(self):
+        """Test that agent within track boundaries is not detected as collision."""
+        unwrapped = self.env.unwrapped
+
+        # Mock track with known boundaries
+        unwrapped.track.centerline.w_lefts = np.array([2.0] * 100)
+        unwrapped.track.centerline.w_rights = np.array([2.0] * 100)
+        unwrapped.track.centerline.ss = np.linspace(0, 100, 100)
+
+        # Agent well within bounds (ey=0.5m, half_width=2.0m)
+        with patch.object(unwrapped.track, "cartesian_to_frenet", return_value=(50.0, 0.5, 0.0)):
+            result = unwrapped._check_boundary_frenet(0)
+
+        self.assertFalse(result, "Agent within bounds should not trigger collision")
+
+    def test_frenet_boundary_agent_exceeds_left_bound(self):
+        """Test that agent exceeding left boundary is detected as collision."""
+        unwrapped = self.env.unwrapped
+
+        # Mock track with known boundaries
+        unwrapped.track.centerline.w_lefts = np.array([2.0] * 100)
+        unwrapped.track.centerline.w_rights = np.array([2.0] * 100)
+        unwrapped.track.centerline.ss = np.linspace(0, 100, 100)
+
+        # Agent exceeds left bound (ey=2.5m > half_width=2.0m)
+        with patch.object(unwrapped.track, "cartesian_to_frenet", return_value=(50.0, 2.5, 0.0)):
+            result = unwrapped._check_boundary_frenet(0)
+
+        self.assertTrue(result, "Agent exceeding left boundary should trigger collision")
+
+    def test_frenet_boundary_agent_exceeds_right_bound(self):
+        """Test that agent exceeding right boundary is detected as collision."""
+        unwrapped = self.env.unwrapped
+
+        # Mock track with known boundaries
+        unwrapped.track.centerline.w_lefts = np.array([2.0] * 100)
+        unwrapped.track.centerline.w_rights = np.array([2.0] * 100)
+        unwrapped.track.centerline.ss = np.linspace(0, 100, 100)
+
+        # Agent exceeds right bound (ey=-2.5m < -half_width=-2.0m)
+        with patch.object(unwrapped.track, "cartesian_to_frenet", return_value=(50.0, -2.5, 0.0)):
+            result = unwrapped._check_boundary_frenet(0)
+
+        self.assertTrue(result, "Agent exceeding right boundary should trigger collision")
+
+    def test_frenet_reward_in_bounds_positive_progress(self):
+        """Test that agent in bounds receives progress reward."""
+        unwrapped = self.env.unwrapped
+
+        # Mock track
+        unwrapped.track.centerline.w_lefts = np.array([2.0] * 100)
+        unwrapped.track.centerline.w_rights = np.array([2.0] * 100)
+        unwrapped.track.centerline.ss = np.linspace(0, 100, 100)
+
+        # Initialize last_s
+        unwrapped.last_s = [10.9]
+        unwrapped.poses_x = [0.0]
+        unwrapped.poses_y = [0.0]
+
+        # Mock: agent in bounds (ey=0.5m) with 1.0m forward progress
+        with patch.object(unwrapped.track, "cartesian_to_frenet", return_value=(50.0, 0.5, 0.0)):
+            with patch.object(unwrapped.track.centerline.spline, "calc_arclength_inaccurate", return_value=(11.0, 0)):
+                reward = unwrapped._get_reward()
+
+        # Should get progress reward: 11.0 - 10.9 = 0.1
+        self.assertAlmostEqual(reward, 0.1, places=5, msg="In-bounds agent should receive progress reward")
+
+    def test_frenet_reward_out_of_bounds_exclusive_penalty(self):
+        """Test that agent out of bounds receives -1 penalty (exclusive, not additive)."""
+        unwrapped = self.env.unwrapped
+
+        # Mock track
+        unwrapped.track.centerline.w_lefts = np.array([2.0] * 100)
+        unwrapped.track.centerline.w_rights = np.array([2.0] * 100)
+        unwrapped.track.centerline.ss = np.linspace(0, 100, 100)
+
+        # Initialize last_s
+        unwrapped.last_s = [10.0]
+        unwrapped.poses_x = [0.0]
+        unwrapped.poses_y = [0.0]
+
+        # Mock: agent out of bounds (ey=2.5m > 2.0m) with 1.0m forward progress
+        with patch.object(unwrapped.track, "cartesian_to_frenet", return_value=(50.0, 2.5, 0.0)):
+            with patch.object(unwrapped.track.centerline.spline, "calc_arclength_inaccurate", return_value=(11.0, 0)):
+                reward = unwrapped._get_reward()
+
+        # Should get exclusive penalty: -1.0 (NOT progress - penalty = 1.0 - 1.0 = 0.0)
+        self.assertAlmostEqual(reward, -1.0, places=5, msg="Out-of-bounds agent should receive exclusive -1 penalty")
+
+    def test_frenet_error_handling_missing_track_boundaries(self):
+        """Test that missing track boundary data raises clear ValueError."""
+        unwrapped = self.env.unwrapped
+
+        # Mock track with missing boundary data
+        unwrapped.track.centerline.w_lefts = None
+        unwrapped.track.centerline.w_rights = None
+        unwrapped.track.centerline.ss = np.linspace(0, 100, 100)
+
+        # Mock Frenet conversion to succeed
+        with patch.object(unwrapped.track, "cartesian_to_frenet", return_value=(50.0, 0.5, 0.0)):
+            with self.assertRaises(ValueError) as context:
+                unwrapped._check_boundary_frenet(0)
+
+        error_msg = str(context.exception)
+        self.assertIn("boundary data", error_msg.lower())
+        self.assertIn("w_lefts", error_msg.lower())
+
+    def test_frenet_vs_predictive_reward_structure(self):
+        """Test that Frenet mode has exclusive penalty vs predictive's additive penalty."""
+        # Create two environments: one with Frenet, one with predictive
+        env_frenet = gym.make(
+            "f1tenth_gym:f1tenth-v0",
+            config={
+                "map": "Spielberg",
+                "num_agents": 1,
+                "observation_config": {"type": None},
+                "reset_config": {"type": "rl_random_static"},
+                "predictive_collision": False,  # Frenet mode
+            },
+        )
+
+        env_predictive = gym.make(
+            "f1tenth_gym:f1tenth-v0",
+            config={
+                "map": "Spielberg",
+                "num_agents": 1,
+                "observation_config": {"type": None},
+                "reset_config": {"type": "rl_random_static"},
+                "predictive_collision": True,  # Predictive mode
+            },
+        )
+
+        try:
+            env_frenet.reset()
+            env_predictive.reset()
+
+            # Setup: agent with 1.0m progress and collision
+            unwrapped_frenet = env_frenet.unwrapped
+            unwrapped_predictive = env_predictive.unwrapped
+
+            # Mock track for both
+            for unwrapped in [unwrapped_frenet, unwrapped_predictive]:
+                unwrapped.track.centerline.w_lefts = np.array([2.0] * 100)
+                unwrapped.track.centerline.w_rights = np.array([2.0] * 100)
+                unwrapped.track.centerline.ss = np.linspace(0, 100, 100)
+                unwrapped.last_s = [10.0]
+                unwrapped.poses_x = [0.0]
+                unwrapped.poses_y = [0.0]
+
+            # Frenet mode: agent out of bounds
+            with patch.object(unwrapped_frenet.track, "cartesian_to_frenet", return_value=(50.0, 2.5, 0.0)):
+                with patch.object(
+                    unwrapped_frenet.track.centerline.spline, "calc_arclength_inaccurate", return_value=(10.1, 0)
+                ):
+                    reward_frenet = unwrapped_frenet._get_reward()
+
+            # Predictive mode: agent with collision
+            unwrapped_predictive.collisions[0] = 1
+            with patch.object(
+                unwrapped_predictive.track.centerline.spline, "calc_arclength_inaccurate", return_value=(10.1, 0)
+            ):
+                reward_predictive = unwrapped_predictive._get_reward()
+
+            # Frenet: exclusive penalty = -1.0
+            # Predictive: additive = progress (10.1 - 10) - penalty (1) = 0.1 - 1.0 = -0.1
+            self.assertAlmostEqual(reward_frenet, -1.0, places=5, msg="Frenet mode should have exclusive -1 penalty")
+            self.assertAlmostEqual(
+                reward_predictive, -0.9, places=5, msg="Predictive mode should have additive penalty (1.0 - 1.0 = 0.0)"
+            )
+
+        finally:
+            env_frenet.close()
+            env_predictive.close()
