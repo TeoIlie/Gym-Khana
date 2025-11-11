@@ -13,7 +13,7 @@ def format_float(x):
         return f"{x:.4f}"
 
 
-def display_obs(obs):
+def display_step_info(obs, reward):
     # Extract observations from obs
     vx = obs[0]
     vy = obs[1]
@@ -44,6 +44,8 @@ def display_obs(obs):
     print(f"  widths lookahead:")
     for i, value in enumerate(widths, start=1):
         print(f"    Point {i} = {format_float(value)}")
+
+    print(f"\n  Reward = {reward}\n")
 
 
 if __name__ == "__main__":
@@ -77,7 +79,7 @@ if __name__ == "__main__":
 
     obs, info = env.reset()
     print(f"Initial observation after env reset:")
-    display_obs(obs)
+    display_step_info(obs, None)
 
     # For single agent, action should be 2D array: shape (1, 2)
     action = np.array([[0.1, 5.0]])  # action format: steering target, acceleration
@@ -85,7 +87,10 @@ if __name__ == "__main__":
     for step in range(10000):  # Reduced for testing
         obs, reward, done, truncated, info = env.step(action)
         print(f"\n=====================\nStep {step+1}:\n=====================\n")
-        display_obs(obs)
+        display_step_info(obs, reward)
+        if done:
+            print("\n=====================\nDONE!\n=====================\n") 
+            break
 
         # render
         env.render()

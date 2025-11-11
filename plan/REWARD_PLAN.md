@@ -53,7 +53,7 @@ track.centerline.spline.s[i]  # Arc length at waypoint i [m]
 | [X] | Boundary | TTC (predictive) | Explicit crossing with Frenet coordinates, via new boolean env config param `predictive_collision`, where True is the current TTC, and False is explicit via Frenet coords. Default to True, set to False if observatin type is `"drift"`, and allow user override regardless |
 | [X] | Structure | `progress - penalties` | `-1` OR `progress` (exclusive) |
 | [X] | Wraparound fix | N/A | Validate why the current wraparound logic uses `0.5` on line 896 of `f110_env.py`
-| [ ] | Reset condition | First of: (a) Ego-agent has a collision or (b) Completed 2 laps of the track | Reset when ego-agent has a collision
+| [X] | Reset condition | First of: (a) Ego-agent has a collision or (b) Completed 2 laps of the track | Leave as is when `predictive_collision` is True. When False, use Frenet-based collision checking, and reset only when ego-agent has a collision.
 | [ ] | Reset function | Configurable with `reset_config` param | Set `reset_config` to `cl_random_random` if observation type is `drift`
 | [ ] | Multi-agent | Collaborative | Collaborative (unchanged)
 | [ ] | Max progress validation | N/A | Consider adding validation that the reward for progress cannot exceed `v_max` * `dt`, possibly by tracking min/max values in `self.obs_min_max_tracker`

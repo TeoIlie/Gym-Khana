@@ -169,10 +169,13 @@ class TestFrenetBoundaryChecking(unittest.TestCase):
         unwrapped.last_s = [10.9]
         unwrapped.poses_x = [0.0]
         unwrapped.poses_y = [0.0]
+        unwrapped.poses_theta = [0.0]
 
         # Mock: agent in bounds (ey=0.5m) with 1.0m forward progress
         with patch.object(unwrapped.track, "cartesian_to_frenet", return_value=(50.0, 0.5, 0.0)):
             with patch.object(unwrapped.track.centerline.spline, "calc_arclength_inaccurate", return_value=(11.0, 0)):
+                # Call _update_state() to populate boundary_exceeded array
+                unwrapped._update_state()
                 reward = unwrapped._get_reward()
 
         # Should get progress reward: 11.0 - 10.9 = 0.1
@@ -191,10 +194,13 @@ class TestFrenetBoundaryChecking(unittest.TestCase):
         unwrapped.last_s = [10.0]
         unwrapped.poses_x = [0.0]
         unwrapped.poses_y = [0.0]
+        unwrapped.poses_theta = [0.0]
 
         # Mock: agent out of bounds (ey=2.5m > 2.0m) with 1.0m forward progress
         with patch.object(unwrapped.track, "cartesian_to_frenet", return_value=(50.0, 2.5, 0.0)):
             with patch.object(unwrapped.track.centerline.spline, "calc_arclength_inaccurate", return_value=(11.0, 0)):
+                # Call _update_state() to populate boundary_exceeded array
+                unwrapped._update_state()
                 reward = unwrapped._get_reward()
 
         # Should get exclusive penalty: -1.0 (NOT progress - penalty = 1.0 - 1.0 = 0.0)
@@ -259,12 +265,15 @@ class TestFrenetBoundaryChecking(unittest.TestCase):
                 unwrapped.last_s = [10.0]
                 unwrapped.poses_x = [0.0]
                 unwrapped.poses_y = [0.0]
+                unwrapped.poses_theta = [0.0]
 
             # Frenet mode: agent out of bounds
             with patch.object(unwrapped_frenet.track, "cartesian_to_frenet", return_value=(50.0, 2.5, 0.0)):
                 with patch.object(
                     unwrapped_frenet.track.centerline.spline, "calc_arclength_inaccurate", return_value=(10.1, 0)
                 ):
+                    # Call _update_state() to populate boundary_exceeded array
+                    unwrapped_frenet._update_state()
                     reward_frenet = unwrapped_frenet._get_reward()
 
             # Predictive mode: agent with collision
@@ -275,10 +284,10 @@ class TestFrenetBoundaryChecking(unittest.TestCase):
                 reward_predictive = unwrapped_predictive._get_reward()
 
             # Frenet: exclusive penalty = -1.0
-            # Predictive: additive = progress (10.1 - 10) - penalty (1) = 0.1 - 1.0 = -0.1
+            # Predictive: additive = progress (10.1 - 10) - penalty (1) = 0.1 - 1.0 = -0.9
             self.assertAlmostEqual(reward_frenet, -1.0, places=5, msg="Frenet mode should have exclusive -1 penalty")
             self.assertAlmostEqual(
-                reward_predictive, -0.9, places=5, msg="Predictive mode should have additive penalty (1.0 - 1.0 = 0.0)"
+                reward_predictive, -0.9, places=5, msg="Predictive mode should have additive penalty (0.1 - 1.0 = -0.9)"
             )
 
         finally:

@@ -119,6 +119,7 @@ class F110Env(gym.Env):
         self.poses_y = []
         self.poses_theta = []
         self.collisions = np.zeros((self.num_agents,))
+        self.boundary_exceeded = np.zeros((self.num_agents,), dtype=bool)
 
         # loop completion
         self.near_start = True
@@ -669,6 +670,10 @@ class F110Env(gym.Env):
         """
         Check if the current rollout is done
 
+        Reset behavior depends on collision detection mode:
+        - Predictive (TTC): Reset when ego agent has TTC collision or all agents complete 2 laps
+        - Frenet (Drift): Reset only when ego agent exceeds track boundaries
+
         Args:
             None
 
@@ -705,18 +710,31 @@ class F110Env(gym.Env):
             if self.toggle_list[i] < 4:
                 self.lap_times[i] = self.current_time
 
-        done = (self.collisions[self.ego_idx]) or np.all(self.toggle_list >= 4)
+        # Conditional reset logic based on collision detection mode
+        if self.predictive_collision:
+            done = (self.collisions[self.ego_idx]) or np.all(self.toggle_list >= 4)
+        else:
+            done = self.boundary_exceeded[self.ego_idx]
 
         return bool(done), self.toggle_list >= 4
 
     def _update_state(self):
         """
         Update the env's states according to observations.
+
+        Note: When predictive_collision=False (Frenet mode), self.collisions
+        reflects simulator TTC/GJK collision state, but is unused for reset/reward.
+        Instead, self.boundary_exceeded tracks Frenet-based boundary violations.
         """
         self.poses_x = self.sim.agent_poses[:, 0]
         self.poses_y = self.sim.agent_poses[:, 1]
         self.poses_theta = self.sim.agent_poses[:, 2]
         self.collisions = self.sim.collisions
+
+        # Check boundaries once per step in Frenet mode
+        if not self.predictive_collision:
+            for i in range(self.num_agents):
+                self.boundary_exceeded[i] = self._check_boundary_frenet(i)
 
     def _update_obs_min_max(self):
         """
@@ -905,7 +923,7 @@ class F110Env(gym.Env):
             else:
                 # Frenet boundary mode (drift): exclusive reward structure
                 # Reward = -1 if boundary exceeded, else progress
-                if self._check_boundary_frenet(i):
+                if self.boundary_exceeded[i]:
                     reward += -1.0  # Exclusive penalty for boundary violation
                 else:
                     reward += prog  # Only get progress if within boundaries
@@ -987,6 +1005,7 @@ class F110Env(gym.Env):
         # reset counters and data members
         self.current_time = 0.0
         self.collisions = np.zeros((self.num_agents,))
+        self.boundary_exceeded = np.zeros((self.num_agents,), dtype=bool)
         self.num_toggles = 0
         self.near_start = True
         self.near_starts = np.array([True] * self.num_agents)
