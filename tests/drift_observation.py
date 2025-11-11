@@ -89,7 +89,7 @@ if __name__ == "__main__":
         print(f"\n=====================\nStep {step+1}:\n=====================\n")
         display_step_info(obs, reward)
         if done:
-            print("\n=====================\nDONE!\n=====================\n") 
+            print("\n=====================\nDONE!\n=====================\n")
             break
 
         # render
