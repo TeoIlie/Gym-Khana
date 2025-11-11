@@ -14,6 +14,7 @@ class TestEnvInterface(unittest.TestCase):
             "integrator": "rk4",
             "control_input": ["speed", "steering_angle"],
             "params": {"mu": 1.0},
+            "normalize_act": False,
         }
         conf = deep_update(conf, config)
 
@@ -153,6 +154,7 @@ class TestEnvInterface(unittest.TestCase):
         config = {
             "num_agents": num_agents,
             "observation_config": {"type": "kinematic_state"},
+            "normalize_act": False,
         }
         vec_env = gym.make_vec("f1tenth_gym:f1tenth-v0", asynchronous=False, config=config, num_envs=num_envs)
 
@@ -182,6 +184,7 @@ class TestEnvInterface(unittest.TestCase):
         config = {
             "num_agents": num_agents,
             "observation_config": {"type": "kinematic_state"},
+            "normalize_act": False,
         }
         vec_env = gym.make_vec("f1tenth_gym:f1tenth-v0", vectorization_mode="async", config=config, num_envs=num_envs)
 

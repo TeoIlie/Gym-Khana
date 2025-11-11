@@ -100,7 +100,8 @@ class F110Env(gym.Env):
         self.integrator = IntegratorType.from_string(self.config["integrator"])
         self.model = DynamicModel.from_string(self.config["model"])
         self.observation_config = self.config["observation_config"]
-        self.action_type = CarAction(self.config["control_input"], params=self.params)
+        self.normalize_act = self.config["normalize_act"]
+        self.action_type = CarAction(self.config["control_input"], params=self.params, normalize=self.normalize_act)
         self.num_beams = self.config["num_beams"]
 
         # rendering and debug configuration
@@ -165,6 +166,10 @@ class F110Env(gym.Env):
         self.agent_ids = [f"agent_{i}" for i in range(self.num_agents)]
 
         assert "type" in self.observation_config, "observation_config must contain 'type' key"
+
+        # steering min and steering velocity min should be symmetrical to max values
+        assert self.params["s_min"] == -self.params["s_max"], "s_min must be equal to -s_max"
+        assert self.params["sv_min"] == -self.params["sv_max"], "sv_min must be equal to -sv_max"
 
         # Handle validation related to 'drift' logic
         obs_type = self.observation_config["type"]
@@ -649,6 +654,7 @@ class F110Env(gym.Env):
             "lookahead_ds": 0.3,
             "debug_frenet_projection": False,
             "normalize_obs": None,  # None = auto-set based on observation type
+            "normalize_act": True,
             "predictive_collision": None,  # None = auto-set based on observation type
             "record_obs_min_max": False,
         }
@@ -663,7 +669,10 @@ class F110Env(gym.Env):
 
             if hasattr(self, "action_space"):
                 # if some parameters changed, recompute action space
-                self.action_type = CarAction(self.config["control_input"], params=self.params)
+                self.normalize_act = self.config["normalize_act"]
+                self.action_type = CarAction(
+                    self.config["control_input"], params=self.params, normalize=self.normalize_act
+                )
                 self.action_space = from_single_to_multi_action_space(self.action_type.space, self.num_agents)
 
     def _check_done(self):

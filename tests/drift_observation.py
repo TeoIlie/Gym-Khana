@@ -70,6 +70,7 @@ if __name__ == "__main__":
             "normalize_obs": True,
             "record_obs_min_max": True,
             "predictive_collision": False,
+            "normalize_act": True,
         },
         render_mode="human",
     )
@@ -82,7 +83,7 @@ if __name__ == "__main__":
     display_step_info(obs, None)
 
     # For single agent, action should be 2D array: shape (1, 2)
-    action = np.array([[0.1, 5.0]])  # action format: steering target, acceleration
+    action = np.array([[0.0, 0.2]])  # action format: normalized steering target, normalized acceleration
 
     for step in range(10000):  # Reduced for testing
         obs, reward, done, truncated, info = env.step(action)

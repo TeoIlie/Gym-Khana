@@ -358,53 +358,53 @@ gym.spaces.Box(
 
 | Status | Location | Task | Notes |
 |---|----------|------|--------|
-| [ ] | ~line 654 | Add `"normalize_act": True` to `default_config()` | Default is True for normalized actions |
-| [ ] | ~line 237 | Add initialization logic: `self.normalize_act = self.config["normalize_act"]` | Get from config (no default - config must have it) |
-| [ ] | ~line 103 | Pass `normalize=self.normalize_act` to `CarAction` constructor | |
-| [ ] | ~line 666 | Update `configure()` method to use `self.normalize_act = self.config["normalize_act"]` (no default) | |
+| [X] | ~line 654 | Add `"normalize_act": True` to `default_config()` | Default is True for normalized actions |
+| [X] | ~line 237 | Add initialization logic: `self.normalize_act = self.config["normalize_act"]` | Get from config (no default - config must have it) |
+| [X] | ~line 103 | Pass `normalize=self.normalize_act` to `CarAction` constructor | |
+| [X] | ~line 666 | Update `configure()` method to use `self.normalize_act = self.config["normalize_act"]` (no default) | |
 
 #### Base Action Classes (`f1tenth_gym/envs/action.py`)
 
 | Status | Location | Task | Notes |
 |---|----------|------|--------|
-| [ ] | ~line 26-32 | Add `normalize` and `scale_factor` attributes to `LongitudinalAction` base class | |
-| [ ] | ~line 74-80 | Add `normalize` and `scale_factor` attributes to `SteerAction` base class | |
+| [X] | ~line 26-32 | Add `normalize` and `scale_factor` attributes to `LongitudinalAction` base class | |
+| [X] | ~line 74-80 | Add `normalize` and `scale_factor` attributes to `SteerAction` base class | |
 
 #### AcclAction (`f1tenth_gym/envs/action.py`)
 
 | Status | Location | Task | Notes |
 |---|----------|------|--------|
-| [ ] | ~line 46-53 | Modify `AcclAction.__init__()` to accept `normalize` parameter | Set limits and scale_factor based on `a_max` |
-| [ ] | ~line 52-53 | Modify `AcclAction.act()` to apply scaling: `return action * self.scale_factor` | |
+| [X] | ~line 46-53 | Modify `AcclAction.__init__()` to accept `normalize` parameter | Set limits and scale_factor based on `a_max` |
+| [X] | ~line 52-53 | Modify `AcclAction.act()` to apply scaling: `return action * self.scale_factor` | |
 
 #### SpeedAction (`f1tenth_gym/envs/action.py`)
 
 | Status | Location | Task | Notes |
 |---|----------|------|--------|
-| [ ] | ~line 58-72 | Modify `SpeedAction.__init__()` to accept `normalize` parameter | Compute v_center and v_range from v_min/v_max |
-| [ ] | ~line 65-70 | Modify `SpeedAction.act()` to apply scaling before P controller | Map [-1, 1] to [v_min, v_max] |
+| [X] | ~line 58-72 | Modify `SpeedAction.__init__()` to accept `normalize` parameter | Compute v_center and v_range from v_min/v_max |
+| [X] | ~line 65-70 | Modify `SpeedAction.act()` to apply scaling before P controller | Map [-1, 1] to [v_min, v_max] |
 
 #### SteeringAngleAction (`f1tenth_gym/envs/action.py`)
 
 | Status | Location | Task | Notes |
 |---|----------|------|--------|
-| [ ] | ~line 94-98 | Modify `SteeringAngleAction.__init__()` to accept `normalize` parameter | Set scale_factor from s_min/s_max |
-| [ ] | ~line 100-106 | Modify `SteeringAngleAction.act()` to apply scaling before `bang_bang_steer()` | |
+| [X] | ~line 94-98 | Modify `SteeringAngleAction.__init__()` to accept `normalize` parameter | Set scale_factor from s_min/s_max |
+| [X] | ~line 100-106 | Modify `SteeringAngleAction.act()` to apply scaling before `bang_bang_steer()` | |
 
 #### SteeringSpeedAction (`f1tenth_gym/envs/action.py`)
 
 | Status | Location | Task | Notes |
 |---|----------|------|--------|
-| [ ] | ~line 111-125 | Modify `SteeringSpeedAction.__init__()` to accept `normalize` parameter | Compute sv_center and sv_range from sv_min/sv_max |
-| [ ] | ~line 118-120 | Modify `SteeringSpeedAction.act()` to apply scaling | Map [-1, 1] to [sv_min, sv_max] |
+| [X] | ~line 111-125 | Modify `SteeringSpeedAction.__init__()` to accept `normalize` parameter | Compute sv_center and sv_range from sv_min/sv_max |
+| [X] | ~line 118-120 | Modify `SteeringSpeedAction.act()` to apply scaling | Map [-1, 1] to [sv_min, sv_max] |
 
 #### CarAction Integration (`f1tenth_gym/envs/action.py`)
 
 | Status | Location | Task | Notes |
 |---|----------|------|--------|
-| [ ] | ~line 134 | Add `normalize: bool` parameter to `CarAction.__init__()` | |
-| [ ] | ~line 174-175 | Pass `normalize` parameter when creating action instances in `CarAction` | |
-| [ ] | ~line 176 | Store `self.normalize` for reference | |
+| [X] | ~line 134 | Add `normalize: bool` parameter to `CarAction.__init__()` | |
+| [X] | ~line 174-175 | Pass `normalize` parameter when creating action instances in `CarAction` | |
+| [X] | ~line 176 | Store `self.normalize` for reference | |
 
 #### Testing
 

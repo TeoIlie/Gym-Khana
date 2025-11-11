@@ -24,11 +24,12 @@ class LongitudinalActionEnum(Enum):
 
 
 class LongitudinalAction:
-    def __init__(self) -> None:
+    def __init__(self, normalize: bool) -> None:
         self._type = None
-
+        self.normalize = normalize
         self.lower_limit = None
         self.upper_limit = None
+        self.scale_factor = 1.0
 
     @abstractmethod
     def act(self, longitudinal_action: Any, **kwargs) -> float:
@@ -44,24 +45,61 @@ class LongitudinalAction:
 
 
 class AcclAction(LongitudinalAction):
-    def __init__(self, params: Dict) -> None:
-        super().__init__()
+    def __init__(self, params: Dict, normalize: bool) -> None:
+        super().__init__(normalize=normalize)
         self._type = "accl"
-        self.lower_limit, self.upper_limit = -params["a_max"], params["a_max"]
 
-    def act(self, action: Tuple[float, float], state, params) -> float:
-        return action
+        if normalize:
+            # When normalized: action space is [-1, 1]
+            self.lower_limit = -1.0
+            self.upper_limit = 1.0
+            # Scale factor: maximum acceleration magnitude
+            self.scale_factor = params["a_max"]
+        else:
+            # Original behavior: action space is [-a_max, a_max]
+            self.lower_limit = -params["a_max"]
+            self.upper_limit = params["a_max"]
+            self.scale_factor = 1.0
+
+    def act(self, action: float, state, params) -> float:
+        # Apply scaling when normalized
+        # When normalize=True: maps [-1, 1] → [-a_max, a_max]
+        # When normalize=False: pass-through (scale_factor=1.0)
+        return action * self.scale_factor
 
 
 class SpeedAction(LongitudinalAction):
-    def __init__(self, params: Dict) -> None:
-        super().__init__()
+    def __init__(self, params: Dict, normalize: bool) -> None:
+        super().__init__(normalize=normalize)
         self._type = "speed"
-        self.lower_limit, self.upper_limit = params["v_min"], params["v_max"]
 
-    def act(self, action: Tuple[float, float], state: np.ndarray, params: Dict) -> float:
+        if normalize:
+            # When normalized: action space is [-1, 1]
+            self.lower_limit = -1.0
+            self.upper_limit = 1.0
+            # Scale factor: compute from v_min and v_max
+            # Center point: (v_max + v_min) / 2
+            # Range: (v_max - v_min) / 2
+            # Mapping: normalized * range + center
+            self.v_center = (params["v_max"] + params["v_min"]) / 2.0
+            self.v_range = (params["v_max"] - params["v_min"]) / 2.0
+        else:
+            # Original behavior: action space is [v_min, v_max]
+            self.lower_limit = params["v_min"]
+            self.upper_limit = params["v_max"]
+
+    def act(self, action: float, state: np.ndarray, params: Dict) -> float:
+        # Scale normalized action to actual speed
+        # When normalize=True: maps [-1, 1] → [v_min, v_max]
+        # When normalize=False: pass-through
+        if self.normalize:
+            desired_speed = action * self.v_range + self.v_center
+        else:
+            desired_speed = action
+
+        # Apply existing P controller logic
         accl = p_accl(
-            action,
+            desired_speed,
             state[3],
             params["a_max"],
             params["v_max"],
@@ -72,11 +110,12 @@ class SpeedAction(LongitudinalAction):
 
 
 class SteerAction:
-    def __init__(self) -> None:
+    def __init__(self, normalize: bool) -> None:
         self._type = None
-
+        self.normalize = normalize
         self.lower_limit = None
         self.upper_limit = None
+        self.scale_factor = 1.0
 
     @abstractmethod
     def act(self, steer_action: Any, **kwargs) -> float:
@@ -92,14 +131,31 @@ class SteerAction:
 
 
 class SteeringAngleAction(SteerAction):
-    def __init__(self, params: Dict) -> None:
-        super().__init__()
+    def __init__(self, params: Dict, normalize: bool) -> None:
+        super().__init__(normalize=normalize)
         self._type = "steering_angle"
-        self.lower_limit, self.upper_limit = params["s_min"], params["s_max"]
 
-    def act(self, action: Tuple[float, float], state: np.ndarray, params: Dict) -> float:
+        if normalize:
+            # When normalized: action space is [-1, 1]
+            self.lower_limit = -1.0
+            self.upper_limit = 1.0
+            # Scale factor: use maximum steering angle (guaranteed symmetric: s_min = -s_max)
+            self.scale_factor = params["s_max"]
+        else:
+            # Original behavior: action space is [s_min, s_max]
+            self.lower_limit = params["s_min"]
+            self.upper_limit = params["s_max"]
+            self.scale_factor = 1.0
+
+    def act(self, action: float, state: np.ndarray, params: Dict) -> float:
+        # Scale normalized action to actual steering angle
+        # When normalize=True: maps [-1, 1] → [s_min, s_max]
+        # When normalize=False: pass-through (scale_factor=1.0)
+        desired_angle = action * self.scale_factor
+
+        # Apply existing bang-bang controller to convert angle → velocity
         sv = bang_bang_steer(
-            action,
+            desired_angle,
             state[2],
             params["sv_max"],
         )
@@ -107,13 +163,27 @@ class SteeringAngleAction(SteerAction):
 
 
 class SteeringSpeedAction(SteerAction):
-    def __init__(self, params: Dict) -> None:
-        super().__init__()
+    def __init__(self, params: Dict, normalize: bool) -> None:
+        super().__init__(normalize=normalize)
         self._type = "steering_speed"
-        self.lower_limit, self.upper_limit = params["sv_min"], params["sv_max"]
 
-    def act(self, action: Tuple[float, float], state: np.ndarray, params: Dict) -> float:
-        return action
+        if normalize:
+            # When normalized: action space is [-1, 1]
+            self.lower_limit = -1.0
+            self.upper_limit = 1.0
+            # Scale factor: guaranteed symmetric (sv_min = -sv_max)
+            self.scale_factor = params["sv_max"]
+        else:
+            # Original behavior: action space is [sv_min, sv_max]
+            self.lower_limit = params["sv_min"]
+            self.upper_limit = params["sv_max"]
+            self.scale_factor = 1.0
+
+    def act(self, action: float, state: np.ndarray, params: Dict) -> float:
+        # Apply scaling when normalized
+        # When normalize=True: maps [-1, 1] → [sv_min, sv_max]
+        # When normalize=False: pass-through (scale_factor=1.0)
+        return action * self.scale_factor
 
 
 class SteerActionEnum(Enum):
@@ -131,7 +201,7 @@ class SteerActionEnum(Enum):
 
 
 class CarAction:
-    def __init__(self, control_mode: list[str, str], params: Dict) -> None:
+    def __init__(self, control_mode: list[str, str], params: Dict, normalize: bool) -> None:
         long_act_type_fn = None
         steer_act_type_fn = None
         if type(control_mode) == str:  # only one control mode specified
@@ -171,8 +241,12 @@ class CarAction:
         else:
             raise ValueError(f"Unknown control mode {control_mode}")
 
-        self._longitudinal_action: LongitudinalAction = long_act_type_fn(params)
-        self._steer_action: SteerAction = steer_act_type_fn(params)
+        # Store normalize parameter for reference
+        self.normalize = normalize
+
+        # Pass normalize parameter to action instances
+        self._longitudinal_action: LongitudinalAction = long_act_type_fn(params, normalize=normalize)
+        self._steer_action: SteerAction = steer_act_type_fn(params, normalize=normalize)
 
     @abstractmethod
     def act(self, action: Any, **kwargs) -> Tuple[float, float]:
