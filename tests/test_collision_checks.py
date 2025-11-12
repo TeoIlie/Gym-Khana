@@ -293,3 +293,81 @@ class TestFrenetBoundaryChecking(unittest.TestCase):
         finally:
             env_frenet.close()
             env_predictive.close()
+
+
+class TestWallDeflectionBehavior(unittest.TestCase):
+    """
+    Tests for wall_deflection configuration parameter.
+    """
+
+    @patch("f1tenth_gym.envs.base_classes.check_ttc_jit")
+    def test_wall_deflection_false_no_velocity_change(self, mock_check_ttc_jit):
+        """Test that wall_deflection=False does not change velocity on collision."""
+        # Mock check_ttc_jit to return True (collision detected)
+        mock_check_ttc_jit.return_value = True
+
+        env = gym.make(
+            "f1tenth_gym:f1tenth-v0",
+            config={
+                "map": "Spielberg",
+                "num_agents": 1,
+                "observation_config": {"type": "original"},
+                "wall_deflection": False,
+            },
+        )
+        env.reset()
+        agent = env.unwrapped.sim.agents[0]
+
+        # Set known velocity and control values
+        agent.state[3] = 5.0  # velocity
+        agent.accel = 2.0
+        agent.steer_angle_vel = 0.5
+
+        # Call check_ttc with a dummy scan (mock will handle the return)
+        dummy_scan = np.zeros(agent.scan_simulator.num_beams)
+        agent.check_ttc(dummy_scan)
+
+        # With wall_deflection=False, velocity should NOT be zeroed
+        self.assertAlmostEqual(
+            agent.state[3], 5.0, places=5, msg="Velocity should not change with wall_deflection=False"
+        )
+        self.assertAlmostEqual(agent.accel, 2.0, places=5, msg="Acceleration should not change")
+        self.assertAlmostEqual(agent.steer_angle_vel, 0.5, places=5, msg="Steering velocity should not change")
+        self.assertTrue(agent.in_collision, msg="Collision flag should be set")
+
+        env.close()
+
+    @patch("f1tenth_gym.envs.base_classes.check_ttc_jit")
+    def test_wall_deflection_true_zeros_velocity(self, mock_check_ttc_jit):
+        """Test that wall_deflection=True zeros velocity on collision."""
+        # Mock check_ttc_jit to return True (collision detected)
+        mock_check_ttc_jit.return_value = True
+
+        env = gym.make(
+            "f1tenth_gym:f1tenth-v0",
+            config={
+                "map": "Spielberg",
+                "num_agents": 1,
+                "observation_config": {"type": "original"},
+                "wall_deflection": True,
+            },
+        )
+        env.reset()
+        agent = env.unwrapped.sim.agents[0]
+
+        # Set known velocity and control values
+        agent.state[3] = 5.0  # velocity
+        agent.accel = 2.0
+        agent.steer_angle_vel = 0.5
+
+        # Call check_ttc with a dummy scan (mock will handle the return)
+        dummy_scan = np.zeros(agent.scan_simulator.num_beams)
+        agent.check_ttc(dummy_scan)
+
+        # With wall_deflection=True, velocity SHOULD be zeroed
+        self.assertAlmostEqual(agent.state[3], 0.0, places=5, msg="Velocity should be zero with wall_deflection=True")
+        self.assertAlmostEqual(agent.accel, 0.0, places=5, msg="Acceleration should be zero")
+        self.assertAlmostEqual(agent.steer_angle_vel, 0.0, places=5, msg="Steering velocity should be zero")
+        self.assertTrue(agent.in_collision, msg="Collision flag should be set")
+
+        env.close()

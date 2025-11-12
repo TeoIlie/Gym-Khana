@@ -71,6 +71,7 @@ if __name__ == "__main__":
             "record_obs_min_max": True,
             "predictive_collision": False,
             "normalize_act": True,
+            "wall_deflection": False,
         },
         render_mode="human",
     )
@@ -89,9 +90,9 @@ if __name__ == "__main__":
         obs, reward, done, truncated, info = env.step(action)
         print(f"\n=====================\nStep {step+1}:\n=====================\n")
         display_step_info(obs, reward)
-        if done:
-            print("\n=====================\nDONE!\n=====================\n")
-            break
+        # if done:
+        #     print("\n=====================\nDONE!\n=====================\n")
+        #     break
 
         # render
         env.render()

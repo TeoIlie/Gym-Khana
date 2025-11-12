@@ -65,6 +65,7 @@ class RaceCar(object):
         self,
         params,
         seed,
+        wall_deflection,
         action_type: CarAction,
         integrator=EulerIntegrator(),
         model=DynamicModel.ST,
@@ -104,6 +105,7 @@ class RaceCar(object):
         self.action_type = action_type
         self.model = model
         self.standard_state_fn = self.model.get_standardized_state_fn()
+        self.wall_deflection = wall_deflection
 
         # state of the vehicle
         self.state = self.model.get_initial_state(params=self.params)
@@ -297,8 +299,8 @@ class RaceCar(object):
             self.ttc_thresh,
         )
 
-        # if in collision stop vehicle
-        if in_collision:
+        # if in collision, and wall_deflection feature enabled, stop vehicle
+        if in_collision and self.wall_deflection:
             self.state[3:] = 0.0
             self.accel = 0.0
             self.steer_angle_vel = 0.0
@@ -450,6 +452,7 @@ class Simulator(object):
         num_agents,
         seed,
         num_beams,
+        wall_deflection,
         action_type: CarAction,
         integrator=Integrator,
         model=DynamicModel.ST,
@@ -482,12 +485,14 @@ class Simulator(object):
         self.collisions = np.zeros((self.num_agents,))
         self.collision_idx = -1 * np.ones((self.num_agents,))
         self.model = model
+        self.wall_deflection = wall_deflection
 
         # initializing agents
         for i in range(self.num_agents):
             car = RaceCar(
                 params,
                 self.seed,
+                wall_deflection=self.wall_deflection,
                 num_beams=num_beams,
                 is_ego=bool(i == ego_idx),
                 time_step=self.time_step,

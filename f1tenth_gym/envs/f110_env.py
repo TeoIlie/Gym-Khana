@@ -141,11 +141,35 @@ class F110Env(gym.Env):
         self.start_thetas = np.zeros((self.num_agents,))
         self.start_rot = np.eye(2)
 
+        # Store observation type for validation related to 'drift' logic
+        obs_type = self.observation_config["type"]
+
+        # determine wall collision value before passing to Simulator __init__
+        wall_deflection = self.config["wall_deflection"]
+
+        if wall_deflection is None:
+            # User did not set wall collision - auto-set based on observation type
+            self.wall_deflection = obs_type != "drift"
+        else:
+            # User explicitly set wall_deflection
+            if wall_deflection and obs_type == "drift":
+                # If user chose drift obs_type but set wall collision to True, allow the input but warn
+                warnings.warn(
+                    "wall_deflection=False is recommended for 'drift' observation type but was set to True. "
+                    "Verify this is intentional.",
+                    UserWarning,
+                )
+                self.wall_deflection = True
+            else:
+                # In all other cases, accept user input
+                self.wall_deflection = wall_deflection
+
         # initiate stuff
         self.sim = Simulator(
             self.params,
             self.num_agents,
             self.seed,
+            wall_deflection=self.wall_deflection,
             time_step=self.timestep,
             integrator=self.integrator,
             model=self.model,
@@ -170,9 +194,6 @@ class F110Env(gym.Env):
         # steering min and steering velocity min should be symmetrical to max values
         assert self.params["s_min"] == -self.params["s_max"], "s_min must be equal to -s_max"
         assert self.params["sv_min"] == -self.params["sv_max"], "sv_min must be equal to -sv_max"
-
-        # Handle validation related to 'drift' logic
-        obs_type = self.observation_config["type"]
 
         # Validate drift observation requires STD model
         if obs_type == "drift" and self.model != DynamicModel.STD:
@@ -657,6 +678,7 @@ class F110Env(gym.Env):
             "normalize_act": True,
             "predictive_collision": None,  # None = auto-set based on observation type
             "record_obs_min_max": False,
+            "wall_deflection": None,  # None = auto-set based on observation type
         }
 
     def configure(self, config: dict) -> None:
