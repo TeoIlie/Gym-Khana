@@ -408,11 +408,39 @@ gym.spaces.Box(
 
 #### Testing
 
-| Status | File | Task | Notes |
-|---|------|------|--------|
-| [ ] | `tests/test_normalized_actions.py` | Create comprehensive unit tests for all action types with normalization | Test AcclAction, SpeedAction, SteeringAngleAction, SteeringSpeedAction |
-| [ ] | All test files | Verify backward compatibility with `normalize_act=False` | All existing tests should pass |
-| [ ] | `tests/test_normalized_actions.py` | Test default behavior with `normalize_act=True` | Verify new default works correctly |
+**Critical Tests (10-13 total)** - Focus on single-agent scenarios with Priority 1 & 2 functionality
+
+##### Configuration Tests (`tests/test_normalize_config.py` - 4 tests)
+
+| Status | Test Name | Task | Expected Behavior |
+|---|-----------|------|-------------------|
+| [ ] | `test_normalize_act_default_true()` | Verify `normalize_act=True` by default | Create env without specifying `normalize_act`, assert `env.unwrapped.normalize_act is True` |
+| [ ] | `test_normalize_act_explicit_false()` | Verify user override to `normalize_act=False` | Create env with `normalize_act=False`, assert flag is False and action space uses physical units |
+| [ ] | `test_action_space_bounds_normalized()` | Verify action space is `[-1, 1]²` when normalized | Create env with `normalize_act=True`, assert `action_space.low == [-1, -1]` and `action_space.high == [1, 1]` |
+| [ ] | `test_action_space_bounds_unnormalized()` | Verify action space uses physical bounds when not normalized | Create env with `normalize_act=False`, assert bounds are `[s_min, -a_max]` to `[s_max, a_max]` |
+
+##### Action Type Scaling Tests (`tests/test_normalize_logic.py` - 4 tests)
+
+| Status | Test Name | Task | Expected Behavior |
+|---|-----------|------|-------------------|
+| [ ] | `test_accl_action_normalization()` | Test AcclAction with both normalized and unnormalized modes | With `normalize=True`: verify `-1→-a_max`, `0→0`, `1→a_max`. With `normalize=False`: verify passthrough (`5.0→5.0`) |
+| [ ] | `test_speed_action_normalization()` | Test SpeedAction with both normalized and unnormalized modes | With `normalize=True`: verify asymmetric mapping `-1→v_min`, `0→v_center`, `1→v_max`. With `normalize=False`: verify passthrough to P controller. Ensure `v_min != v_max` for thorough testing of `v_center` mapping logic |
+| [ ] | `test_steering_angle_action_normalization()` | Test SteeringAngleAction with both normalized and unnormalized modes | With `normalize=True`: verify `-1→-s_max`, `0→0`, `1→s_max`. With `normalize=False`: verify passthrough to bang_bang_steer |
+| [ ] | `test_steering_speed_action_normalization()` | Test SteeringSpeedAction with both normalized and unnormalized modes | With `normalize=True`: verify `-1→-sv_max`, `0→0`, `1→sv_max`. With `normalize=False`: verify passthrough (`2.0→2.0`) |
+
+##### Integration Tests (`tests/test_normalize_logic.py` - 2-3 tests)
+
+| Status | Test Name | Task | Expected Behavior |
+|---|-----------|------|-------------------|
+| [ ] | `test_car_action_space_composition()` | Test CarAction properly composes action space from sub-actions | Create CarAction with `["accl", "steering_angle"]` and `normalize=True`, verify `space.low == [-1, -1]` and `space.high == [1, 1]`. Test with `normalize=False` to verify physical bounds |
+| [ ] | `test_env_step_with_normalized_actions()` | End-to-end test: environment accepts normalized actions and steps correctly | Create env with `normalize_act=True`, reset, step with `[0.5, 0.5]`, verify no crashes and vehicle responds appropriately |
+
+##### Edge Case Tests (`tests/test_normalize_logic.py` - 2 tests, optional)
+
+| Status | Test Name | Task | Expected Behavior |
+|---|-----------|------|-------------------|
+| [ ] | `test_action_space_sampling()` | Verify Gymnasium action space sampling works correctly | Create env, sample from `env.action_space.sample()`, verify sampled action is in `[-1, 1]²`, step with sampled action |
+| [ ] | `test_boundary_actions()` | Test extreme boundary actions don't crash | Create env, step with `[-1, -1]`, `[1, 1]`, and `[0, 0]`, verify no errors and appropriate vehicle response |
 
 ### Validation Criteria
 
@@ -425,5 +453,6 @@ After implementation, verify:
 - ✅ **SpeedAction**: Correctly scales using `v_min` and `v_max` parameters (asymmetric mapping)
 - ✅ **SteeringAngleAction**: Correctly scales using `s_min` and `s_max` parameters (symmetric)
 - ✅ **SteeringSpeedAction**: Correctly scales using `sv_min` and `sv_max` parameters (symmetric)
-- ✅ Multi-agent environments work correctly with normalized actions
+- ✅ Environment accepts normalized actions and steps correctly
+- ✅ Gymnasium action space sampling works with normalized bounds
 
