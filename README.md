@@ -45,24 +45,24 @@ Then the same example can be ran.
 ### Debugging configuration
 1. Debug with breakpoints by looping through environment steps, as in `tests/drift_observation_test.py`
 2. `gym.make()` configurations:
-  1. Run with `render_mode` set to `human` to visualize the process
-  2. Set `"render_track_lines": True` (it is `False` by default) to render the centerline in **green** and the raceline in **red**
-  3. Set `"render_lookahead_curvatures": True` (it is `False` by default) to visualize lookahead curvature sampling points ahead of the vehicle in **yellow**. Optional parameters:
-  4. Set `"debug_frenet_projection" = True` to visualize the Frenet coordinates are correct
-  5. Set `"record_obs_min_max"` to `True/False` to record min/max observation values during training, and tweak normalization bounds if necessary, defined in `utils.py::calculate_norm_bounds`
+    1. Run with `render_mode` set to `human` to visualize the process
+    2. Set `"render_track_lines": True` (it is `False` by default) to render the centerline  in **green** and the raceline in **red**
+    3. Set `"render_lookahead_curvatures": True` (it is `False` by default) to visualize lookahead curvature sampling points ahead of the vehicle in **yellow**. Optional parameters:
+    4. Set `"debug_frenet_projection" = True` to visualize the Frenet coordinates are correct
+    5. Set `"record_obs_min_max"` to `True/False` to record min/max observation values during training, and tweak normalization bounds if necessary, defined in `utils.py::calculate_norm_bounds`
 
 ### Important configuration options
 1. `gym.make()` configurations:
-  1. Set `model` to `std` for drifting model with PAC2002 tire model
-  2. Use `control_input` `["accl", "steering_angle"]` for best RL drift training
-  3. Use parameter dictionary `params` as `F110Env.f1tenth_std_vehicle_params()` for drift parameters on 1/10 scale F1TENTH car
-  4. Lookahead curvature/width observations can be configured with spacing and number parameters, and when `render_lookahead_curvatures": True` these will be reflected
-    1. `lookahead_n_points` - Number of lookahead points (default: 10)
-    2. `lookahead_ds` - Spacing between points in meters (default: 0.3m)
-  5. Set `normalize_obs` to `True/False` for normalizing the observation space. Only `"drift"` observation type currently is able to be normalized 
-  6. Set `normalize_act` to `True/False` for normalizing the action space. Supported for all action types
-  6. Set `predictive_collision` to `True` to use TTC collision checking and `False` for Frenet-based collision checking
-  7. Set `wall_deflection` to `False` to treat track edges as boundaries, and `True` to treat them as walls that cause a collision and halt the vehicle
+    1. Set `model` to `std` for drifting model with PAC2002 tire model
+    2. Use `control_input` `["accl", "steering_angle"]` for best RL drift training
+    3. Use parameter dictionary `params` as `F110Env.f1tenth_std_vehicle_params()` for drift parameters on 1/10 scale F1TENTH car
+    4. Lookahead curvature/width observations can be configured with spacing and number parameters, and when `render_lookahead_curvatures": True` these will be reflected
+      1. `lookahead_n_points` - Number of lookahead points (default: 10)
+      2. `lookahead_ds` - Spacing between points in meters (default: 0.3m)
+    5. Set `normalize_obs` to `True/False` for normalizing the observation space. Only `"drift"` observation type currently is able to be normalized 
+    6. Set `normalize_act` to `True/False` for normalizing the action space. Supported for all action types
+    6. Set `predictive_collision` to `True` to use TTC collision checking and `False` for Frenet-based collision checking
+    7. Set `wall_deflection` to `False` to treat track edges as boundaries, and `True` to treat them as walls that cause a collision and halt the vehicle
 
 ## Wanbd
 The wandb models are available here: https://wandb.ai/teo-altum-quinque-queen-s-university/projects 
