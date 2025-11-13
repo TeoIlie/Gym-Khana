@@ -41,39 +41,34 @@ docker run --gpus all -it -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix f
 ````
 Then the same example can be ran.
 
-## Known issues
-- Library support issues on Windows. You must use Python 3.8 as of 10-2021
-- On MacOS Big Sur and above, when rendering is turned on, you might encounter the error:
-```
-ImportError: Can't find framework /System/Library/Frameworks/OpenGL.framework.
-```
-You can fix the error by installing a newer version of pyglet:
-```bash
-$ pip3 install pyglet==1.5.11
-```
-And you might see an error similar to
-```
-gym 0.17.3 requires pyglet<=1.5.0,>=1.4.0, but you'll have pyglet 1.5.11 which is incompatible.
-```
-which could be ignored. The environment should still work without error.
+## Configuration
+### Debugging configuration
+1. Debug with breakpoints by looping through environment steps, as in `tests/drift_observation_test.py`
+2. `gym.make()` configurations:
+  1. Run with `render_mode` set to `human` to visualize the process
+  2. Set `"render_track_lines": True` (it is `False` by default) to render the centerline in **green** and the raceline in **red**
+  3. Set `"render_lookahead_curvatures": True` (it is `False` by default) to visualize lookahead curvature sampling points ahead of the vehicle in **yellow**. Optional parameters:
+  4. Set `"debug_frenet_projection" = True` to visualize the Frenet coordinates are correct
+  5. Set `"record_obs_min_max"` to `True/False` to record min/max observation values during training, and tweak normalization bounds if necessary, defined in `utils.py::calculate_norm_bounds`
+
+### Important configuration options
+1. `gym.make()` configurations:
+  1. Set `model` to `std` for drifting model with PAC2002 tire model
+  2. Use `control_input` `["accl", "steering_angle"]` for best RL drift training
+  3. Use parameter dictionary `params` as `F110Env.f1tenth_std_vehicle_params()` for drift parameters on 1/10 scale F1TENTH car
+  4. Lookahead curvature/width observations can be configured with spacing and number parameters, and when `render_lookahead_curvatures": True` these will be reflected
+    1. `lookahead_n_points` - Number of lookahead points (default: 10)
+    2. `lookahead_ds` - Spacing between points in meters (default: 0.3m)
+  5. Set `normalize_obs` to `True/False` for normalizing the observation space. Only `"drift"` observation type currently is able to be normalized 
+  6. Set `normalize_act` to `True/False` for normalizing the action space. Supported for all action types
+  6. Set `predictive_collision` to `True` to use TTC collision checking and `False` for Frenet-based collision checking
+  7. Set `wall_deflection` to `False` to treat track edges as boundaries, and `True` to treat them as walls that cause a collision and halt the vehicle
 
 ## Wanbd
 The wandb models are available here: https://wandb.ai/teo-altum-quinque-queen-s-university/projects 
 
 ## Formatting/Linting
 Run formatting mannually with `black .`. Linting also runs automatically due to settings in `.vscode/settings.json`.
-
-## Debugging
-1. Debug with breakpoints by looping through environment steps, as in `tests/drift_observation_test.py`
-2. `gym.make()` configurations:
-  1. Run with `render_mode` set to `human` to visualize the process
-  2. Set `"render_track_lines": True` (it is `False` by default) to render the centerline in **green** and the raceline in **red**
-  3. Set `"render_lookahead_curvatures": True` (it is `False` by default) to visualize lookahead curvature sampling points ahead of the vehicle in **yellow**. Optional parameters:
-     - `"lookahead_n_points": 10` - Number of lookahead points (default: 10)
-     - `"lookahead_ds": 0.3` - Spacing between points in meters (default: 0.3m)
-  4. Set `"debug_frenet_projection" = True` to visualize the Frenet coordinates are correct
-  5. Set `"normalize_obs"` to `True/False` for normalizing the observation space. Only `"drift"` observation type currently is able to be normalized 
-  6. Set `"record_obs_min_max"` to `True/False` to record min/max observation values during training, and tweak normalization bounds defined in `utils.py::calculate_norm_bounds`
 
 ## Important files:
 * `f1tenth_gym/envs/base_classes.py:503` defines the `step` method. 
@@ -93,6 +88,22 @@ Run formatting mannually with `black .`. Linting also runs automatically due to 
 * Parameters for the 1/10 scale f1tenth car to be used with the `STD` model are defined in `f110_env.py` as `f1tenth_std_vehicle_params`. They are created as a mix of existing f1tenth params and tire parameters adjusted from the fullscale car. 
 * In future I may measure these parameters from real data for more accurate fitting
 * To maintain a history of parameter choices, and how they compare with the correct behaviour on the fullscale car, tests script `tests/model_validation/test_f1tenth_std_params.py` creates comparison figures along with parameter YAML file dump ordered by date created inside folder `figures/tire_params`
+
+## Known issues
+- Library support issues on Windows. You must use Python 3.8 as of 10-2021
+- On MacOS Big Sur and above, when rendering is turned on, you might encounter the error:
+```
+ImportError: Can't find framework /System/Library/Frameworks/OpenGL.framework.
+```
+You can fix the error by installing a newer version of pyglet:
+```bash
+$ pip3 install pyglet==1.5.11
+```
+And you might see an error similar to
+```
+gym 0.17.3 requires pyglet<=1.5.0,>=1.4.0, but you'll have pyglet 1.5.11 which is incompatible.
+```
+which could be ignored. The environment should still work without error.
 
 ## Citing
 If you find this Gym environment useful, please consider citing:
