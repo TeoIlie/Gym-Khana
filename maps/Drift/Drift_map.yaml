@@ -1,0 +1,6 @@
+image: Drift.png
+resolution: 0.00787
+origin: [-2.9358420000000003, -3.5905439999999998, 0.0]
+negate: 0
+occupied_thresh: 0.45
+free_thresh: 0.196

@@ -53,14 +53,14 @@ if __name__ == "__main__":
     env = gym.make(
         "f1tenth_gym:f1tenth-v0",
         config={
-            "map": "IMS",  # Open area for drift practice
+            "map": "Drift",  # Open area for drift practice
             "num_agents": 1,  # Single agent for focused learning
             "timestep": 0.01,  # High-frequency control (100Hz)
             "integrator": "rk4",  # Accurate physics integration
             "model": "std",  # Single Track dynamic bicycle model with tire slip
             "control_input": ["accl", "steering_angle"],
             "observation_config": {"type": "drift"},  # 6D drift state: [vx, vy, yaw_rate, delta, frenet_u, frenet_n]
-            "reset_config": {"type": "rl_random_static"},
+            "reset_config": {"type": "cl_random_static"},
             "render_lookahead_curvatures": True,  # Enable lookahead curvature visualization
             "lookahead_n_points": lookahead_n_points,  # Number of lookahead points
             "lookahead_ds": 0.3,  # Spacing between points (meters)
