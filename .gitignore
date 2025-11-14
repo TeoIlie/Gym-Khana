@@ -168,14 +168,10 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
-*.zip
 
 # Commit maps so that pytests passes
 # **/maps/*
 
 # Other
-examples/wandb
-examples/models
-examples/runs
 scratch
 .python-version
