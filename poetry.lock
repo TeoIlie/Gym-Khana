@@ -13,6 +13,51 @@ files = [
 ]
 
 [[package]]
+name = "ale-py"
+version = "0.11.2"
+description = "The Arcade Learning Environment (ALE) - a platform for AI research."
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "ale_py-0.11.2-cp310-cp310-macosx_13_0_arm64.whl", hash = "sha256:58f18a60cdb6d48f7a4eb978327965c121674333a622a92ba60250776d8351c6"},
+    {file = "ale_py-0.11.2-cp310-cp310-macosx_13_0_x86_64.whl", hash = "sha256:c9730aa819fac17915fa72fe85feaeaa4c5181616af0783b3cb340930bfd285f"},
+    {file = "ale_py-0.11.2-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:cdb8ce821c70bc60dfca1871b0b1608ba5d269e56370aad7aaae62a698d3746d"},
+    {file = "ale_py-0.11.2-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:a8a2777db64e181faf69318aaf8098769ee48b84e377d6f8163c024a54967bf8"},
+    {file = "ale_py-0.11.2-cp310-cp310-win_amd64.whl", hash = "sha256:b70ab0eee7f5215dc2ab047b7c3e1d76a524d6764d496c2a6512c3a0beb96f70"},
+    {file = "ale_py-0.11.2-cp311-cp311-macosx_13_0_arm64.whl", hash = "sha256:808c98685a607cc5483238f73915c23426537259f9cece506f47f5213c370734"},
+    {file = "ale_py-0.11.2-cp311-cp311-macosx_13_0_x86_64.whl", hash = "sha256:d80311cf92ca6ca777dec363865891dbb5447e0c9f57774f72c8618851c9fd4b"},
+    {file = "ale_py-0.11.2-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:44838121ab5c2ef50033ebf0cc69aadf3954418d2f8812bdb76fced3797eb33f"},
+    {file = "ale_py-0.11.2-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:f7a2082e00fc81b6706daf945bd4c97b69c5542739707638c65ddf65ad74db38"},
+    {file = "ale_py-0.11.2-cp311-cp311-win_amd64.whl", hash = "sha256:858a644ed92409cdef47a88d177d18421260b74d3f5cdb45963f21de870a6fd9"},
+    {file = "ale_py-0.11.2-cp312-cp312-macosx_13_0_arm64.whl", hash = "sha256:5ab4bfac7c17fdbd96e8068424f491a16c18584f7bbe2797cbb6c13cc4930e76"},
+    {file = "ale_py-0.11.2-cp312-cp312-macosx_13_0_x86_64.whl", hash = "sha256:db47d52e75ee0bc08899e32e3c2b05822c3a75f4e6f34e7896bd1133bec3dee7"},
+    {file = "ale_py-0.11.2-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:7c42fa8a76caf04dd435bd3fc8682a9d25128102d1df96c35b7971ee31f137d0"},
+    {file = "ale_py-0.11.2-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:212927f98357390e651b830835e1d24690816416d0e0d2148ad2d4c679941e1c"},
+    {file = "ale_py-0.11.2-cp312-cp312-win_amd64.whl", hash = "sha256:bb8c4d6d8b6cbecfff2915c9f1787101f033719b66f8149dbc4685a2ff22514a"},
+    {file = "ale_py-0.11.2-cp313-cp313-macosx_13_0_arm64.whl", hash = "sha256:208c70a8a47d8ba5f0b6eb8bfd1c3adc6ec2718f66d7866646976f0853dbda4e"},
+    {file = "ale_py-0.11.2-cp313-cp313-macosx_13_0_x86_64.whl", hash = "sha256:f12a9ee789c3c851ea60afe91c6273e49b880dca510bae00496b0339c41cda81"},
+    {file = "ale_py-0.11.2-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:d12e62ac6d57a02745ad8cbf72fbf11ffedbe12d14b48d08e33f22f5625c8ec8"},
+    {file = "ale_py-0.11.2-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:09e56970ae5f56f377d1c6d8d364d0c610f9c0bc4f88f7abce48174c83ea2882"},
+    {file = "ale_py-0.11.2-cp313-cp313-win_amd64.whl", hash = "sha256:868019090c66fc8c2c24fb19dd8e956a5a4211e594b78097ce1db11a5736684e"},
+    {file = "ale_py-0.11.2-cp39-cp39-macosx_13_0_arm64.whl", hash = "sha256:eb70b789ad03a2fe221185a07365f0b740f81ec378de87189a759efeeb4a8f6b"},
+    {file = "ale_py-0.11.2-cp39-cp39-macosx_13_0_x86_64.whl", hash = "sha256:6e4cc490a09495278a08355449ff445d46461fc2cb998fbb8fba7f9c0dc59deb"},
+    {file = "ale_py-0.11.2-cp39-cp39-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:b89fb1a53ab57e1d8c9539f5004aa8afb405620d1fbab6e05fd6b341b7551110"},
+    {file = "ale_py-0.11.2-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:8c09ce4980ccc6d7c94b4a6d8fd296bc5b6ff2538946a8cc648b7b9d95f9553b"},
+    {file = "ale_py-0.11.2-cp39-cp39-win_amd64.whl", hash = "sha256:c82eae022713a62b0fc580134108eb8895ebe5e4ff61ee3e9626c267ecf3fac7"},
+    {file = "ale_py-0.11.2.tar.gz", hash = "sha256:cc6fed9d994d796d76b0d042fbe0a7101834faa55b5e70b1e1f14367ed9e2a8a"},
+]
+
+[package.dependencies]
+numpy = ">1.20"
+typing-extensions = {version = "*", markers = "python_version < \"3.11\""}
+
+[package.extras]
+test = ["chex ; python_version > \"3.9\" and (sys_platform == \"win32\" or sys_platform == \"linux\")", "gymnasium (>=1.1.0)", "jax (>=0.4.31) ; python_version > \"3.9\" and (sys_platform == \"win32\" or sys_platform == \"linux\")", "opencv-python (>=3.0)", "pytest (>=7.0)"]
+vector = ["gymnasium (>=1.1.0)", "opencv-python (>=3.0)"]
+xla = ["gymnasium (>=1.1.0)", "jax (>=0.4.31) ; python_version > \"3.9\" and (sys_platform == \"win32\" or sys_platform == \"linux\")", "opencv-python (>=3.0)"]
+
+[[package]]
 name = "antlr4-python3-runtime"
 version = "4.9.3"
 description = "ANTLR 4.9.3 runtime for Python 3.7"
@@ -1290,6 +1335,30 @@ docs = ["mdx_gh_links (>=0.2)", "mkdocs (>=1.6)", "mkdocs-gen-files", "mkdocs-li
 testing = ["coverage", "pyyaml"]
 
 [[package]]
+name = "markdown-it-py"
+version = "4.0.0"
+description = "Python port of markdown-it. Markdown parsing, done right!"
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "markdown_it_py-4.0.0-py3-none-any.whl", hash = "sha256:87327c59b172c5011896038353a81343b6754500a08cd7a4973bb48c6d578147"},
+    {file = "markdown_it_py-4.0.0.tar.gz", hash = "sha256:cb0a2b4aa34f932c007117b194e945bd74e0ec24133ceb5bac59009cda1cb9f3"},
+]
+
+[package.dependencies]
+mdurl = ">=0.1,<1.0"
+
+[package.extras]
+benchmarking = ["psutil", "pytest", "pytest-benchmark"]
+compare = ["commonmark (>=0.9,<1.0)", "markdown (>=3.4,<4.0)", "markdown-it-pyrs", "mistletoe (>=1.0,<2.0)", "mistune (>=3.0,<4.0)", "panflute (>=2.3,<3.0)"]
+linkify = ["linkify-it-py (>=1,<3)"]
+plugins = ["mdit-py-plugins (>=0.5.0)"]
+profiling = ["gprof2dot"]
+rtd = ["ipykernel", "jupyter_sphinx", "mdit-py-plugins (>=0.5.0)", "myst-parser", "pyyaml", "sphinx", "sphinx-book-theme (>=1.0,<2.0)", "sphinx-copybutton", "sphinx-design"]
+testing = ["coverage", "pytest", "pytest-cov", "pytest-regressions", "requests"]
+
+[[package]]
 name = "markupsafe"
 version = "3.0.2"
 description = "Safely add untrusted strings to HTML/XML markup."
@@ -1484,6 +1553,18 @@ groups = ["dev"]
 files = [
     {file = "mccabe-0.7.0-py2.py3-none-any.whl", hash = "sha256:6c2d30ab6be0e4a46919781807b4f0d834ebdd6c6e3dca0bda5a15f863427b6e"},
     {file = "mccabe-0.7.0.tar.gz", hash = "sha256:348e0240c33b60bbdf4e523192ef919f28cb2c3d7d5c7794f74009290f236325"},
+]
+
+[[package]]
+name = "mdurl"
+version = "0.1.2"
+description = "Markdown URL utilities"
+optional = false
+python-versions = ">=3.7"
+groups = ["main"]
+files = [
+    {file = "mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8"},
+    {file = "mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba"},
 ]
 
 [[package]]
@@ -2610,7 +2691,7 @@ version = "2.18.0"
 description = "Pygments is a syntax highlighting package written in Python."
 optional = false
 python-versions = ">=3.8"
-groups = ["dev"]
+groups = ["main", "dev"]
 files = [
     {file = "pygments-2.18.0-py3-none-any.whl", hash = "sha256:b8e6aca0523f3ab76fee51799c488e38782ac06eafcf95e7ba832985c8e7b13a"},
     {file = "pygments-2.18.0.tar.gz", hash = "sha256:786ff802f32e91311bff3889f6e9a86e81505fe99f2735bb6d60ae0c5004f199"},
@@ -2999,6 +3080,25 @@ socks = ["PySocks (>=1.5.6,!=1.5.7)"]
 use-chardet-on-py3 = ["chardet (>=3.0.2,<6)"]
 
 [[package]]
+name = "rich"
+version = "14.2.0"
+description = "Render rich text, tables, progress bars, syntax highlighting, markdown and more to the terminal"
+optional = false
+python-versions = ">=3.8.0"
+groups = ["main"]
+files = [
+    {file = "rich-14.2.0-py3-none-any.whl", hash = "sha256:76bc51fe2e57d2b1be1f96c524b890b816e334ab4c1e45888799bfaab0021edd"},
+    {file = "rich-14.2.0.tar.gz", hash = "sha256:73ff50c7c0c1c77c8243079283f4edb376f0f6442433aecb8ce7e6d0b92d1fe4"},
+]
+
+[package.dependencies]
+markdown-it-py = ">=2.2.0"
+pygments = ">=2.13.0,<3.0.0"
+
+[package.extras]
+jupyter = ["ipywidgets (>=7.5.1,<9)"]
+
+[[package]]
 name = "scikit-image"
 version = "0.25.2"
 description = "Image processing in Python"
@@ -3376,12 +3476,20 @@ files = [
 ]
 
 [package.dependencies]
+ale-py = {version = ">=0.9.0", optional = true, markers = "extra == \"extra\""}
 cloudpickle = "*"
 gymnasium = ">=0.29.1,<1.3.0"
 matplotlib = "*"
 numpy = ">=1.20,<3.0"
+opencv-python = {version = "*", optional = true, markers = "extra == \"extra\""}
 pandas = "*"
+pillow = {version = "*", optional = true, markers = "extra == \"extra\""}
+psutil = {version = "*", optional = true, markers = "extra == \"extra\""}
+pygame = {version = "*", optional = true, markers = "extra == \"extra\""}
+rich = {version = "*", optional = true, markers = "extra == \"extra\""}
+tensorboard = {version = ">=2.9.1", optional = true, markers = "extra == \"extra\""}
 torch = ">=2.3,<3.0"
+tqdm = {version = "*", optional = true, markers = "extra == \"extra\""}
 
 [package.extras]
 docs = ["sphinx (>=5,<9)", "sphinx-autobuild", "sphinx-rtd-theme (>=1.3.0)", "sphinx_copybutton", "sphinxcontrib.spelling"]
@@ -3671,6 +3779,28 @@ files = [
 ]
 
 [[package]]
+name = "tqdm"
+version = "4.67.1"
+description = "Fast, Extensible Progress Meter"
+optional = false
+python-versions = ">=3.7"
+groups = ["main"]
+files = [
+    {file = "tqdm-4.67.1-py3-none-any.whl", hash = "sha256:26445eca388f82e72884e0d580d5464cd801a3ea01e63e5601bdff9ba6a48de2"},
+    {file = "tqdm-4.67.1.tar.gz", hash = "sha256:f8aef9c52c08c13a65f30ea34f4e5aac3fd1a34959879d7e59e63027286627f2"},
+]
+
+[package.dependencies]
+colorama = {version = "*", markers = "platform_system == \"Windows\""}
+
+[package.extras]
+dev = ["nbval", "pytest (>=6)", "pytest-asyncio (>=0.24)", "pytest-cov", "pytest-timeout"]
+discord = ["requests"]
+notebook = ["ipywidgets (>=6)"]
+slack = ["slack-sdk"]
+telegram = ["requests"]
+
+[[package]]
 name = "traitlets"
 version = "5.14.3"
 description = "Traitlets Python configuration system"
@@ -3888,4 +4018,4 @@ pyyaml = "*"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10"
-content-hash = "98e516a370c5f13b66581d0f683e8c1b13d121db9ef8610dbb2e6485d1e75182"
+content-hash = "9593e765983ac75d4aa931645f6885d93b42c49d8fd5f16656bde30490e65152"

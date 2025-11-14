@@ -48,7 +48,7 @@ def make_env(rank: int, seed: int = 0):
         seed: Base random seed
 
     Returns:
-        Function that creates and returns a monitored environment
+        Function that creates and returns an environment (without Monitor wrapper)
     """
 
     def _init():
@@ -57,7 +57,8 @@ def make_env(rank: int, seed: int = 0):
             config={
                 "map": "Drift",  # Open area for drift practice
                 "num_agents": 1,  # Single agent for focused learning
-                "timestep": 0.01,  # High-frequency control (100Hz)
+                "timestep": 0.01,  # High-frequency control (100Hz),
+                "num_beams": 2,
                 "integrator": "rk4",  # Accurate physics integration
                 "model": "std",  # Single Track dynamic bicycle model with tire slip
                 "control_input": ["accl", "steering_angle"],
@@ -65,12 +66,12 @@ def make_env(rank: int, seed: int = 0):
                     "type": "drift"
                 },  # 6D drift state: [vx, vy, yaw_rate, delta, frenet_u, frenet_n]
                 "reset_config": {"type": "cl_random_static"},
-                "render_lookahead_curvatures": True,  # Enable lookahead curvature visualization
+                "render_lookahead_curvatures": False,  # Enable lookahead curvature visualization
                 "lookahead_n_points": 10,  # Number of lookahead points
                 "lookahead_ds": 0.3,  # Spacing between points (meters)
-                "debug_frenet_projection": True,  # Enable Frenet projection debug visualization
+                "debug_frenet_projection": False,  # Enable Frenet projection debug visualization
                 "params": F110Env.f1tenth_std_vehicle_params(),
-                "render_track_lines": True,
+                "render_track_lines": False,
                 "normalize_obs": True,
                 "record_obs_min_max": True,
                 "predictive_collision": False,
@@ -79,31 +80,18 @@ def make_env(rank: int, seed: int = 0):
             },
         )
 
-        # Monitor wrapper tracks episode statistics
-        env = Monitor(env)
+        # Don't wrap with Monitor here - VecMonitor will handle it
         env.reset(seed=seed + rank)
         return env
 
     return _init
 
 
-# REQUIREMENT 8-11: Custom actor-critic network architecture
-class CustomActorCriticPolicy(nn.Module):
-    """
-    Custom policy network with specific architecture requirements:
-    - Actor (policy): 2 hidden layers of 256 neurons
-    - Critic (value): 2 hidden layers of 512 neurons
-    - Both use LeakyReLU with negative slope 0.2
-    """
-
-    pass  # We'll configure this through policy_kwargs instead
-
-
 def main():
     # ========== CONFIGURATION ==========
 
     # REQUIREMENT 2: 400 parallel environments
-    N_ENVS = 400
+    N_ENVS = 100
 
     # REQUIREMENT 3: 1024 steps per rollout
     N_STEPS = 1024
@@ -124,11 +112,17 @@ def main():
     # Actor: 2 layers of 256 neurons
     # Critic: 2 layers of 512 neurons
     # LeakyReLU with negative slope 0.2
+
+    # Create custom LeakyReLU with negative slope 0.2
+    class LeakyReLU02(nn.Module):
+        """LeakyReLU with negative slope of 0.2"""
+
+        def forward(self, x):
+            return nn.functional.leaky_relu(x, negative_slope=0.2)
+
     policy_kwargs = dict(
-        activation_fn=nn.LeakyReLU,
+        activation_fn=LeakyReLU02,
         net_arch=dict(pi=[256, 256], vf=[512, 512]),  # Actor (policy) network  # Critic (value function) network
-        # LeakyReLU with negative slope 0.2
-        activation_fn_kwargs=dict(negative_slope=0.2),
     )
 
     # Random seed for reproducibility

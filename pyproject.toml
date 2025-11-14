@@ -47,7 +47,7 @@ shapely = "^2.0.2"
 pyqtgraph = "^0.13.7"
 PyQt6 = "^6.7.1"
 wandb = "^0.17.0"
-stable-baselines3 = "^2.3.0"
+stable-baselines3 = {extras = ["extra"], version = "^2.7.0"}
 omegaconf = "^2.3.0"
 scikit-image = "^0.25.2"
 tensorboard = "^2.20.0"
