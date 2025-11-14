@@ -9,7 +9,7 @@ This script implements steps 2.1-2.4 of the Drift map extraction plan:
 4. Measure path length and calculate required waypoints
 
 Usage:
-    python3 extract_waypoints.py --map Drift [--visualize]
+    python3 extract_waypoints.py --map Drift [--visualize] [--spacing SPACING_VALUE]
 """
 
 import argparse
@@ -21,6 +21,10 @@ from scipy.ndimage import distance_transform_edt
 import matplotlib.pyplot as plt
 from pathlib import Path
 import csv
+
+# Default flag values
+DEFAULT_MAP = "Drift"
+DEFAULT_SPACING = 1.0
 
 
 class SkeletonTracer:
@@ -207,7 +211,7 @@ def order_skeleton_path(skeleton):
     return ordered_path
 
 
-def measure_path_and_calculate_waypoints(ordered_path, resolution, target_spacing=0.1):
+def measure_path_and_calculate_waypoints(ordered_path, resolution, target_spacing):
     """
     Step 2.4: Measure path length and calculate required number of waypoints.
 
@@ -508,15 +512,37 @@ def visualize_centerline(img_array, waypoints_px, waypoints_world, origin, resol
     ax.plot(waypoints_px[:, 1], waypoints_px[:, 0], "r-", linewidth=2, label="Centerline")
 
     # Mark start point (green)
-    ax.scatter(waypoints_px[0, 1], waypoints_px[0, 0], c="green", s=100, marker="o", zorder=10, label="Start")
+    ax.scatter(
+        waypoints_px[0, 1],
+        waypoints_px[0, 0],
+        c="green",
+        s=100,
+        marker="o",
+        zorder=10,
+        label="Start",
+    )
 
     # Mark end point (blue)
-    ax.scatter(waypoints_px[-1, 1], waypoints_px[-1, 0], c="blue", s=100, marker="s", zorder=10, label="End")
+    ax.scatter(
+        waypoints_px[-1, 1],
+        waypoints_px[-1, 0],
+        c="blue",
+        s=100,
+        marker="s",
+        zorder=10,
+        label="End",
+    )
 
     # Mark every 10th waypoint for density visualization
     every_n = max(1, len(waypoints_px) // 30)
     ax.scatter(
-        waypoints_px[::every_n, 1], waypoints_px[::every_n, 0], c="yellow", s=20, marker="o", alpha=0.6, zorder=5
+        waypoints_px[::every_n, 1],
+        waypoints_px[::every_n, 0],
+        c="yellow",
+        s=20,
+        marker="o",
+        alpha=0.6,
+        zorder=5,
     )
 
     ax.set_title(f"Drift Track Centerline ({len(waypoints_px)} waypoints)")
@@ -562,9 +588,25 @@ def visualize_skeleton(img_array, skeleton, ordered_path, output_path):
     # Plot path as line
     axes[2].plot(ordered_path[:, 1], ordered_path[:, 0], "r-", linewidth=2, label="Ordered Path")
     # Mark start point
-    axes[2].scatter(ordered_path[0, 1], ordered_path[0, 0], c="green", s=100, marker="o", zorder=10, label="Start")
+    axes[2].scatter(
+        ordered_path[0, 1],
+        ordered_path[0, 0],
+        c="green",
+        s=100,
+        marker="o",
+        zorder=10,
+        label="Start",
+    )
     # Mark end point
-    axes[2].scatter(ordered_path[-1, 1], ordered_path[-1, 0], c="blue", s=100, marker="s", zorder=10, label="End")
+    axes[2].scatter(
+        ordered_path[-1, 1],
+        ordered_path[-1, 0],
+        c="blue",
+        s=100,
+        marker="s",
+        zorder=10,
+        label="End",
+    )
     axes[2].set_title(f"Ordered Path ({len(ordered_path)} points)")
     axes[2].legend()
     axes[2].axis("equal")
@@ -583,11 +625,17 @@ def visualize_skeleton(img_array, skeleton, ordered_path, output_path):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Extract centerline waypoints from track map", formatter_class=argparse.RawDescriptionHelpFormatter
+        description="Extract centerline waypoints from track map",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--map", type=str, default="Drift", help="Map name (default: Drift)")
+    parser.add_argument("--map", type=str, default=DEFAULT_MAP, help=f"Map name (default: {DEFAULT_MAP})")
     parser.add_argument("--visualize", action="store_true", help="Create visualization plots")
-    parser.add_argument("--spacing", type=float, default=0.1, help="Target waypoint spacing in meters (default: 0.1)")
+    parser.add_argument(
+        "--spacing",
+        type=float,
+        default=DEFAULT_SPACING,
+        help=f"Target waypoint spacing in meters (default: {DEFAULT_SPACING})",
+    )
 
     args = parser.parse_args()
 
@@ -645,7 +693,7 @@ def main():
     ordered_path = order_skeleton_path(skeleton)
 
     # Step 2.4: Measure and calculate waypoints
-    path_info = measure_path_and_calculate_waypoints(ordered_path, resolution, target_spacing=args.spacing)
+    path_info = measure_path_and_calculate_waypoints(ordered_path, resolution, args.spacing)
 
     # Step 2.5: Subsample and calculate track widths
     waypoints_px = subsample_waypoints(ordered_path, path_info["num_waypoints"])
@@ -686,7 +734,14 @@ def main():
 
         # Final centerline visualization
         centerline_vis_path = generation_path / "centerline_final.png"
-        visualize_centerline(img_array, waypoints_px, waypoints_world, origin, resolution, centerline_vis_path)
+        visualize_centerline(
+            img_array,
+            waypoints_px,
+            waypoints_world,
+            origin,
+            resolution,
+            centerline_vis_path,
+        )
 
     print("\nAll steps (2.1-2.7) complete!")
     print(f"Centerline saved to: {csv_path}")
