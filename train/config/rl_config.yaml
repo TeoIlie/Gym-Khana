@@ -10,3 +10,4 @@ start_learning_rate: 0.001 # initial learning rate
 end_learning_rate: 0.0001 # final learning rate, with linear decay
 actor_layer_size: 256 # actor NN layer size
 critic_layer_size: 512 # critic NN layer size
+act_func_neg_slope: 0.2 # actor, critic LeakyReLU negative slope

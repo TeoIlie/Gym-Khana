@@ -13,6 +13,7 @@ import torch.backends.cudnn as cudnn
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.utils import set_random_seed
+from train.training_utils import CustomLeakyReLU
 from config.env_config import (
     get_env_id,
     get_drift_train_config,
@@ -26,6 +27,7 @@ from config.env_config import (
     SEED,
     ACTOR_LAYER_SIZE,
     CRITIC_LAYER_SIZE,
+    ACT_FUNC_NEG_SLOPE,
 )
 
 
@@ -71,6 +73,7 @@ def main():
     print(f"Gamma (discount): {GAMMA}")
     print(f"Actor: 2 hidden layers, each of size {ACTOR_LAYER_SIZE}")
     print(f"Critic: 2 hidden layers, each of size {CRITIC_LAYER_SIZE}")
+    print(f"Actor, critic use LeakyReLU activation with negative slope -{ACT_FUNC_NEG_SLOPE}")
     print(f"Learning rate schedule: {START_LEARNING_RATE} → {END_LEARNING_RATE}")
     print("=" * 40)
 
@@ -95,8 +98,9 @@ def main():
     policy_kwargs = dict(
         net_arch=dict(
             pi=[ACTOR_LAYER_SIZE, ACTOR_LAYER_SIZE],  # Actor
-            vf=[CRITIC_LAYER_SIZE, CRITIC_LAYER_SIZE],  # Critic 
+            vf=[CRITIC_LAYER_SIZE, CRITIC_LAYER_SIZE],  # Critic
         ),
+        activation_fn=CustomLeakyReLU,
     )
 
     # Create PPO model

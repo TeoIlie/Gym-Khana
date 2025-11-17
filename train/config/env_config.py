@@ -25,6 +25,7 @@ END_LEARNING_RATE = _rl_config["end_learning_rate"]
 SEED = _rl_config["seed"]
 ACTOR_LAYER_SIZE = _rl_config["actor_layer_size"]
 CRITIC_LAYER_SIZE = _rl_config["critic_layer_size"]
+ACT_FUNC_NEG_SLOPE = _rl_config["act_func_neg_slope"]
 
 
 # ====================================
