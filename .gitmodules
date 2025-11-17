@@ -1,0 +1,4 @@
+[submodule "maps"]
+	path = maps
+	url = https://github.com/TeoIlie/F1TENTH_Racetracks.git
+	branch = main
