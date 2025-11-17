@@ -23,6 +23,8 @@ GAMMA = _rl_config["gamma"]
 START_LEARNING_RATE = _rl_config["start_learning_rate"]
 END_LEARNING_RATE = _rl_config["end_learning_rate"]
 SEED = _rl_config["seed"]
+ACTOR_LAYER_SIZE = _rl_config["actor_layer_size"]
+CRITIC_LAYER_SIZE = _rl_config["critic_layer_size"]
 
 
 # ====================================

@@ -12,7 +12,7 @@ Implement training script `train/train_ppo_drift.py` that uses PPO from SB3 to i
 
 | Status | Task |
 |----|----|
-| [X] | PPO from SB3 |
+| [X] |  PPO from SB3 |
 | [ ] |  Parallelized with 400 simulated instances running concurrently |
 | [X] |  Each rollout consists of 1024 steps |
 | [ ] |  Time step is 0.05s |
@@ -21,9 +21,9 @@ Implement training script `train/train_ppo_drift.py` that uses PPO from SB3 to i
 | [X] |  Sum of discounted reward is calculated with discount factor gamma=0.99 |
 | [X] |  Learning rate decays from `1 x 10^{-3}` to `1 x 10^-4` over the course of training |
 | [X] |  120 million time steps |
-| [ ] |  Actor and critic networks implemented as MLPs |
-| [ ] |  Actor has 2 hidden layers of 256 neurons |
-| [ ] |  Critic has two hidden layers of 512 neurons |
+| [X] |  Actor and critic networks implemented as MLPs |
+| [X] |  Actor has 2 hidden layers of 256 neurons |
+| [X] |  Critic has two hidden layers of 512 neurons |
 | [ ] |  Both actor, critic networks use Leaky Rectified Linear Unit activation function with negative slope of 0.2 |
 
 ## Code organization and debugging

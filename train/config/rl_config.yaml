@@ -1,10 +1,12 @@
 # This file contains RL-specific hyperparameters for PPO training
 
 seed: 42 # seed for reproducibility
-n_envs: 150  # Number of parallel environment instances
+n_envs: 2  # Number of parallel environment instances
 total_timesteps: 120000000  # 120 million timesteps
 n_steps: 1024  # Number of steps per rollout per environment
 batch_size: 1024  # Minibatch size for each gradient update
 gamma: 0.99  # Discount factor for reward calculation
 start_learning_rate: 0.001 # initial learning rate
 end_learning_rate: 0.0001 # final learning rate, with linear decay
+actor_layer_size: 256 # actor NN layer size
+critic_layer_size: 512 # critic NN layer size

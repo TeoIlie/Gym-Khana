@@ -24,6 +24,8 @@ from config.env_config import (
     END_LEARNING_RATE,
     START_LEARNING_RATE,
     SEED,
+    ACTOR_LAYER_SIZE,
+    CRITIC_LAYER_SIZE,
 )
 
 
@@ -67,6 +69,8 @@ def main():
     print(f"Rollout steps per env: {N_STEPS}")
     print(f"Batch size: {BATCH_SIZE}")
     print(f"Gamma (discount): {GAMMA}")
+    print(f"Actor: 2 hidden layers, each of size {ACTOR_LAYER_SIZE}")
+    print(f"Critic: 2 hidden layers, each of size {CRITIC_LAYER_SIZE}")
     print(f"Learning rate schedule: {START_LEARNING_RATE} → {END_LEARNING_RATE}")
     print("=" * 40)
 
@@ -87,6 +91,14 @@ def main():
     print(f"Creating {N_ENVS} parallel environments...")
     env = SubprocVecEnv([make_env(seed=SEED, rank=i) for i in range(N_ENVS)])
 
+    # Configure network architecture
+    policy_kwargs = dict(
+        net_arch=dict(
+            pi=[ACTOR_LAYER_SIZE, ACTOR_LAYER_SIZE],  # Actor
+            vf=[CRITIC_LAYER_SIZE, CRITIC_LAYER_SIZE],  # Critic 
+        ),
+    )
+
     # Create PPO model
     print("Initializing PPO model...")
     model = PPO(
@@ -97,6 +109,7 @@ def main():
         n_steps=N_STEPS,
         batch_size=BATCH_SIZE,
         gamma=GAMMA,
+        policy_kwargs=policy_kwargs,
         verbose=1,
         tensorboard_log="outputs/tensorboard",
         device="cuda" if cuda.is_available() else "cpu",  # Use GPU if available
