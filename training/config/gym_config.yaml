@@ -1,0 +1,30 @@
+# This file contains all parameters for the gym environment
+
+# Environment
+map: "Drift"
+model: "std"  # Vehicle dynamics model: "std" or "mb" (multi-body)
+timestep: 0.01  # Simulation timestep in seconds
+num_agents: 1
+integrator: "rk4"  # Integration method: "rk4" or "euler"
+predictive_collision: false
+wall_deflection: false
+
+# Action
+action_input:
+  - "accl"
+  - "steering_angle"
+normalize_act: true
+
+# Observation
+obs_type: "drift"
+normalize_obs: true
+record_obs_min_max: true
+lookahead_n_points: 10
+lookahead_ds: 0.3  # Distance between lookahead points
+
+# Reset configuration
+reset_config: "cl_random_static"
+
+# Rendering/Debug settings
+test_debug_render: true
+train_debug_render: false

@@ -68,8 +68,8 @@ F1TENTH_Gym/
 ├── training/
 |   ├── configs/
 |   │   ├── gym_config.yaml     # Gym environment configs
-|   │   └── ppo_config.yaml     # RL-specific hyperparameters
-│   ├── env_config.py           # Single file: centralized gym environment configs
+|   │   ├── ppo_config.yaml     # RL-specific hyperparameters
+|   │   └── env_config.py       # Centralized gym environment configs, using yaml files
 │   ├── training_utils.py       # Utility functions for use by training scripts, for ex.
 │   │                           #    directory setup, callback setup, etc.
 │   └── train_ppo_drift.py      # Main training script with all integrations

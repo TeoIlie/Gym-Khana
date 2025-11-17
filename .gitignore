@@ -175,3 +175,6 @@ cython_debug/
 # Other
 scratch
 .python-version
+
+# Training outputs (models, videos, logs)
+outputs/

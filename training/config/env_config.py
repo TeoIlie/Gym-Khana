@@ -1,0 +1,95 @@
+"""
+Centralized F1TENTH Gym Environment Configuration
+"""
+
+import os
+import yaml
+import gymnasium as gym
+from f1tenth_gym.envs.f110_env import F110Env
+
+# Load config
+_config_path = os.path.join(os.path.dirname(__file__), "gym_config.yaml")
+with open(_config_path, "r") as f:
+    _config = yaml.safe_load(f)
+
+# Gym shared parameters
+MAP = _config["map"]
+MODEL = _config["model"]
+TIMESTEP = _config["timestep"]
+NUM_AGENTS = _config["num_agents"]
+INTEGRATOR = _config["integrator"]
+ACTION_INPUT = _config["action_input"]
+OBS_TYPE = _config["obs_type"]
+RESET_CONFIG = _config["reset_config"]
+LOOKAHEAD_N_POINTS = _config["lookahead_n_points"]
+LOOKAHEAD_DS = _config["lookahead_ds"]
+NORM_OBS = _config["normalize_obs"]
+RECORD_OBS_MIN_MAX = _config["record_obs_min_max"]
+PREDICTIVE_COLLISION = _config["predictive_collision"]
+NORM_ACT = _config["normalize_act"]
+WALL_DEFLECTION = _config["wall_deflection"]
+
+# Vehicle parameters
+PARAMS = F110Env.f1tenth_std_vehicle_params()
+
+# Render/debug params
+TEST_DEBUG_RENDER = _config["test_debug_render"]
+TRAIN_DEBUG_RENDER = _config["train_debug_render"]
+
+
+def get_env_id():
+    return "f1tenth_gym:f1tenth-v0"
+
+
+def get_drift_test_config():
+    """
+    Returns gym drift TESTING environment
+    """
+    return {
+        "map": MAP,
+        "num_agents": NUM_AGENTS,
+        "timestep": TIMESTEP,
+        "integrator": INTEGRATOR,
+        "model": MODEL,
+        "control_input": ACTION_INPUT,
+        "observation_config": {"type": OBS_TYPE},
+        "reset_config": {"type": RESET_CONFIG},
+        "render_lookahead_curvatures": TEST_DEBUG_RENDER,  # Enable lookahead curvature visualization
+        "lookahead_n_points": LOOKAHEAD_N_POINTS,
+        "lookahead_ds": LOOKAHEAD_DS,
+        "debug_frenet_projection": TEST_DEBUG_RENDER,  # Enable Frenet projection debug visualization
+        "params": PARAMS,
+        "render_track_lines": TEST_DEBUG_RENDER,  # View track lines
+        "normalize_obs": NORM_OBS,
+        "record_obs_min_max": RECORD_OBS_MIN_MAX,
+        "predictive_collision": PREDICTIVE_COLLISION,
+        "normalize_act": NORM_ACT,
+        "wall_deflection": WALL_DEFLECTION,
+    }
+
+
+def get_drift_train_config():
+    """
+    Returns gym drift TRAINING environment
+    """
+    return {
+        "map": MAP,
+        "num_agents": NUM_AGENTS,
+        "timestep": TIMESTEP,
+        "integrator": INTEGRATOR,
+        "model": MODEL,
+        "control_input": ACTION_INPUT,
+        "observation_config": {"type": OBS_TYPE},
+        "reset_config": {"type": RESET_CONFIG},
+        "render_lookahead_curvatures": TRAIN_DEBUG_RENDER,  # Enable lookahead curvature visualization
+        "lookahead_n_points": LOOKAHEAD_N_POINTS,
+        "lookahead_ds": LOOKAHEAD_DS,
+        "debug_frenet_projection": TRAIN_DEBUG_RENDER,  # Enable Frenet projection debug visualization
+        "params": PARAMS,
+        "render_track_lines": TRAIN_DEBUG_RENDER,  # View track lines
+        "normalize_obs": NORM_OBS,
+        "record_obs_min_max": RECORD_OBS_MIN_MAX,
+        "predictive_collision": PREDICTIVE_COLLISION,
+        "normalize_act": NORM_ACT,
+        "wall_deflection": WALL_DEFLECTION,
+    }

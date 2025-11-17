@@ -1,8 +1,11 @@
+"""
+File for debugging gym observations
+"""
+
 import gymnasium as gym
 import numpy as np
-from f1tenth_gym.envs.f110_env import F110Env
+from training.config.env_config import get_drift_test_config, get_env_id  # Shared params
 
-# Shared params
 lookahead_n_points = 10
 
 
@@ -50,31 +53,7 @@ def display_step_info(obs, reward):
 
 if __name__ == "__main__":
     # create env
-    env = gym.make(
-        "f1tenth_gym:f1tenth-v0",
-        config={
-            "map": "Drift",  # Open area for drift practice
-            "num_agents": 1,  # Single agent for focused learning
-            "timestep": 0.01,  # High-frequency control (100Hz)
-            "integrator": "rk4",  # Accurate physics integration
-            "model": "std",  # Single Track dynamic bicycle model with tire slip
-            "control_input": ["accl", "steering_angle"],
-            "observation_config": {"type": "drift"},  # 6D drift state: [vx, vy, yaw_rate, delta, frenet_u, frenet_n]
-            "reset_config": {"type": "cl_random_static"},
-            "render_lookahead_curvatures": True,  # Enable lookahead curvature visualization
-            "lookahead_n_points": lookahead_n_points,  # Number of lookahead points
-            "lookahead_ds": 0.3,  # Spacing between points (meters)
-            "debug_frenet_projection": True,  # Enable Frenet projection debug visualization
-            "params": F110Env.f1tenth_std_vehicle_params(),
-            "render_track_lines": True,
-            "normalize_obs": True,
-            "record_obs_min_max": True,
-            "predictive_collision": False,
-            "normalize_act": True,
-            "wall_deflection": False,
-        },
-        render_mode="human",
-    )
+    env = gym.make(get_env_id(), config=get_drift_test_config(), render_mode="human")
 
     # print observation info
     print(f"Drifting observation space: {env.observation_space}")
