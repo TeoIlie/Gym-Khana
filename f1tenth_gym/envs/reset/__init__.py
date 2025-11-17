@@ -6,6 +6,21 @@ from ..track import Track
 
 
 def make_reset_fn(type: str | None, track: Track, num_agents: int, **kwargs) -> ResetFn:
+    """
+    The reset type follows the pattern: <refline>_<resetfn>_<shuffle>
+
+    Components:
+    1. Reference Line (refline):
+        - cl - Centerline
+        - rl - Raceline
+        - map - Map-based reset
+    2. Reset Function (resetfn):
+        - grid - Uses GridResetFn (resets in starting grid, first ~1.0m of track)
+        - random - Uses AllTrackResetFn (resets anywhere along the entire track)
+    3. Shuffle (shuffle):
+        - static - Fixed agent ordering
+        - random - Randomize agent positions
+    """
     type = type or "rl_grid_static"
 
     try:

@@ -7,7 +7,27 @@ import yaml
 import gymnasium as gym
 from f1tenth_gym.envs.f110_env import F110Env
 
-# Load config
+# ====================================
+# RL config
+# ====================================
+_rl_config_path = os.path.join(os.path.dirname(__file__), "rl_config.yaml")
+with open(_rl_config_path, "r") as f:
+    _rl_config = yaml.safe_load(f)
+
+# RL training parameters
+N_ENVS = _rl_config["n_envs"]
+TOTAL_TIMESTEPS = _rl_config["total_timesteps"]
+N_STEPS = _rl_config["n_steps"]
+BATCH_SIZE = _rl_config["batch_size"]
+GAMMA = _rl_config["gamma"]
+START_LEARNING_RATE = _rl_config["start_learning_rate"]
+END_LEARNING_RATE = _rl_config["end_learning_rate"]
+SEED = _rl_config["seed"]
+
+
+# ====================================
+# Gym config
+# ====================================
 _config_path = os.path.join(os.path.dirname(__file__), "gym_config.yaml")
 with open(_config_path, "r") as f:
     _config = yaml.safe_load(f)
@@ -37,6 +57,9 @@ TEST_DEBUG_RENDER = _config["test_debug_render"]
 TRAIN_DEBUG_RENDER = _config["train_debug_render"]
 
 
+# ====================================
+# Gym config functions
+# ===================================
 def get_env_id():
     return "f1tenth_gym:f1tenth-v0"
 

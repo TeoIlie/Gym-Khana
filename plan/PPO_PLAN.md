@@ -6,24 +6,25 @@ To train my drifting controller, I am planning to use **PPO** from SB3 with `wan
 
 ### Overview
 
-Implement training script `training/train_ppo_drift.py` that uses PPO from SB3 to implement a controller that learns how to drift around a track.
+Implement training script `train/train_ppo_drift.py` that uses PPO from SB3 to implement a controller that learns how to drift around a track.
 
 ### Tasks
 
 | Status | Task |
 |----|----|
-| [ ] | PPO from SB3 |
+| [X] | PPO from SB3 |
 | [ ] |  Parallelized with 400 simulated instances running concurrently |
-| [ ] |  Each rollout consists of 1024 steps with a time step of 0.05s |
-| [ ] | Correct reset config - perhaps `cl_random_random`?
-| [ ] |  Training with batch size of 1024 |
-| [ ] |  Sum of discounted reward is calculated with discount factor gamma=0.99 |
-| [ ] |  Learning rate decays from `1 x 10^{-3}` to `1 x 10^-4` over the course of training |
-| [ ] |  120 million time steps |
+| [X] |  Each rollout consists of 1024 steps |
+| [ ] |  Time step is 0.05s |
+| [X] |  Correct reset config `cl_random_static` (`cl_random_random` also works) |
+| [X] |  Training with batch size of 1024 |
+| [X] |  Sum of discounted reward is calculated with discount factor gamma=0.99 |
+| [X] |  Learning rate decays from `1 x 10^{-3}` to `1 x 10^-4` over the course of training |
+| [X] |  120 million time steps |
 | [ ] |  Actor and critic networks implemented as MLPs |
 | [ ] |  Actor has 2 hidden layers of 256 neurons |
 | [ ] |  Critic has two hidden layers of 512 neurons |
-| [] |  Both actor, critic networks use Leaky Rectified Linear Unit activation function with negative slope of 0.2 |
+| [ ] |  Both actor, critic networks use Leaky Rectified Linear Unit activation function with negative slope of 0.2 |
 
 ## Code organization and debugging
 
@@ -53,8 +54,8 @@ Implement training script `training/train_ppo_drift.py` that uses PPO from SB3 t
 | [ ] | Integration with **tensorboard** with `sync_tensorboard=True` |
 | [ ] | Organized file structure for training, outputs, and **wandb** auto-generated outputs (see below) |
 | [ ] | Live visualization of training, including key RL metrics such as reward convergence, and NN metrics like `policy_loss` and `value_loss` |
-| [ ] | Centralized environment config (see below) |
-| [ ] | `.gitignore` to exclude `outputs/` and `wandb/ |
+| [X] | Centralized environment config (see below) |
+| [X] | `.gitignore` to exclude `outputs/`|
 | [ ] | Periodic checkpoint saving |
 | [ ] | Best model tracking with evaluation callback |
 | [ ] | Resume capability from checkpoint|
@@ -63,7 +64,7 @@ Implement training script `training/train_ppo_drift.py` that uses PPO from SB3 t
 
 ### Folder Structure
 
-```
+```plain
 F1TENTH_Gym/
 ├── training/
 |   ├── configs/

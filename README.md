@@ -47,6 +47,13 @@ Then the same example can be ran.
 
 ## Configuration
 
+### Default Gym/RL configurations
+
+Default configurations are stored in `/train/config/env_config.py`, with parameters coming from `train/config/rl_config.yaml` and `train/config/gym_config.yaml`. This exposes all necessary Gym env and RL params for training, as well as default functions for getting Gym configs of RL training and testing environments:
+
+1. `/train/config/env_config.py::get_drift_test_config()`
+2. `/train/config/env_config.py::get_drift_train_config()`
+
 ### Debugging configuration
 
 1. Debug with breakpoints by looping through environment steps, as in `tests/drift_observation_test.py`
