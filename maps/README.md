@@ -8,7 +8,7 @@ All maps are stored here, each in its own directory `"MAP_NAME"`, with these key
 
 ## Generating a new map
 New maps are created as a PNG in a tool like Photoshop, and then the provided scripts convert them into formats appropriate for use in this simulator
-1. First, the png must be generated. This can be done in Photoshop by tracing the inner, outer borders with the **Curvature Pen** tool, using **Threshold** to convert to black and white, and exporting as PNG to a new folder `/maps/MAP_NAME/MAP_NAME.png`
+1. First, the png must be generated. This can be done in Photoshop by tracing the inner, outer borders with the **Curvature Pen** tool, using **Threshold** to convert to black and white, and exporting as PNG to a new folder `/maps/MAP_NAME/MAP_NAME.png`. Though not necessary, rendering looks better if the aspect ratio of the map PNG is 1:1
 2. Then, `convert_to_grayscale.py` is used to convert the PNG to grayscale format for interpretation by the simulator
 3. Finally, `extract_waypoints.py` takes the PNG, uses `skeletonize` to extract the centerline, and saves the waypoints to the appropriate file. 
     1. Note that for this to work, only the inside (not the outside) of the track must be white, so the `skeletonize` algorithm recognizes this as the only empty space. This can easily be done using the **Paint Bucket** tool in Photoshop to fill the outer space with solid black. 
