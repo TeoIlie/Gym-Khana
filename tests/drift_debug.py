@@ -4,7 +4,7 @@ File for debugging gym observations
 
 import gymnasium as gym
 import numpy as np
-from training.config.env_config import get_drift_test_config, get_env_id  # Shared params
+from train.config.env_config import get_drift_test_config, get_env_id
 
 lookahead_n_points = 10
 
