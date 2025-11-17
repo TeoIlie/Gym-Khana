@@ -3,18 +3,21 @@
 ## Current Implementation
 
 ### Reward (`f110_env.py:780-804`)
+
 - **Formula**: `sum(progress_i) - sum(collision_penalty_i)` across all agents
 - **Progress**: Arc length `s` via `track.centerline.spline.calc_arclength_inaccurate(x, y)`
 - **Collision**: Fixed -1.0 penalty (TTC-based, predictive)
 - **Collaborative**: Sums all agent rewards
 
 ### Reset (`f110_env.py:859-919`)
+
 - Gets poses from `options["poses"]` or `reset_fn.sample()`
 - Default: `"rl_grid_static"` (raceline grid, no shuffle)
 - Format: `<refline>_<resetfn>_<shuffle>` (e.g., `"rl_random_random"`)
 - Resets counters, sim state, takes zero-action step for initial obs
 
 ### Collision Detection (`base_classes.py:291-309`)
+
 - **Method**: Time-To-Collision (TTC) with 0.005s threshold
 - **Sources**: Track boundaries (LiDAR) + vehicle-vehicle
 - **Behavior**: Predictive (triggers before contact)
@@ -29,6 +32,7 @@ r_t = -1                if track boundary exceeded
 ## Available Infrastructure
 
 ### Frenet Coordinates (`track.py:349-410`)
+
 ```python
 s, ey, ephi = track.cartesian_to_frenet(x, y, phi, use_raceline=False)
 # s: arc length [m]
@@ -37,6 +41,7 @@ s, ey, ephi = track.cartesian_to_frenet(x, y, phi, use_raceline=False)
 ```
 
 ### Track Boundaries
+
 ```python
 track.centerline.w_lefts[i]   # Left width at waypoint i [m]
 track.centerline.w_rights[i]  # Right width at waypoint i [m]

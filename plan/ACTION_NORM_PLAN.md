@@ -447,6 +447,7 @@ gym.spaces.Box(
 After implementation, verify:
 
 #### Functional Requirements
+
 - ✅ Action space is `Box([-1, 1], [-1, 1])` when `normalize_act=True` (default)
 - ✅ Action space uses physical units when `normalize_act=False` (user override)
 - ✅ **AcclAction**: Correctly scales using `a_max` parameter (symmetric: [-a_max, a_max])
@@ -455,4 +456,3 @@ After implementation, verify:
 - ✅ **SteeringSpeedAction**: Correctly scales using `sv_min` and `sv_max` parameters (symmetric)
 - ✅ Environment accepts normalized actions and steps correctly
 - ✅ Gymnasium action space sampling works with normalized bounds
-

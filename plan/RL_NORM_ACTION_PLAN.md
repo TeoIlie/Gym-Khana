@@ -13,6 +13,7 @@ env.action_space = Box(low=[-1, -1], high=[1, 1], shape=(2,), dtype=float32)
 ```
 
 This tells RL algorithms that:
+
 1. Actions must be in the range `[-1, 1]`
 2. The environment will handle scaling to physical units
 3. Gradient-based methods should respect these bounds
@@ -24,6 +25,7 @@ This tells RL algorithms that:
 **Description**: Apply `tanh` activation to the neural network's output to squash unbounded values into `[-1, 1]`.
 
 **Advantages**:
+
 - ✅ Smooth, differentiable constraint
 - ✅ Always produces valid actions (no clipping needed)
 - ✅ Good gradient flow throughout training
@@ -31,6 +33,7 @@ This tells RL algorithms that:
 - ✅ Compatible with all policy gradient methods
 
 **Disadvantages**:
+
 - ⚠️ Requires log-probability correction for some algorithms
 - ⚠️ Saturation near bounds (gradient vanishes when |tanh input| > 3)
 
@@ -43,12 +46,14 @@ This tells RL algorithms that:
 **Description**: Let the RL library automatically handle bounded action spaces based on the Gymnasium `Box` definition.
 
 **Advantages**:
+
 - ✅ No manual intervention needed
 - ✅ Library handles implementation details
 - ✅ Often uses tanh internally
 - ✅ Correct log-probability calculations
 
 **Disadvantages**:
+
 - ⚠️ Behavior varies by library
 - ⚠️ Less control over implementation
 
@@ -61,10 +66,12 @@ This tells RL algorithms that:
 **Description**: Apply `clip(action, -1, 1)` after network output.
 
 **Advantages**:
+
 - ✅ Simple to implement
 - ✅ Guarantees valid actions
 
 **Disadvantages**:
+
 - ❌ Poor gradient flow (zero gradient when clipped)
 - ❌ Exploration issues (actions stuck at bounds)
 - ❌ Violates action distribution assumptions
@@ -133,6 +140,7 @@ for _ in range(1000):
 ```
 
 **Key Points**:
+
 - ✅ No manual tanh needed - SB3 handles it automatically
 - ✅ Action bounds respected during exploration
 - ✅ Proper log-probability calculations built-in
@@ -148,4 +156,5 @@ for _ in range(1000):
 | **Manual Clipping** | ❌ Poor | ❌ Poor | ✅ Easy | Inference only (not training) |
 
 ## My implementation
+
 I will begin by using the Library Auto-Handle, and use a different approach only if this fails

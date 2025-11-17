@@ -34,8 +34,8 @@ Implement training script `training/train_ppo_drift.py` that uses PPO from SB3 t
     - Models → `outputs/models/{wandb_run_id}/`
     - Videos → `outputs/videos/{wandb_run_id}/`
     - Logs → `outputs/tensorboard/{wandb_run_id}/`
-    - WandB dashboard with live metrics + videos
-4. Live visualization with **wandb** and **tensorboard**
+    - Wandb → `outputs/wandb`
+4. Live visualization with **wandb** live metrics and videos, and **tensorboard**
 
 ### Tasks
 
@@ -55,12 +55,15 @@ Implement training script `training/train_ppo_drift.py` that uses PPO from SB3 t
 F1TENTH_Gym/
 ├── training/
 │   ├── env_config.py           # Single file: centralized gym environment configs
+│   ├── training_utils.py       # Utility functions for use by training scripts, for ex.
+│   │                           #    directory setup, callback setup, etc.
 │   └── train_ppo_drift.py      # Main training script with all integrations
+│   ... train_sac_drift.py      # Possibly other training scripts  
 │
-├── outputs/                    # All training outputs (gitignored)
-│   ├── models/{run_id}/        # Model checkpoints
-│   ├── videos/{run_id}/        # Training videos
-│   └── tensorboard/{run_id}/   # TensorBoard logs
-│
-└── wandb/                      # WandB runs (auto-created, gitignored)
+└── outputs/                    # All training outputs (gitignored)
+    ├── models/{run_id}/        # Model checkpoints
+    ├── videos/{run_id}/        # Training videos
+    ├── tensorboard/{run_id}/   # TensorBoard logs
+    └── wandb/                  # WandB runs (auto-created, gitignored)
+
 ```

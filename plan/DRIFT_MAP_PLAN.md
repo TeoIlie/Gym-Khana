@@ -7,17 +7,20 @@ Create map configuration files for the Drift track to match the F1TENTH Gym form
 ## Key Parameters (Calculated from Measurements)
 
 ### Resolution Calculation
+
 - **Spielberg**: 37 px = 2.2 m → resolution = 0.05946 m/px (yaml shows 0.05796)
 - **Drift**: 127 px = 1.0 m → **resolution = 0.00787 m/px**
 
 The Drift track has **8× finer resolution** than Spielberg (smaller real-world pixel size).
 
 ### Map Dimensions
+
 - **Image size**: 746 × 912 pixels (width × height)
 - **Map size**: 5.87 × 7.18 meters
 - **Origin** (to center map): `[-2.94, -3.59, 0.0]`
 
 ### Track Characteristics
+
 - **Average width**: 1.0 meter
 - **Estimated length**: ~18-20 meters
 - **Target waypoints**: ~250-350 (dense sampling for accuracy)
@@ -39,6 +42,7 @@ free_thresh: 0.196
 ```
 
 **Notes:**
+
 - `resolution`: 1.0 / 127 = 0.007874... (use full precision)
 - `origin`: Calculated to center the track around (0, 0) in world coordinates
 - Other parameters: Copy from Spielberg (standard occupancy grid values)
@@ -48,11 +52,13 @@ free_thresh: 0.196
 **Goal**: Generate densely-spaced ordered waypoints directly from skeleton, preserving loop closure.
 
 **Key Design Decision**: Use **dense sampling directly from skeleton** instead of sparse sampling + resampling. This:
+
 - Preserves perfect loop closure from skeleton
 - Maintains accurate track width measurements
 - Avoids interpolation artifacts at sharp curves
 
 #### 2.1 Load and Prepare Image
+
 ```python
 from PIL import Image
 import numpy as np
@@ -69,6 +75,7 @@ track_mask = (img_array > 127).astype(np.uint8)
 **Important**: Ensure the PNG has black background and only the inside track is white. The skeleton will trace the centerline of the white region.
 
 #### 2.2 Extract Skeleton (Centerline)
+
 ```python
 from skimage.morphology import skeletonize
 
@@ -80,6 +87,7 @@ skeleton = skeletonize(track_mask)
 ```
 
 **Why skeleton?**
+
 - Gives mathematically optimal centerline (equidistant from both boundaries)
 - Single-pixel width simplifies path tracing
 - Handles variable track width automatically
@@ -101,6 +109,7 @@ ordered_path = trace_skeleton_path(skeleton, start_point)
 ```
 
 **Tracing algorithm**:
+
 1. Start at initial point
 2. Mark as visited
 3. Find unvisited neighbor (8-connected: up/down/left/right/diagonals)
@@ -129,6 +138,7 @@ print(f"Subsampled from {num_skeleton_points} to {len(waypoints_px)} waypoints")
 ```
 
 **Why subsample instead of resample?**
+
 - Preserves actual skeleton geometry
 - Maintains excellent loop closure
 - No interpolation errors at curves
@@ -183,6 +193,7 @@ w_tr_left = np.array(w_tr_left)
 **Simplified approach**: Just use the distance_map value at each waypoint for both left and right widths. This assumes symmetric track width, which is reasonable for a simple drift course.
 
 **Why not ray casting?**
+
 - Distance transform is faster and simpler
 - At sharp curves with subsampled waypoints, ray casting can give wrong directions
 - For this application, symmetric width is sufficient
@@ -240,6 +251,7 @@ with open('maps/Drift/Drift_centerline.csv', 'w', newline='') as f:
 ```
 
 **Format notes**:
+
 - Header line with comment
 - Coordinates: full precision (Python default)
 - Widths: 1 decimal place
@@ -291,6 +303,7 @@ print(f"Total track length: {total_length:.2f}m")
 ```
 
 **Expected values**:
+
 - Spacing: 0.060 ± 0.010 m (60mm ± 10mm variation is acceptable)
 - Track width: 0.9-1.1 m
 - Loop closure: < 0.1 m (excellent with direct subsampling)
@@ -313,13 +326,16 @@ env.close()
 ## Expected Output Files
 
 ### 1. `maps/Drift/Drift_map.yaml`
+
 Already created (see Step 1)
 
 ### 2. `maps/Drift/Drift_centerline.csv`
+
 - **Rows**: ~300-350 waypoints
 - **Format**: `x_m, y_m, w_tr_right_m, w_tr_left_m`
 - **Spacing**: ~60-80mm between waypoints
 - **Example**:
+
 ```
 # x_m, y_m, w_tr_right_m, w_tr_left_m
 -1.234567, 2.345678, 0.5, 0.5
@@ -329,6 +345,7 @@ Already created (see Step 1)
 ```
 
 ### 3. `maps/Drift/centerline_visualization.png` (validation)
+
 - Visual overlay of centerline waypoints on track image
 - Green dot: start point
 - Blue square: end point
@@ -337,33 +354,41 @@ Already created (see Step 1)
 ## Common Issues and Solutions
 
 ### Issue 1: Poor loop closure after processing
+
 **Symptom**: Loop closure gap > 0.1m, end waypoint far from start
 **Cause**: Resampling or interpolation breaks the skeleton's natural loop
 **Solution**: Use direct subsampling instead of interpolation. Never use `interp1d` or spline fitting - just take every Nth skeleton point with `indices = np.arange(0, N, step)`.
 
 ### Issue 2: Skeleton has branches or spurious pixels
+
 **Symptom**: Multiple disconnected components, path tracing gets stuck
 **Solution**: Clean skeleton using morphological operations:
+
 ```python
 from skimage.morphology import remove_small_objects
 skeleton_clean = remove_small_objects(skeleton, min_size=50)
 ```
+
 Or ensure the input PNG has clean white track on black background.
 
 ### Issue 3: Spikes in track width at sharp curves
+
 **Symptom**: Width jumps to 2-3m at certain waypoints
 **Cause**: With subsampled waypoints, tangent calculation at curves uses distant points, giving wrong normal direction
 **Solution**: Calculate widths on the **dense skeleton before subsampling**, then subsample waypoints and widths together using the same indices.
 
 ### Issue 4: Track width all wrong (too large or too small)
+
 **Symptom**: All widths are 2x or 0.5x expected
 **Cause**: Distance transform not properly converted to meters
 **Solution**: Verify `width_m = distance_px * resolution`. Check that `resolution = 0.00787` is correct.
 
 ### Issue 5: Waypoint spacing is very uneven
+
 **Symptom**: Some waypoints 10mm apart, others 200mm apart
 **Cause**: Skeleton has uneven pixel density in different regions
 **Solution**: This is acceptable within 10% variation. If worse, consider using cumulative distance subsampling:
+
 ```python
 # Calculate cumulative distance
 deltas = np.diff(ordered_path, axis=0)
@@ -377,6 +402,7 @@ waypoints_px = ordered_path[indices]
 ```
 
 ### Issue 6: Coordinate transformation looks wrong in simulator
+
 **Symptom**: Track appears flipped or offset
 **Solution**: Double-check y-axis flip: `y_flipped = (height - 1) - y_px`. Verify origin sign (should be negative for centering). Test with a known point like image center.
 
@@ -403,6 +429,7 @@ waypoints_px = ordered_path[indices]
 ## Summary
 
 The Drift track is a compact 18-20 meter drift course with 8× higher pixel density than Spielberg. Key differences from Spielberg:
+
 - **Much smaller**: ~6m × 7m vs Spielberg's 57m × 69m
 - **Higher resolution**: 0.00787 m/px vs 0.058 m/px
 - **More waypoints**: ~300 vs Spielberg's 865
