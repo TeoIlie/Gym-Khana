@@ -60,6 +60,9 @@ PARAMS = F110Env.f1tenth_std_vehicle_params()
 TEST_DEBUG_RENDER = _config["test_debug_render"]
 TRAIN_DEBUG_RENDER = _config["train_debug_render"]
 
+# Callback config
+CKPT_SAVE_FREQ = _config["ckpt_save_freq"]
+
 
 # ====================================
 # Gym config functions

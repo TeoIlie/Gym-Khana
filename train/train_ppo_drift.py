@@ -25,7 +25,14 @@ from config.env_config import (
 from stable_baselines3 import PPO
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import SubprocVecEnv
-from train.training_utils import CustomLeakyReLU, get_output_dirs, linear_schedule, make_env, make_output_dirs
+from train.training_utils import (
+    CustomLeakyReLU,
+    get_ckpt_callback,
+    get_output_dirs,
+    linear_schedule,
+    make_env,
+    make_output_dirs,
+)
 
 
 def main():
@@ -91,11 +98,13 @@ def main():
         tensorboard_log=tensorboard_dir,
         device="cuda" if cuda.is_available() else "cpu",  # Use GPU if available
     )
+
     print("\nStarting training...")
 
     # Train the model
     model.learn(
         total_timesteps=TOTAL_TIMESTEPS,
+        callback=get_ckpt_callback(models_dir),
         progress_bar=True,
     )
 

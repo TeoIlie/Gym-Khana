@@ -29,3 +29,6 @@ reset_config: "cl_random_static"
 # Rendering/Debug settings
 test_debug_render: true
 train_debug_render: false
+
+# Callback config
+ckpt_save_freq: 200000

@@ -3,8 +3,14 @@ from pathlib import Path
 import gymnasium as gym
 import torch.nn as nn
 from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.callbacks import CheckpointCallback
 
-from train.config.env_config import ACT_FUNC_NEG_SLOPE, get_drift_train_config, get_env_id
+from train.config.env_config import (
+    ACT_FUNC_NEG_SLOPE,
+    CKPT_SAVE_FREQ,
+    get_drift_train_config,
+    get_env_id,
+)
 
 
 def make_env(seed: int, rank: int):
@@ -69,3 +75,17 @@ def get_output_dirs() -> tuple[str, str]:
     """
     proj_root = str(Path(__file__).parent.parent.resolve())
     return proj_root, f"{proj_root}/outputs"
+
+
+def get_ckpt_callback(models_dir: str) -> CheckpointCallback:
+    """
+    Checkpoint callback for periodic model saving
+    """
+    return CheckpointCallback(
+        save_freq=CKPT_SAVE_FREQ,
+        save_path=f"{models_dir}/checkpoints",
+        name_prefix="ckpt",
+        save_replay_buffer=False,
+        save_vecnormalize=True,
+        verbose=1,
+    )
