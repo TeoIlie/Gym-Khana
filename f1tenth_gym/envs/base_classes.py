@@ -334,15 +334,6 @@ class RaceCar(object):
         self.prev_avg_wheel_omega = self.curr_avg_wheel_omega
         if len(self.state) >= 9:  # STD model has 9 states including wheel angular velocities
             self.curr_avg_wheel_omega = (self.state[7] + self.state[8]) / 2.0
-        else:
-            warnings.warn(
-                f"Wheel angular velocity observation requires the STD model (9 states), "
-                f"but current model has only {len(self.state)} states. "
-                f"avg_wheel_omega and prev_avg_wheel_omega will be set to 0.0. "
-                f"Use model='std' or model=DynamicModel.STD to enable this feature.",
-                UserWarning,
-            )
-            self.curr_avg_wheel_omega = 0.0
 
         # steering delay
         steer = 0.0
