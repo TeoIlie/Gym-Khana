@@ -137,7 +137,7 @@ def main():
     # Train the model
     model.learn(
         total_timesteps=TOTAL_TIMESTEPS,
-        progress_bar=True,  # Use custom progress bar instead
+        progress_bar=True,
     )
 
     # Save final model
