@@ -17,12 +17,12 @@ We recommend installing the simulation inside a virtualenv. You can install the 
 ```bash
 virtualenv gym_env
 source gym_env/bin/activate
-git clone https://github.com/TeoIlie/F1TENTH_Gym.git
+git clone --recurse-submodules https://github.com/TeoIlie/F1TENTH_Gym.git
 cd f1tenth_gym
 pip install -e .
 ```
 
-Alternatively, install using poetry:
+Alternatively, clone and then install using poetry:
 
 ```bash
 poetry install
