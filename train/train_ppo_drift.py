@@ -1,37 +1,40 @@
 #!/usr/bin/env python3
 """
 PPO drift training script
-View tensorboard live with: 
+View tensorboard live with:
     tensorboard --logdir outputs/tensorboard
 Or online with the wandb link provided during a run
 """
 
 import os
-import wandb
+
 import gymnasium as gym
-import torch.nn as nn
-import torch.cuda as cuda
 import torch.backends.cudnn as cudnn
+import torch.cuda as cuda
+import torch.nn as nn
+import wandb
+from config.env_config import (
+    ACT_FUNC_NEG_SLOPE,
+    ACTOR_LAYER_SIZE,
+    BATCH_SIZE,
+    CRITIC_LAYER_SIZE,
+    END_LEARNING_RATE,
+    GAMMA,
+    N_ENVS,
+    N_STEPS,
+    SEED,
+    START_LEARNING_RATE,
+    TOTAL_TIMESTEPS,
+    PROJECT_NAME,
+    get_drift_train_config,
+    get_env_id,
+)
 from stable_baselines3 import PPO
 from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.utils import set_random_seed
-from train.training_utils import CustomLeakyReLU, make_output_dirs, get_proj_root
-from config.env_config import (
-    get_env_id,
-    get_drift_train_config,
-    N_ENVS,
-    TOTAL_TIMESTEPS,
-    N_STEPS,
-    BATCH_SIZE,
-    GAMMA,
-    END_LEARNING_RATE,
-    START_LEARNING_RATE,
-    SEED,
-    ACTOR_LAYER_SIZE,
-    CRITIC_LAYER_SIZE,
-    ACT_FUNC_NEG_SLOPE,
-)
+from stable_baselines3.common.vec_env import SubprocVecEnv
+
+from train.training_utils import CustomLeakyReLU, get_output_dirs, make_output_dirs
 
 
 def make_env(seed: int, rank: int):
@@ -68,11 +71,10 @@ def linear_schedule(initial_value: float, final_value: float):
 
 def main():
     # Create tensorboard, wandb output dirs
-    proj_root = get_proj_root()
-    output_root = f"{proj_root}/outputs"
+    proj_root, output_root = get_output_dirs()
 
     # Init wandb
-    run = wandb.init(project="f1tenth-ppo-drift", sync_tensorboard=True, monitor_gym=True, dir=str(proj_root))
+    run = wandb.init(project=PROJECT_NAME, sync_tensorboard=True, monitor_gym=True, dir=proj_root)
     run_id = run.id
 
     print("=" * 40)

@@ -1,6 +1,7 @@
 # This file contains all parameters for the gym environment
 
 # Environment
+project_name: "f1tenth-ppo-drift"
 map: "Drift"
 model: "std"  # Vehicle dynamics model: "std" or "mb" (multi-body)
 timestep: 0.01  # Simulation timestep in seconds

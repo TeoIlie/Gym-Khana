@@ -1,6 +1,7 @@
-import torch.nn as nn
 import os
 from pathlib import Path
+
+import torch.nn as nn
 
 from train.config.env_config import ACT_FUNC_NEG_SLOPE
 
@@ -29,8 +30,9 @@ def make_output_dirs(run_id: str, root_dir: str) -> tuple[str, str, str]:
     return tensorboard_dir, models_dir, videos_dir
 
 
-def get_proj_root() -> Path:
+def get_output_dirs() -> tuple[str, str]:
     """
     Return project root Path
     """
-    return Path(__file__).parent.parent.resolve()
+    proj_root = str(Path(__file__).parent.parent.resolve())
+    return proj_root, f"{proj_root}/outputs"

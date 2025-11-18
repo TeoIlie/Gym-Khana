@@ -14,6 +14,7 @@ Implement training script `train/train_ppo_drift.py` that uses PPO from SB3 to i
 |----|----|
 | [ ] |  Time step is 0.05s → *currently behaving erratically for timestep !+ `0.01`*|
 | [ ] |  Parallelized with 400 simulated instances running concurrently → *currently crashing with more than ~150 envs* |
+| [ ] |  Unit testing suite |
 | [X] |  PPO from SB3 |
 | [X] |  Each rollout consists of 1024 steps |
 | [X] |  Correct reset config `cl_random_static` (`cl_random_random` also works) |
@@ -47,12 +48,12 @@ Implement training script `train/train_ppo_drift.py` that uses PPO from SB3 to i
 | [ ] | Integration with **wandb** video recording with `monitor_gym=True` to debug training, recording only samples of training to save memory space |
 | [ ] | Save config params with `wandb.init(config={..})` to save params for comparison |
 | [ ] | Save training config as `config.json` alongside each model |
-| [ ] | Live visualization of training, including key RL metrics such as reward convergence, and NN metrics like `policy_loss` and `value_loss` |
 | [ ] | Periodic checkpoint saving |
 | [ ] | Best model tracking with evaluation callback |
 | [ ] | Resume capability from checkpoint|
 | [ ] | Create a separate evaluation environment for period evaluation of the current policu with full episodes, using SB3 `EvalCallback` |
 | [ ] | Enable early stopping with reward plateau detection |
+| [X] | Live visualization of training, including key RL metrics such as reward convergence, and NN metrics like `policy_loss` and `value_loss` |
 | [X] | Integration with **tensorboard** with `sync_tensorboard=True` |
 | [X] | Organized file structure for training, outputs, and **wandb** auto-generated outputs (see below) |
 | [X] | `.gitignore` to exclude output directories|

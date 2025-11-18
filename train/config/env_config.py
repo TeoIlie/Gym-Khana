@@ -36,6 +36,7 @@ with open(_config_path, "r") as f:
     _config = yaml.safe_load(f)
 
 # Gym shared parameters
+PROJECT_NAME = _config["project_name"]
 MAP = _config["map"]
 MODEL = _config["model"]
 TIMESTEP = _config["timestep"]
