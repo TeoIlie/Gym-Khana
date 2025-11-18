@@ -7,7 +7,7 @@ from train.config.env_config import PROJECT_NAME
 from train.training_utils import get_output_dirs, make_output_dirs
 
 # toggle this to train or evaluate
-train = True
+train = False
 
 
 def main():
@@ -21,7 +21,7 @@ def main():
         env = gym.make(
             "f1tenth_gym:f1tenth-v0",
             config={
-                "map": "Spielberg",
+                "map": "IMS",
                 "num_agents": 1,
                 "timestep": 0.01,
                 "num_beams": 36,
@@ -34,7 +34,7 @@ def main():
 
         model = PPO("MlpPolicy", env, verbose=1, tensorboard_log=tensorboard_dir, device="auto", seed=42)
         model.learn(
-            total_timesteps=2_000,
+            total_timesteps=2_000_000,
             callback=WandbCallback(gradient_save_freq=0, model_save_path=models_dir, verbose=2),
             progress_bar=True,
         )
@@ -56,12 +56,14 @@ def main():
         run.finish()
 
     else:
-        model_path = os.path.join(os.path.dirname(__file__), "models", "70ftjvia", "model.zip")
+        proj_root, _ = get_output_dirs()
+        run_id = "q81h6jga"  # replace with your run ID
+        model_path = os.path.join(proj_root, "outputs", "models", run_id, f"ppo_drift_final_{run_id}.zip")
         model = PPO.load(model_path, print_system_info=True, device="cpu")
         eval_env = gym.make(
             "f1tenth_gym:f1tenth-v0",
             config={
-                "map": "Spielberg",
+                "map": "IMS",
                 "num_agents": 1,
                 "timestep": 0.01,
                 "num_beams": 36,

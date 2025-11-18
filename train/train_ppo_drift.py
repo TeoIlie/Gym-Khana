@@ -96,7 +96,7 @@ def main():
         policy_kwargs=policy_kwargs,
         verbose=1,
         tensorboard_log=tensorboard_dir,
-        device="cuda" if cuda.is_available() else "cpu",  # Use GPU if available
+        device="auto",  # GPU is a bit faster than CPU when available
     )
 
     print("\nStarting training...")
