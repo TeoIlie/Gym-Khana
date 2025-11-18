@@ -5,13 +5,8 @@ View tensorboard live with:
     tensorboard --logdir outputs/tensorboard
 Or online with the wandb link provided during a run
 """
-
-import os
-
-import gymnasium as gym
 import torch.backends.cudnn as cudnn
 import torch.cuda as cuda
-import torch.nn as nn
 import wandb
 from config.env_config import (
     ACT_FUNC_NEG_SLOPE,
@@ -26,47 +21,11 @@ from config.env_config import (
     START_LEARNING_RATE,
     TOTAL_TIMESTEPS,
     PROJECT_NAME,
-    get_drift_train_config,
-    get_env_id,
 )
 from stable_baselines3 import PPO
-from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import SubprocVecEnv
-
-from train.training_utils import CustomLeakyReLU, get_output_dirs, make_output_dirs
-
-
-def make_env(seed: int, rank: int):
-    """
-    Create a single F1TENTH gym environment.
-    Args:
-        rank: Unique ID for for seeding
-    Returns:
-        Callable that creates the environment
-    """
-
-    def _init():
-        env = gym.make(get_env_id(), config=get_drift_train_config())
-        env = Monitor(env)
-        env.reset(seed=seed + rank)  # Seed each env differently for diverse experiences
-        return env
-
-    return _init
-
-
-def linear_schedule(initial_value: float, final_value: float):
-    """
-    Linear learning rate schedule from initial_value to final_value.
-    """
-
-    def func(progress_remaining: float) -> float:
-        """
-        Progress will decrease from 1 (beginning) to 0 (end)
-        """
-        return final_value + progress_remaining * (initial_value - final_value)
-
-    return func
+from train.training_utils import CustomLeakyReLU, get_output_dirs, linear_schedule, make_env, make_output_dirs
 
 
 def main():
