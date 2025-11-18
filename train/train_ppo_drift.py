@@ -3,9 +3,11 @@
 PPO drift training script
 View tensorboard live with: 
     tensorboard --logdir outputs/tensorboard
+Or online with the wandb link provided during a run
 """
 
 import os
+import wandb
 import gymnasium as gym
 import torch.nn as nn
 import torch.cuda as cuda
@@ -13,7 +15,7 @@ import torch.backends.cudnn as cudnn
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.utils import set_random_seed
-from train.training_utils import CustomLeakyReLU
+from train.training_utils import CustomLeakyReLU, make_output_dirs
 from config.env_config import (
     get_env_id,
     get_drift_train_config,
@@ -63,9 +65,19 @@ def linear_schedule(initial_value: float, final_value: float):
 
 
 def main():
+    # Init wandb
+    run = wandb.init(
+        project="f1tenth-ppo-drift",
+        sync_tensorboard=True,
+        monitor_gym=True,
+    )
+    run_id = run.id
+    root_dir = "outputs"
+
     print("=" * 40)
     print("PPO Drift Training")
     print("=" * 40)
+    print(f"Run ID: {run_id}")
     print(f"Number of parallel environments: {N_ENVS}")
     print(f"Total timesteps: {TOTAL_TIMESTEPS:,}")
     print(f"Rollout steps per env: {N_STEPS}")
@@ -77,9 +89,8 @@ def main():
     print(f"Learning rate schedule: {START_LEARNING_RATE} → {END_LEARNING_RATE}")
     print("=" * 40)
 
-    # Create output directories
-    os.makedirs("outputs/tensorboard", exist_ok=True)
-    os.makedirs("outputs/models", exist_ok=True)
+    # Create output dirs using the run ID
+    tensorboard_dir, models_dir, videos_dir = make_output_dirs(run.id, root_dir)
 
     # Learning rate decay function
     learning_rate = linear_schedule(START_LEARNING_RATE, END_LEARNING_RATE)
@@ -115,7 +126,7 @@ def main():
         gamma=GAMMA,
         policy_kwargs=policy_kwargs,
         verbose=1,
-        tensorboard_log="outputs/tensorboard",
+        tensorboard_log=tensorboard_dir,
         device="cuda" if cuda.is_available() else "cpu",  # Use GPU if available
     )
     print("\nStarting training...")
@@ -127,12 +138,17 @@ def main():
     )
 
     # Save final model
-    final_model_path = "outputs/models/ppo_drift_final"
+    final_model_path = f"{models_dir}/ppo_drift_final_{run_id}"
     model.save(final_model_path)
-    print(f"\nTraining completed! 🚀 \nFinal model saved to: {final_model_path}")
+    print(f"\nTraining completed! 🚀")
+    print(f"Final model saved to: {final_model_path}")
+    print(f"Run ID: {run_id}")
 
     # Close environments
     env.close()
+
+    # Finish wandb run
+    run.finish()
 
 
 if __name__ == "__main__":

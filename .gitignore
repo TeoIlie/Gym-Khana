@@ -176,5 +176,8 @@ cython_debug/
 scratch
 .python-version
 
-# Training outputs (models, videos, logs)
+# Training outputs (models, videos, logs) from tensorboard, wandb
+
 outputs/
+wandb/
+runs/

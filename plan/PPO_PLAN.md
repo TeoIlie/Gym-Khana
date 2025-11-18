@@ -12,10 +12,10 @@ Implement training script `train/train_ppo_drift.py` that uses PPO from SB3 to i
 
 | Status | Task |
 |----|----|
+| [ ] |  Time step is 0.05s → *currently behaving erratically for timestep !+ `0.01`*|
+| [ ] |  Parallelized with 400 simulated instances running concurrently → *currently crashing with more than ~150 envs* |
 | [X] |  PPO from SB3 |
-| [ ] |  Parallelized with 400 simulated instances running concurrently |
 | [X] |  Each rollout consists of 1024 steps |
-| [ ] |  Time step is 0.05s |
 | [X] |  Correct reset config `cl_random_static` (`cl_random_random` also works) |
 | [X] |  Training with batch size of 1024 |
 | [X] |  Sum of discounted reward is calculated with discount factor gamma=0.99 |
@@ -24,7 +24,7 @@ Implement training script `train/train_ppo_drift.py` that uses PPO from SB3 to i
 | [X] |  Actor and critic networks implemented as MLPs |
 | [X] |  Actor has 2 hidden layers of 256 neurons |
 | [X] |  Critic has two hidden layers of 512 neurons |
-| [ ] |  Both actor, critic networks use Leaky Rectified Linear Unit activation function with negative slope of 0.2 |
+| [X] |  Both actor, critic networks use Leaky Rectified Linear Unit activation function with negative slope of 0.2 |
 
 ## Code organization and debugging
 
@@ -37,11 +37,7 @@ Implement training script `train/train_ppo_drift.py` that uses PPO from SB3 to i
     ```
 
 2. Import environment from a single source of truth in `training/env_config.py`
-3. Directories organized and clear
-    - Models → `outputs/models/{wandb_run_id}/`
-    - Videos → `outputs/videos/{wandb_run_id}/`
-    - Logs → `outputs/tensorboard/{wandb_run_id}/`
-    - Wandb → `outputs/wandb`, using `wandb.init(dir="outputs/wandb")` or similar
+3. Directories clearly organized
 4. Live visualization with **wandb** live metrics and videos, and **tensorboard**
 
 ### Tasks
@@ -54,32 +50,32 @@ Implement training script `train/train_ppo_drift.py` that uses PPO from SB3 to i
 | [ ] | Integration with **tensorboard** with `sync_tensorboard=True` |
 | [ ] | Organized file structure for training, outputs, and **wandb** auto-generated outputs (see below) |
 | [ ] | Live visualization of training, including key RL metrics such as reward convergence, and NN metrics like `policy_loss` and `value_loss` |
-| [X] | Centralized environment config (see below) |
-| [X] | `.gitignore` to exclude `outputs/`|
 | [ ] | Periodic checkpoint saving |
 | [ ] | Best model tracking with evaluation callback |
 | [ ] | Resume capability from checkpoint|
 | [ ] | Create a separate evaluation environment for period evaluation of the current policu with full episodes, using SB3 `EvalCallback` |
 | [ ] | Enable early stopping with reward plateau detection |
+| [X] | `.gitignore` to exclude output directories|
+| [X] | Centralized environment config (see below) |
 
 ### Folder Structure
 
 ```plain
 F1TENTH_Gym/
-├── training/
-|   ├── configs/
+├── train/
+|   ├── config/
 |   │   ├── gym_config.yaml     # Gym environment configs
-|   │   ├── ppo_config.yaml     # RL-specific hyperparameters
+|   │   ├── rl_config.yaml     # RL-specific hyperparameters
 |   │   └── env_config.py       # Centralized gym environment configs, using yaml files
 │   ├── training_utils.py       # Utility functions for use by training scripts, for ex.
 │   │                           #    directory setup, callback setup, etc.
 │   └── train_ppo_drift.py      # Main training script with all integrations
 │   ... train_sac_drift.py      # Possibly other training scripts  
 │
-└── outputs/                    # All training outputs (gitignored)
-    ├── models/{run_id}/        # Model checkpoints
-    ├── videos/{run_id}/        # Training videos
-    ├── tensorboard/{run_id}/   # TensorBoard logs
-    └── wandb/                  # WandB runs (auto-created, gitignored)
+├── outputs/                    # All training outputs (gitignored)
+│   ├── models/{run_id}/        # Model checkpoints
+│   ├── videos/{run_id}/        # Training videos
+│   └── tensorboard/{run_id}/   # TensorBoard logs
+└── wandb/                      # WandB runs (auto-created, gitignored)
 
 ```
