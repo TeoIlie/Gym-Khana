@@ -13,6 +13,7 @@ import torch.nn as nn
 import torch.cuda as cuda
 import torch.backends.cudnn as cudnn
 from stable_baselines3 import PPO
+from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.utils import set_random_seed
 from train.training_utils import CustomLeakyReLU, make_output_dirs, get_proj_root
@@ -44,6 +45,7 @@ def make_env(seed: int, rank: int):
 
     def _init():
         env = gym.make(get_env_id(), config=get_drift_train_config())
+        env = Monitor(env)
         env.reset(seed=seed + rank)  # Seed each env differently for diverse experiences
         return env
 

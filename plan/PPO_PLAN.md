@@ -47,14 +47,14 @@ Implement training script `train/train_ppo_drift.py` that uses PPO from SB3 to i
 | [ ] | Integration with **wandb** video recording with `monitor_gym=True` to debug training, recording only samples of training to save memory space |
 | [ ] | Save config params with `wandb.init(config={..})` to save params for comparison |
 | [ ] | Save training config as `config.json` alongside each model |
-| [ ] | Integration with **tensorboard** with `sync_tensorboard=True` |
-| [ ] | Organized file structure for training, outputs, and **wandb** auto-generated outputs (see below) |
 | [ ] | Live visualization of training, including key RL metrics such as reward convergence, and NN metrics like `policy_loss` and `value_loss` |
 | [ ] | Periodic checkpoint saving |
 | [ ] | Best model tracking with evaluation callback |
 | [ ] | Resume capability from checkpoint|
 | [ ] | Create a separate evaluation environment for period evaluation of the current policu with full episodes, using SB3 `EvalCallback` |
 | [ ] | Enable early stopping with reward plateau detection |
+| [X] | Integration with **tensorboard** with `sync_tensorboard=True` |
+| [X] | Organized file structure for training, outputs, and **wandb** auto-generated outputs (see below) |
 | [X] | `.gitignore` to exclude output directories|
 | [X] | Centralized environment config (see below) |
 
