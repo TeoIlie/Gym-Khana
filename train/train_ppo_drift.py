@@ -15,7 +15,7 @@ import torch.backends.cudnn as cudnn
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.utils import set_random_seed
-from train.training_utils import CustomLeakyReLU, make_output_dirs
+from train.training_utils import CustomLeakyReLU, make_output_dirs, get_proj_root
 from config.env_config import (
     get_env_id,
     get_drift_train_config,
@@ -65,14 +65,13 @@ def linear_schedule(initial_value: float, final_value: float):
 
 
 def main():
+    # Create tensorboard, wandb output dirs
+    proj_root = get_proj_root()
+    output_root = f"{proj_root}/outputs"
+
     # Init wandb
-    run = wandb.init(
-        project="f1tenth-ppo-drift",
-        sync_tensorboard=True,
-        monitor_gym=True,
-    )
+    run = wandb.init(project="f1tenth-ppo-drift", sync_tensorboard=True, monitor_gym=True, dir=str(proj_root))
     run_id = run.id
-    root_dir = "outputs"
 
     print("=" * 40)
     print("PPO Drift Training")
@@ -90,7 +89,7 @@ def main():
     print("=" * 40)
 
     # Create output dirs using the run ID
-    tensorboard_dir, models_dir, videos_dir = make_output_dirs(run.id, root_dir)
+    tensorboard_dir, models_dir, videos_dir = make_output_dirs(run.id, output_root)
 
     # Learning rate decay function
     learning_rate = linear_schedule(START_LEARNING_RATE, END_LEARNING_RATE)
