@@ -31,4 +31,4 @@ test_debug_render: true
 train_debug_render: false
 
 # Callback config
-ckpt_save_freq: 200000
+ckpt_save_freq: 20000
