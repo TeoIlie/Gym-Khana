@@ -77,12 +77,12 @@ def get_output_dirs() -> tuple[str, str]:
     return proj_root, f"{proj_root}/outputs"
 
 
-def get_ckpt_callback(models_dir: str) -> CheckpointCallback:
+def get_ckpt_callback(models_dir: str, save_freq: int = CKPT_SAVE_FREQ) -> CheckpointCallback:
     """
     Checkpoint callback for periodic model saving
     """
     return CheckpointCallback(
-        save_freq=CKPT_SAVE_FREQ,
+        save_freq=save_freq,
         save_path=f"{models_dir}/checkpoints",
         name_prefix="ckpt",
         save_replay_buffer=False,

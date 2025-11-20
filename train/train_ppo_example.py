@@ -3,11 +3,11 @@ import os
 import gymnasium as gym
 from stable_baselines3 import PPO
 from wandb.integration.sb3 import WandbCallback
-from train.config.env_config import PROJECT_NAME
-from train.training_utils import get_output_dirs, make_output_dirs
+from train.config.env_config import PROJECT_NAME, SEED
+from train.training_utils import get_output_dirs, make_output_dirs, get_ckpt_callback
 
 # toggle this to train or evaluate
-train = False
+train = True
 
 
 def main():
@@ -21,7 +21,7 @@ def main():
         env = gym.make(
             "f1tenth_gym:f1tenth-v0",
             config={
-                "map": "IMS",
+                "map": "Spielberg",
                 "num_agents": 1,
                 "timestep": 0.01,
                 "num_beams": 36,
@@ -32,10 +32,13 @@ def main():
             },
         )
 
-        model = PPO("MlpPolicy", env, verbose=1, tensorboard_log=tensorboard_dir, device="auto", seed=42)
+        model = PPO("MlpPolicy", env, verbose=1, tensorboard_log=tensorboard_dir, device="auto", seed=SEED)
         model.learn(
-            total_timesteps=2_000_000,
-            callback=WandbCallback(gradient_save_freq=0, model_save_path=models_dir, verbose=2),
+            total_timesteps=4_000_000,
+            callback=[
+                WandbCallback(gradient_save_freq=0, model_save_path=models_dir, verbose=2),
+                get_ckpt_callback(models_dir=models_dir, save_freq=2000),
+            ],
             progress_bar=True,
         )
 
@@ -63,11 +66,11 @@ def main():
         eval_env = gym.make(
             "f1tenth_gym:f1tenth-v0",
             config={
-                "map": "IMS",
+                "map": "Spielberg",
                 "num_agents": 1,
                 "timestep": 0.01,
                 "num_beams": 36,
-                "integrator": "rk4",  # this is the Runge-Kutta method Dimitria mentioned!
+                "integrator": "rk4",
                 "control_input": ["speed", "steering_angle"],
                 "observation_config": {"type": "rl"},
                 "reset_config": {"type": "rl_random_static"},
