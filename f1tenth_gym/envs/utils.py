@@ -72,7 +72,7 @@ def calculate_norm_bounds(env):
     # For F1TENTH: v_max=10 / wheelbase~0.3 ≈ 33 rad/s, but use conservative 5 rad/s
 
     # TODO current max yaw found experimentally in sim, but this could be off
-    experimental_max_yaw = 3.0
+    experimental_max_yaw = 4.0
     bounds["ang_vel_z"] = (-experimental_max_yaw, experimental_max_yaw)  # rad/s
 
     # ===========================
