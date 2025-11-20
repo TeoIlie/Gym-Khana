@@ -40,7 +40,7 @@ def main():
     proj_root, output_root = get_output_dirs()
 
     # Init wandb
-    run = wandb.init(project=PROJECT_NAME, sync_tensorboard=True, monitor_gym=True, dir=proj_root)
+    run = wandb.init(project=PROJECT_NAME, sync_tensorboard=True, monitor_gym=True, dir=proj_root, save_code=True)
     run_id = run.id
 
     print("=" * 40)

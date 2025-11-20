@@ -15,7 +15,7 @@ def main():
     if train:
         proj_root, output_root = get_output_dirs()
 
-        run = wandb.init(project=PROJECT_NAME, sync_tensorboard=True, monitor_gym=True, dir=proj_root)
+        run = wandb.init(project=PROJECT_NAME, sync_tensorboard=True, monitor_gym=True, dir=proj_root, save_code=True)
         run_id = run.id
         tensorboard_dir, models_dir, videos_dir = make_output_dirs(run.id, output_root)
 
@@ -32,6 +32,8 @@ def main():
                 "reset_config": {"type": "rl_random_static"},
                 "normalize_act": False,
                 "normalize_obs": False,
+                "predictive_collision": True,
+                "wall_deflection": True,
             },
         )
 
@@ -40,7 +42,7 @@ def main():
             total_timesteps=1_000_000,
             callback=[
                 WandbCallback(gradient_save_freq=0, model_save_path=models_dir, verbose=2),
-                get_ckpt_callback(models_dir=models_dir, save_freq=500000),
+                get_ckpt_callback(models_dir=models_dir, save_freq=200000),
             ],
             progress_bar=True,
         )
@@ -79,6 +81,8 @@ def main():
                 "reset_config": {"type": "rl_random_static"},
                 "normalize_act": False,
                 "normalize_obs": False,
+                "predictive_collision": True,
+                "wall_deflection": True,
             },
             render_mode="human",
         )
