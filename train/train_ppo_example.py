@@ -1,6 +1,7 @@
 import wandb
 import os
 import gymnasium as gym
+import numpy as np
 from stable_baselines3 import PPO
 from wandb.integration.sb3 import WandbCallback
 from train.config.env_config import PROJECT_NAME, SEED
@@ -29,15 +30,17 @@ def main():
                 "control_input": ["speed", "steering_angle"],
                 "observation_config": {"type": "rl"},
                 "reset_config": {"type": "rl_random_static"},
+                "normalize_act": False,
+                "normalize_obs": False,
             },
         )
 
         model = PPO("MlpPolicy", env, verbose=1, tensorboard_log=tensorboard_dir, device="auto", seed=SEED)
         model.learn(
-            total_timesteps=4_000_000,
+            total_timesteps=1_000_000,
             callback=[
                 WandbCallback(gradient_save_freq=0, model_save_path=models_dir, verbose=2),
-                get_ckpt_callback(models_dir=models_dir, save_freq=2000),
+                get_ckpt_callback(models_dir=models_dir, save_freq=500000),
             ],
             progress_bar=True,
         )
@@ -61,7 +64,7 @@ def main():
     else:
         proj_root, _ = get_output_dirs()
         run_id = "q81h6jga"  # replace with your run ID
-        model_path = os.path.join(proj_root, "outputs", "models", run_id, f"ppo_drift_final_{run_id}.zip")
+        model_path = os.path.join(proj_root, "outputs", "models", "wlbjsjbv", "checkpoints", f"ckpt_3500000_steps.zip")
         model = PPO.load(model_path, print_system_info=True, device="cpu")
         eval_env = gym.make(
             "f1tenth_gym:f1tenth-v0",
@@ -74,9 +77,12 @@ def main():
                 "control_input": ["speed", "steering_angle"],
                 "observation_config": {"type": "rl"},
                 "reset_config": {"type": "rl_random_static"},
+                "normalize_act": False,
+                "normalize_obs": False,
             },
             render_mode="human",
         )
+        np.random.seed()
         obs, info = eval_env.reset()
         done = False
         while not done:
