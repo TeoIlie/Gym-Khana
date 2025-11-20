@@ -886,5 +886,8 @@ def observation_factory(env, type: str | None, **kwargs) -> Observation:
             "lookahead_widths",  # w - track widths
         ]
         return VectorObservation(env, features=features)
+    elif type == "frenet":
+        features = ["frenet_u", "frenet_n"]
+        return VectorObservation(env, features=features)
     else:
         raise ValueError(f"Invalid observation type {type}.")

@@ -77,7 +77,7 @@ def main():
     # Configure network architecture
     policy_kwargs = dict(
         net_arch=dict(
-            # Consider making the 1st layer double the second layer size
+            # TODO consider making the 1st layer double the second layer size
             pi=[ACTOR_LAYER_SIZE, ACTOR_LAYER_SIZE],  # Actor
             vf=[CRITIC_LAYER_SIZE, CRITIC_LAYER_SIZE],  # Critic
         ),
