@@ -82,6 +82,10 @@ Default configurations are stored in `/train/config/env_config.py`, with paramet
 
 The wandb models are available here: <https://wandb.ai/teo-altum-quinque-queen-s-university/projects>
 
+## Custom Maps
+
+Custom maps can be created using the git submodule <https://github.com/TeoIlie/F1TENTH_Racetracks> stored in folder `/maps`. Once updated, pull the update submodule with `git pull --recurse-submodules`
+
 ## Formatting/Linting
 
 Run formatting mannually with `black .`. Linting also runs automatically due to settings in `.vscode/settings.json`.
