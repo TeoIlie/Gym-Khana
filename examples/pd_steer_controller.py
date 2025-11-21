@@ -8,17 +8,22 @@ with the correct heading.
     steering_angle = -Kn * frenet_n - Ku * frenet_u
 
 """
-import numpy as np
-import gymnasium as gym
 
+import gymnasium as gym
+import numpy as np
+
+from examples.examples_utils import display_drift_obs
 from f1tenth_gym.envs.f110_env import F110Env
+from train.config.env_config import get_drift_test_config
 
 
 class PDSteerController:
-    def __init__(self, Kn: float, Ku: float, target_speed: float):
+    def __init__(self, Kn: float, Ku: float, target_speed: float, frenet_u_i: int, frenet_n_i: int):
         self.Kn = Kn
         self.Ku = Ku
         self.target_speed = target_speed
+        self.frenet_u_i = frenet_u_i
+        self.frenet_n_i = frenet_n_i
 
     def compute_steering(self, frenet_n, frenet_u):
         steering_angle = -self.Kn * frenet_n - self.Ku * frenet_u
@@ -26,8 +31,8 @@ class PDSteerController:
         return steering_angle
 
     def get_action(self, obs):
-        frenet_u = obs[0]  # heading error
-        frenet_n = obs[1]  # lateral deviation
+        frenet_u = obs[self.frenet_u_i]  # heading error
+        frenet_n = obs[self.frenet_n_i]  # lateral deviation
 
         # Compute steering angle
         steering_angle = self.compute_steering(frenet_n, frenet_u)
@@ -38,42 +43,58 @@ class PDSteerController:
         return action
 
 
+def get_config(obs_type, lookahead_n_points):
+    config = get_drift_test_config()
+    config["map"] = "Drift_large"
+    config["control_input"] = ["speed", "steering_angle"]
+    config["observation_config"] = {"type": obs_type}
+    config["normalize_act"] = False
+    config["normalize_obs"] = False
+    config["predictive_collision"] = False
+    config["wall_deflection"] = False
+    config["render_lookahead_curvatures"] = True
+    config["render_track_lines"] = True
+    config["debug_frenet_projection"] = False
+    config["lookahead_n_points"] = lookahead_n_points
+    return config
+
+
 def main():
     # Create controller with tunable gains
-    Kn = 1.0  # Lateral deviation gain
-    Ku = 0.5  # Heading error gain
-    target_speed = 4.0  # m/s
+    FRENET_N_GAIN = 1.0  # Lateral deviation gain
+    FRENET_K_GAIN = 0.5  # Heading error gain
+    TARGET_SPEED = 2.0  # m/s
 
-    controller = PDSteerController(Kn=Kn, Ku=Ku, target_speed=target_speed)
+    # config constants
+    LOOKAHEAD_N_POINTS = 10
+    OBS_TYPE = "drift"
+
+    NUM_STEPS = 1_000
 
     env = gym.make(
         "f1tenth_gym:f1tenth-v0",
-        config={
-            "map": "Spielberg",
-            "model": "std",
-            "params": F110Env.f1tenth_std_vehicle_params(),
-            "num_agents": 1,
-            "timestep": 0.01,
-            "num_beams": 36,
-            "integrator": "rk4",
-            "control_input": ["speed", "steering_angle"],
-            "observation_config": {"type": "frenet"},
-            "reset_config": {"type": "rl_random_static"},
-            "normalize_act": False,
-            "normalize_obs": False,
-            "predictive_collision": True,
-            "wall_deflection": True,
-            "render_lookahead_curvatures": True,
-            "render_track_lines": True
-            # "debug_frenet_projection": True,
-        },
+        config=get_config(OBS_TYPE, LOOKAHEAD_N_POINTS),
         render_mode="human",
+    )
+
+    # Set frenet indices based on obs type
+    if OBS_TYPE == "drift":
+        frenet_u_i = 2
+        frenet_n_i = 3
+    elif OBS_TYPE == "frenet":
+        frenet_u_i = 0
+        frenet_n_i = 1
+    else:
+        raise ValueError("Please specify frenet observation indices.")
+
+    controller = PDSteerController(
+        Kn=FRENET_N_GAIN, Ku=FRENET_K_GAIN, target_speed=TARGET_SPEED, frenet_u_i=frenet_u_i, frenet_n_i=frenet_n_i
     )
 
     print(f"Centerline Tracking Controller")
     print(f"==============================")
-    print(f"Controller gains: Kn={Kn}, Ku={Ku}")
-    print(f"Target speed: {target_speed} m/s")
+    print(f"Controller gains: Kn={FRENET_N_GAIN}, Ku={FRENET_K_GAIN}")
+    print(f"Target speed: {TARGET_SPEED} m/s")
     print(f"Observation space: {env.observation_space}")
     print(f"Action space: {env.action_space}")
     print()
@@ -88,58 +109,52 @@ def main():
     total_heading_error = 0.0
     total_reward = 0.0
 
-    try:
-        while not done:
-            # Get action from controller
-            action = controller.get_action(obs)
+    for step in range(NUM_STEPS):
+        action = controller.get_action(obs)
+        # Step environment
+        obs, reward, done, truncated, info = env.step(action)
+        done = done or truncated
 
-            # Step environment
-            obs, reward, done, truncated, info = env.step(action)
-            done = done or truncated
+        display_drift_obs(step, obs, reward, LOOKAHEAD_N_POINTS)
 
-            env.render()
+        env.render()
 
-            # Track metrics
-            frenet_u = obs[0]  # heading error
-            frenet_n = obs[1]  # lateral deviation
-            total_lateral_error += abs(frenet_n)
-            total_heading_error += abs(frenet_u)
-            total_reward += reward
-            step_count += 1
+        # Track metrics
+        frenet_u = obs[2]  # heading error
+        frenet_n = obs[3]  # lateral deviation
+        total_lateral_error += abs(frenet_n)
+        total_heading_error += abs(frenet_u)
+        total_reward += reward
+        step_count += 1
 
-            # Print periodic status
-            if step_count % 100 == 0:
-                avg_lateral = total_lateral_error / step_count
-                avg_heading = total_heading_error / step_count
-                print(
-                    f"Step {step_count}: "
-                    f"frenet_n={frenet_n:.4f}m, "
-                    f"frenet_u={frenet_u:.4f}rad, "
-                    f"reward={reward:.4f}"
-                )
-                print(
-                    f"  Avg errors - lateral: {avg_lateral:.4f}m, "
-                    f"heading: {avg_heading:.4f}rad, "
-                    f"total_reward: {total_reward:.2f}"
-                )
-
-    except KeyboardInterrupt:
-        print("\nSimulation interrupted by user")
-
-    finally:
-        # Print final statistics
-        if step_count > 0:
+        # Print periodic status
+        if step_count % 100 == 0:
             avg_lateral = total_lateral_error / step_count
             avg_heading = total_heading_error / step_count
-            avg_reward = total_reward / step_count
-            print(f"\nFinal Statistics:")
-            print(f"  Total steps: {step_count}")
-            print(f"  Average lateral error: {avg_lateral:.4f} m")
-            print(f"  Average heading error: {avg_heading:.4f} rad ({np.degrees(avg_heading):.2f} deg)")
-            print(f"  Total reward: {total_reward:.2f}")
-            print(f"  Average reward per step: {avg_reward:.4f}")
+            print(
+                f"Step {step_count}: "
+                f"frenet_n={frenet_n:.4f}m, "
+                f"frenet_u={frenet_u:.4f}rad, "
+                f"reward={reward:.4f}"
+            )
+            print(
+                f"  Avg errors - lateral: {avg_lateral:.4f}m, "
+                f"heading: {avg_heading:.4f}rad, "
+                f"total_reward: {total_reward:.2f}"
+            )
 
-        env.close()
+    # Print final statistics
+    avg_lateral = total_lateral_error / step_count
+    avg_heading = total_heading_error / step_count
+    avg_reward = total_reward / step_count
+    print(f"\nFinal Statistics:")
+    print(f"  Total steps: {step_count}")
+    print(f"  Average lateral error: {avg_lateral:.4f} m")
+    print(f"  Average heading error: {avg_heading:.4f} rad ({np.degrees(avg_heading):.2f} deg)")
+    print(f"  Total reward: {total_reward:.2f}")
+    print(f"  Average reward per step: {avg_reward:.4f}")
+
+    env.close()
 
 
 if __name__ == "__main__":

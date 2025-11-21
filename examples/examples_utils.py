@@ -1,23 +1,20 @@
-"""
-File for debugging gym observations
-"""
-
-import gymnasium as gym
 import numpy as np
-from train.config.env_config import get_drift_test_config, get_env_id
-
-lookahead_n_points = 10
 
 
 def format_float(x):
+    """
+    Format observation, showing "Approx 0" when very small
+    """
     if abs(x) < 1e-5:
         return "Approx 0"
     else:
         return f"{x:.4f}"
 
 
-def display_step_info(obs, reward):
-    # Extract observations from obs
+def display_drift_obs(step, obs, reward, lookahead_n_points):
+    """
+    Format and print "drift" observation type. Use for debugging
+    """
     vx = obs[0]
     vy = obs[1]
     heading_error_radians = obs[2]
@@ -31,6 +28,8 @@ def display_step_info(obs, reward):
     curr_vel_cmd = obs[9]
     curvatures = obs[10 : 10 + lookahead_n_points]
     widths = obs[10 + lookahead_n_points : 10 + (2 * lookahead_n_points)]
+
+    print(f"\n=====================\nStep {step+1}:\n=====================\n")
 
     print(
         f"  vx={vx:6.2f}, vy={vy:6.2f}, yaw_rate={yaw_rate:6.2f}, delta={delta:6.4f}\n"
@@ -49,31 +48,3 @@ def display_step_info(obs, reward):
         print(f"    Point {i} = {format_float(value)}")
 
     print(f"\n  Reward = {reward}\n")
-
-
-if __name__ == "__main__":
-    # create env
-    env = gym.make(get_env_id(), config=get_drift_test_config(), render_mode="human")
-
-    # print observation info
-    print(f"Drifting observation space: {env.observation_space}")
-
-    obs, info = env.reset()
-    print(f"Initial observation after env reset:")
-    display_step_info(obs, None)
-
-    # For single agent, action should be 2D array: shape (1, 2)
-    action = np.array([[0.0, 0.2]])  # action format: normalized steering target, normalized acceleration
-
-    for step in range(10000):  # Reduced for testing
-        obs, reward, done, truncated, info = env.step(action)
-        print(f"\n=====================\nStep {step+1}:\n=====================\n")
-        display_step_info(obs, reward)
-        # if done:
-        #     print("\n=====================\nDONE!\n=====================\n")
-        #     break
-
-        # render
-        env.render()
-
-    env.close()
