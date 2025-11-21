@@ -279,7 +279,7 @@ class F110Env(gym.Env):
         # Only track observation min/max if there is normalizing
         if self.record_obs_min_max and not self.normalize_obs:
             warnings.warn(
-                f"Observation min/max tracking only supported if 'normalize_obs' is True"
+                f"Observation min/max tracking only supported if 'normalize_obs' is True. "
                 "Setting record_obs_min_max=False.",
                 UserWarning,
             )
@@ -1136,8 +1136,8 @@ class F110Env(gym.Env):
         Args:
             callback_func (function (EnvRenderer) -> None): custom function to called during render()
         """
-
-        self.renderer.add_renderer_callback(callback_func)
+        if self.renderer is not None:
+            self.renderer.add_renderer_callback(callback_func)
 
     def render(self, mode="human"):
         """

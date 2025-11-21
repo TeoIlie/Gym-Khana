@@ -3,8 +3,16 @@ import unittest
 import gymnasium as gym
 import numpy as np
 from f1tenth_gym.envs.utils import deep_update
+from train.config.env_config import get_drift_test_config, get_env_id
 
+class TestDriftEnv(unittest.TestCase):
+    def test_gymnasium_api(self):
+        from gymnasium.utils.env_checker import check_env
 
+        env = gym.make(get_env_id(), config=get_drift_test_config())
+        check_env(env.unwrapped, skip_render_check=True)
+
+        
 class TestEnvInterface(unittest.TestCase):
     def _make_env(self, config={}):
         conf = {
