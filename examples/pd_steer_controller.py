@@ -43,7 +43,7 @@ class PDSteerController:
         return action
 
 
-def get_config(obs_type, lookahead_n_points):
+def get_config(obs_type, lookahead_n_points, lookahead_ds):
     config = get_drift_test_config()
     config["map"] = "Drift_large"
     config["control_input"] = ["speed", "steering_angle"]
@@ -56,6 +56,7 @@ def get_config(obs_type, lookahead_n_points):
     config["render_track_lines"] = True
     config["debug_frenet_projection"] = False
     config["lookahead_n_points"] = lookahead_n_points
+    config["lookahead_ds"] = lookahead_ds
     return config
 
 
@@ -67,28 +68,29 @@ def main():
 
     # config constants
     LOOKAHEAD_N_POINTS = 10
+    LOOKAHEAD_DS = 0.3
     OBS_TYPE = "drift"
 
-    NUM_STEPS = 1_000
+    NUM_STEPS = 10_000
 
     env = gym.make(
         "f1tenth_gym:f1tenth-v0",
-        config=get_config(OBS_TYPE, LOOKAHEAD_N_POINTS),
+        config=get_config(OBS_TYPE, LOOKAHEAD_N_POINTS, LOOKAHEAD_DS),
         render_mode="human",
     )
 
     # Set frenet indices based on obs type
     if OBS_TYPE == "drift":
-        frenet_u_i = 2
-        frenet_n_i = 3
+        FRENET_U_I = 2
+        FRENET_N_I = 3
     elif OBS_TYPE == "frenet":
-        frenet_u_i = 0
-        frenet_n_i = 1
+        FRENET_U_I = 0
+        FRENET_N_I = 1
     else:
         raise ValueError("Please specify frenet observation indices.")
 
     controller = PDSteerController(
-        Kn=FRENET_N_GAIN, Ku=FRENET_K_GAIN, target_speed=TARGET_SPEED, frenet_u_i=frenet_u_i, frenet_n_i=frenet_n_i
+        Kn=FRENET_N_GAIN, Ku=FRENET_K_GAIN, target_speed=TARGET_SPEED, frenet_u_i=FRENET_U_I, frenet_n_i=FRENET_N_I
     )
 
     print(f"Centerline Tracking Controller")
@@ -113,35 +115,20 @@ def main():
         action = controller.get_action(obs)
         # Step environment
         obs, reward, done, truncated, info = env.step(action)
-        done = done or truncated
-
-        display_drift_obs(step, obs, reward, LOOKAHEAD_N_POINTS)
-
-        env.render()
 
         # Track metrics
-        frenet_u = obs[2]  # heading error
-        frenet_n = obs[3]  # lateral deviation
+        frenet_u = obs[FRENET_U_I]  # heading error
+        frenet_n = obs[FRENET_N_I]  # lateral deviation
+
         total_lateral_error += abs(frenet_n)
         total_heading_error += abs(frenet_u)
         total_reward += reward
-        step_count += 1
 
-        # Print periodic status
-        if step_count % 100 == 0:
-            avg_lateral = total_lateral_error / step_count
-            avg_heading = total_heading_error / step_count
-            print(
-                f"Step {step_count}: "
-                f"frenet_n={frenet_n:.4f}m, "
-                f"frenet_u={frenet_u:.4f}rad, "
-                f"reward={reward:.4f}"
-            )
-            print(
-                f"  Avg errors - lateral: {avg_lateral:.4f}m, "
-                f"heading: {avg_heading:.4f}rad, "
-                f"total_reward: {total_reward:.2f}"
-            )
+        display_drift_obs(step, obs, reward, LOOKAHEAD_N_POINTS, total_reward)
+
+        env.render()
+
+        step_count += 1
 
     # Print final statistics
     avg_lateral = total_lateral_error / step_count

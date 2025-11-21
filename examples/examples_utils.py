@@ -11,7 +11,7 @@ def format_float(x):
         return f"{x:.4f}"
 
 
-def display_drift_obs(step, obs, reward, lookahead_n_points):
+def display_drift_obs(step, obs, reward, lookahead_n_points, total_reward=None):
     """
     Format and print "drift" observation type. Use for debugging
     """
@@ -47,4 +47,7 @@ def display_drift_obs(step, obs, reward, lookahead_n_points):
     for i, value in enumerate(widths, start=1):
         print(f"    Point {i} = {format_float(value)}")
 
-    print(f"\n  Reward = {reward}\n")
+    print(f"\n  Reward = {reward}")
+
+    if total_reward is not None:
+        print(f"  Total episode reward = {total_reward}\n")
