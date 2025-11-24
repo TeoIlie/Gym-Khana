@@ -112,6 +112,11 @@ class F110Env(gym.Env):
         self.debug_frenet_projection = self.config["debug_frenet_projection"]
         self.record_obs_min_max = self.config["record_obs_min_max"]
 
+        # reward params
+        self.out_of_bounds_penalty = self.config["out_of_bounds_penalty"]
+        self.progress_gain = self.config["progress_gain"]
+        self.negative_vel_penalty = self.config["negative_vel_penalty"]
+
         # radius to consider done
         self.start_thresh = 0.5  # 10cm
 
@@ -679,6 +684,9 @@ class F110Env(gym.Env):
             "predictive_collision": None,  # None = auto-set based on observation type
             "record_obs_min_max": False,
             "wall_deflection": None,  # None = auto-set based on observation type
+            "out_of_bounds_penalty": -20,
+            "progress_gain": 5.0,
+            "negative_vel_penalty": -20,
         }
 
     def configure(self, config: dict) -> None:
@@ -930,8 +938,6 @@ class F110Env(gym.Env):
         - Predictive (TTC): progress - penalties (additive)
         - Frenet (Drift): -1 OR progress (exclusive)
         """
-        out_of_bounds_penalty = -20.0
-        progress_gain = 5.0
 
         reward = 0.0
         track_length = self.track.centerline.spline.s[-1]
@@ -946,7 +952,14 @@ class F110Env(gym.Env):
             # correct forward/backward track wraparound
             prog = self._correct_wraparound_prog(prog=prog, track_length=track_length)
 
-            prog_r = prog * progress_gain
+            # reward forward progress, multiplied by progress_gain
+            prog_r = prog * self.progress_gain
+
+            # penalize negative longitudinal velocity v_x, as agent should not drive backward
+            agent = self.sim.agents[i]
+            vel = agent.standard_state["v_x"]
+            if vel < 0:
+                reward += self.negative_vel_penalty
 
             # Apply reward based on collision detection strategy
             if self.predictive_collision:
@@ -954,12 +967,12 @@ class F110Env(gym.Env):
                 # Reward = sum(progress) - sum(collision_penalties)
                 reward += prog_r
                 if self.collisions[i]:
-                    reward += out_of_bounds_penalty
+                    reward += self.out_of_bounds_penalty
             else:
                 # Frenet boundary mode (drift): exclusive reward structure
                 # Reward = -1 if boundary exceeded, else progress
                 if self.boundary_exceeded[i]:
-                    reward += out_of_bounds_penalty  # Exclusive penalty for boundary violation
+                    reward += self.out_of_bounds_penalty  # Exclusive penalty for boundary violation
                 else:
                     reward += prog_r  # Only get progress if within boundaries
 
