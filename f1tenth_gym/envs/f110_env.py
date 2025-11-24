@@ -930,6 +930,8 @@ class F110Env(gym.Env):
         - Predictive (TTC): progress - penalties (additive)
         - Frenet (Drift): -1 OR progress (exclusive)
         """
+        out_of_bounds_penalty = -20.0
+        progress_gain = 5.0
 
         reward = 0.0
         track_length = self.track.centerline.spline.s[-1]
@@ -944,20 +946,22 @@ class F110Env(gym.Env):
             # correct forward/backward track wraparound
             prog = self._correct_wraparound_prog(prog=prog, track_length=track_length)
 
+            prog_r = prog * progress_gain
+
             # Apply reward based on collision detection strategy
             if self.predictive_collision:
                 # Predictive TTC mode: additive reward structure
                 # Reward = sum(progress) - sum(collision_penalties)
-                reward += prog
+                reward += prog_r
                 if self.collisions[i]:
-                    reward -= 1.0
+                    reward += out_of_bounds_penalty
             else:
                 # Frenet boundary mode (drift): exclusive reward structure
                 # Reward = -1 if boundary exceeded, else progress
                 if self.boundary_exceeded[i]:
-                    reward += -1.0  # Exclusive penalty for boundary violation
+                    reward += out_of_bounds_penalty  # Exclusive penalty for boundary violation
                 else:
-                    reward += prog  # Only get progress if within boundaries
+                    reward += prog_r  # Only get progress if within boundaries
 
             self.last_s[i] = current_s
         return reward
