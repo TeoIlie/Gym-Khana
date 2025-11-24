@@ -684,9 +684,9 @@ class F110Env(gym.Env):
             "predictive_collision": None,  # None = auto-set based on observation type
             "record_obs_min_max": False,
             "wall_deflection": None,  # None = auto-set based on observation type
-            "out_of_bounds_penalty": -10,
+            "out_of_bounds_penalty": -1,
             "progress_gain": 5.0,
-            "negative_vel_penalty": -10,
+            "negative_vel_penalty": -1,
         }
 
     def configure(self, config: dict) -> None:

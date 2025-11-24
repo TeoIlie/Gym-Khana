@@ -3,7 +3,7 @@ import os
 import gymnasium as gym
 import numpy as np
 from stable_baselines3 import PPO
-from stable_baselines3.common.vec_env import SubprocVecEnv
+from stable_baselines3.common.vec_env import SubprocVecEnv, VecNormalize
 from wandb.integration.sb3 import WandbCallback
 from train.config.env_config import N_ENVS, PROJECT_NAME, SEED
 from train.training_utils import get_output_dirs, make_env, make_output_dirs, get_ckpt_callback
@@ -13,18 +13,20 @@ TRAIN = True
 
 # config for train and test
 CONFIG = {
-    "map": "Spielberg",
+    "map": "Drift_large",
     "num_agents": 1,
     "timestep": 0.01,
     "num_beams": 36,
     "integrator": "rk4",
     "control_input": ["speed", "steering_angle"],
-    "observation_config": {"type": "rl"},
+    "observation_config": {"type": "race"},
     "reset_config": {"type": "rl_random_static"},
-    "normalize_act": False,
-    "normalize_obs": False,
-    "predictive_collision": True,
-    "wall_deflection": True,
+    "normalize_act": True,
+    "normalize_obs": True,
+    "predictive_collision": False,
+    "wall_deflection": False,
+    "lookahead_n_points": 3,
+    "lookahead_ds": 0.5,
 }
 
 

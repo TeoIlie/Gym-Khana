@@ -889,5 +889,15 @@ def observation_factory(env, type: str | None, **kwargs) -> Observation:
     elif type == "frenet":
         features = ["frenet_u", "frenet_n"]
         return VectorObservation(env, features=features)
+    elif type == "race":
+        features = [
+            "linear_vel_x",  # vx - longitudinal velocity, vehicle frame
+            "linear_vel_y",  # vy - lateral velocity, vehicle frame
+            "frenet_u",  # u - angle between car heading, track heading, in Frenet coords
+            "frenet_n",  # n - lateral distance from centerline, in Frenet coords
+            "ang_vel_z",  # r - yaw rate
+            "lookahead_curvatures",  # c - track curvatures
+        ]
+        return VectorObservation(env, features=features)
     else:
         raise ValueError(f"Invalid observation type {type}.")

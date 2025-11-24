@@ -100,7 +100,8 @@ def calculate_norm_bounds(env):
 
     if R_w is not None and R_w > 0 and v_max is not None:
         omega_max = v_max / R_w  # rad/s
-        bounds["prev_avg_wheel_omega"] = (0.0, omega_max)
+        experimental_gain = 6.4  # the true max wheel omega was found experimentally to be ~2610
+        bounds["prev_avg_wheel_omega"] = (0.0, omega_max * experimental_gain)
     else:
         bounds["prev_avg_wheel_omega"] = (None, None)
 
