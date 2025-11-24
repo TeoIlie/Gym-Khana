@@ -60,14 +60,18 @@ class TestGetRewardWraparound:
 
     def test_backward_wraparound_lap_completion(self, env):
         """
-        CRITICAL BUG TEST: Test that completing a lap gives positive reward.
+        Test that completing a lap gives positive reward (capped by max_progress).
 
-        This test WILL FAIL with current buggy implementation because (assuming 200m track length):
-        - Agent at s=195m (near finish)
+        Scenario:
+        - Agent at s=338m (5m before finish on ~343m track)
         - Moves to s=5m (crossed finish line)
-        - Raw progress: 5 - 195 = -190m
-        - Buggy code doesn't detect this, so reward = -190m ❌
-        - Should be corrected to: -190 + 200 = 10m ✓
+        - Raw progress: 5 - 338 = -333m (large negative due to wraparound)
+        - Wraparound correction: -333 + 343 = 10m ✓
+        - Clipping with margin=10: np.clip(10, -2, 2) = 2m (max_progress)
+
+        Note: The actual progress is 10m, but it gets clipped to max_progress (2m)
+        because margin=10 limits progress to v_max * timestep * 10 = 20 * 0.01 * 10 = 2m.
+        This is expected behavior - the clipping acts as a safety net.
         """
         track_length = env.track.centerline.spline.s[-1]
 
@@ -84,30 +88,47 @@ class TestGetRewardWraparound:
 
         reward = env._get_reward()
 
-        print(f"\n🔴 CRITICAL BUG TEST - Lap completion:")
+        # Calculate expected reward (clipped to max_progress)
+        max_progress = env.params["v_max"] * env.timestep * 10.0  # margin=10
+        expected_reward = max_progress  # 2.0m
+
+        print(f"\n✓ Lap completion with clipping:")
         print(f"  Track length: {track_length:.2f}m")
         print(f"  Last s: {last_s:.2f}m (near finish)")
         print(f"  Current s: 5.00m (crossed finish)")
         print(f"  Raw progress: {5.0 - last_s:.2f}m")
-        print(f"  Expected reward: ~10.00m (5m before + 5m after finish)")
+        print(f"  Corrected progress (before clip): ~10.00m")
+        print(f"  Max progress (margin=10): {max_progress:.2f}m")
+        print(f"  Expected reward (after clip): {expected_reward:.2f}m")
         print(f"  Actual reward: {reward:.2f}m")
 
-        if reward < 0:
-            print(f"  ❌ BUG CONFIRMED: Negative reward for lap completion!")
-
-        # This assertion WILL FAIL with buggy code
+        # Verify wraparound was corrected and reward is positive (not large negative)
         assert reward > 0, (
             f"Lap completion should give positive reward! "
-            f"Got {reward:.2f}m instead of ~10. "
-            f"This indicates a backward wraparound bug."
+            f"Got {reward:.2f}m. This indicates wraparound correction failed."
         )
-        assert np.isclose(reward, 10), f"Lap completion reward incorrect, got {reward}"
+
+        # Verify reward matches clipped max_progress
+        assert np.isclose(
+            reward, expected_reward, atol=0.01
+        ), f"Expected clipped reward of {expected_reward:.2f}m, got {reward:.2f}m"
 
     def test_backward_wraparound_mid_track_to_start(self, env):
-        """Test wraparound from middle of track back to start (edge case)"""
+        """
+        Test wraparound from middle of track back to start (capped by max_progress).
+
+        Scenario:
+        - Agent at s=333m (10m before finish on ~343m track)
+        - Moves to s=10m (crossed finish line)
+        - Raw progress: 10 - 333 = -323m (large negative due to wraparound)
+        - Wraparound correction: -323 + 343 = 20m ✓
+        - Clipping with margin=10: np.clip(20, -2, 2) = 2m (max_progress)
+
+        Note: Similar to lap completion test, the 20m progress gets clipped to 2m.
+        """
         track_length = env.track.centerline.spline.s[-1]
 
-        # Set up scenario: from 190m to 10m
+        # Set up scenario: from 10m before finish to 10m after start
         last_s = track_length - 10.0
         env.last_s = [last_s]
         env.collisions = np.zeros(1)
@@ -117,16 +138,26 @@ class TestGetRewardWraparound:
 
         reward = env._get_reward()
 
-        expected_reward = 20.0  # 10m to finish + 10m from start
+        # Calculate expected reward (clipped to max_progress)
+        max_progress = env.params["v_max"] * env.timestep * 10.0  # margin=10
+        expected_reward = max_progress  # 2.0m (not 20m due to clipping)
 
-        print(f"\nBackward wraparound (10m before finish to 10m after):")
+        print(f"\n✓ Backward wraparound with clipping (10m before finish to 10m after):")
         print(f"  Track length: {track_length:.2f}m")
         print(f"  Last s: {last_s:.2f}m")
         print(f"  Current s: 10.00m")
-        print(f"  Expected reward: ~{expected_reward:.2f}m")
+        print(f"  Corrected progress (before clip): ~20.00m")
+        print(f"  Max progress (margin=10): {max_progress:.2f}m")
+        print(f"  Expected reward (after clip): {expected_reward:.2f}m")
         print(f"  Actual reward: {reward:.2f}m")
 
-        assert np.isclose(reward, expected_reward), f"Wraparound should give {expected_reward} reward, got {reward}"
+        # Verify reward is positive (wraparound corrected)
+        assert reward > 0, f"Wraparound should give positive reward, got {reward}"
+
+        # Verify reward matches clipped max_progress
+        assert np.isclose(
+            reward, expected_reward, atol=0.01
+        ), f"Expected clipped reward of {expected_reward:.2f}m, got {reward:.2f}m"
 
     def test_no_wraparound_(self, env):
         """Test that movement near finish line (without crossing) works correctly"""
@@ -250,7 +281,7 @@ class TestCorrectWraparoundProg:
         current_s = 0.1  # 0.1m after start
         prog = current_s - last_s  # Large negative value
 
-        corrected = env._correct_wraparound_prog(prog, agent_idx=0, track_length=track_length)
+        corrected = env._correct_wraparound_prog(prog=prog, track_length=track_length)
         expected = 0.2  # Actual distance traveled
 
         print(f"\n✓ Forward wraparound correction test:")
@@ -280,7 +311,7 @@ class TestCorrectWraparoundProg:
         current_s = track_length - 0.1  # 0.1m before finish (reversed across line)
         prog = current_s - last_s  # Large positive value
 
-        corrected = env._correct_wraparound_prog(prog, agent_idx=0, track_length=track_length)
+        corrected = env._correct_wraparound_prog(prog=prog, track_length=track_length)
         expected = -0.2  # Actual distance traveled backward
 
         print(f"\n✓ Backward wraparound correction test:")
@@ -305,7 +336,7 @@ class TestCorrectWraparoundProg:
 
         # Normal forward progress: 0.15m at v=15m/s with dt=0.01s
         prog_normal = 0.15
-        corrected = env._correct_wraparound_prog(prog_normal, agent_idx=0, track_length=track_length)
+        corrected = env._correct_wraparound_prog(prog=prog_normal, track_length=track_length)
 
         print(f"\n✓ Normal forward progress (no correction):")
         print(f"  Raw progress: {prog_normal:.2f}m")
@@ -326,7 +357,7 @@ class TestCorrectWraparoundProg:
 
         # Normal backward progress: -0.04m at v=-4m/s with dt=0.01s
         prog_backward = -0.04
-        corrected = env._correct_wraparound_prog(prog_backward, agent_idx=0, track_length=track_length)
+        corrected = env._correct_wraparound_prog(prog=prog_backward, track_length=track_length)
 
         print(f"\n✓ Normal backward progress (no correction):")
         print(f"  Raw progress: {prog_backward:.2f}m")
@@ -342,7 +373,7 @@ class TestCorrectWraparoundProg:
         track_length = env.track.centerline.spline.s[-1]
 
         prog_zero = 0.0
-        corrected = env._correct_wraparound_prog(prog_zero, agent_idx=0, track_length=track_length)
+        corrected = env._correct_wraparound_prog(prog=prog_zero, track_length=track_length)
 
         print(f"\n✓ Zero progress (stationary):")
         print(f"  Raw progress: {prog_zero:.2f}m")
@@ -362,7 +393,7 @@ class TestCorrectWraparoundProg:
         max_backward = abs(env.params["v_min"]) * env.timestep * 1.05
         prog_at_threshold = -max_backward
 
-        corrected = env._correct_wraparound_prog(prog_at_threshold, agent_idx=0, track_length=track_length)
+        corrected = env._correct_wraparound_prog(prog=prog_at_threshold, track_length=track_length)
 
         print(f"\n✓ Boundary test (at forward threshold):")
         print(f"  Threshold: {-max_backward:.4f}m")
@@ -384,7 +415,7 @@ class TestCorrectWraparoundProg:
         max_forward = env.params["v_max"] * env.timestep * 1.05
         prog_at_threshold = max_forward
 
-        corrected = env._correct_wraparound_prog(prog_at_threshold, agent_idx=0, track_length=track_length)
+        corrected = env._correct_wraparound_prog(prog=prog_at_threshold, track_length=track_length)
 
         print(f"\n✓ Boundary test (at backward threshold):")
         print(f"  Threshold: {max_forward:.4f}m")

@@ -942,7 +942,7 @@ class F110Env(gym.Env):
             prog = current_s - self.last_s[i]
 
             # correct forward/backward track wraparound
-            prog = self._correct_wraparound_prog(prog, i, track_length)
+            prog = self._correct_wraparound_prog(prog=prog, track_length=track_length)
 
             # Apply reward based on collision detection strategy
             if self.predictive_collision:
@@ -1084,7 +1084,7 @@ class F110Env(gym.Env):
 
         return obs, info
 
-    def _correct_wraparound_prog(self, prog: float, agent_idx: int, track_length: float, margin=1.05) -> float:
+    def _correct_wraparound_prog(self, prog: float, track_length: float, margin=10.0) -> float:
         """
         Validate that progress is within physically possible bounds.
 
@@ -1092,16 +1092,21 @@ class F110Env(gym.Env):
             prog (float): Progress in meters for current timestep
             agent_idx (int): Index of the agent
         """
-        # Maximum forward progress in one timestep: v_max * dt
+        # max progress used for clipping
         max_progress = self.params["v_max"] * self.timestep * margin
+        # half track length used for wraparound detection
+        half_track = track_length / 2
 
-        if prog < -max_progress:
-            prog = prog + track_length
+        # forward wraparound
+        if prog < -half_track:
+            prog += track_length
 
-        elif prog > max_progress:
-            prog = prog - track_length
+        # backward wraparound
+        elif prog > half_track:
+            prog -= track_length
 
-        return prog
+        # clip in case progress is still out of bounds
+        return np.clip(prog, -max_progress, max_progress)
 
     def update_map(self, map_name: str):
         """
