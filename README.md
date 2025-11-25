@@ -75,8 +75,14 @@ Default configurations are stored in `/train/config/env_config.py`, with paramet
         2. `lookahead_ds` - Spacing between points in meters (default: 0.3m)
     5. Set `normalize_obs` to `True/False` for normalizing the observation space. Only `"drift"` observation type currently is able to be normalized
     6. Set `normalize_act` to `True/False` for normalizing the action space. Supported for all action types
-    6. Set `predictive_collision` to `True` to use TTC collision checking and `False` for Frenet-based collision checking
+    6. Set `predictive_collision` to `True` to use TTC collision checking and `False` for Frenet-based collision checking. Note that this also modifies the reward function.
     7. Set `wall_deflection` to `False` to treat track edges as boundaries, and `True` to treat them as walls that cause a collision and halt the vehicle
+    8. Reward configuration options:
+        1. `progress_gain`: set amount of gain by which to multiply forward progress reward. Must be >= 1
+        2. `out_of_bounds_penalty`: penalty for driving off the track boundary
+        3. `negative_vel_penalty`: penalty for driving backward
+        4. `minimum_speed_penalty`: minimum speed the agent must travel per timestep to receive 0 progress reward. Calculated as `minimum_speed_penalty * timestep * progress_gain`
+        5. `max_episode_steps`: the maximum number of episode steps
 
 ## Wanbd
 

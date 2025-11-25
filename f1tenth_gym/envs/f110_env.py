@@ -116,6 +116,11 @@ class F110Env(gym.Env):
         self.out_of_bounds_penalty = self.config["out_of_bounds_penalty"]
         self.progress_gain = self.config["progress_gain"]
         self.negative_vel_penalty = self.config["negative_vel_penalty"]
+        self.time_penalty_per_step = -self.config["minimum_speed_penalty"] * self.timestep * self.progress_gain
+        self.max_episode_steps = self.config["max_episode_steps"]
+        self.current_step = 0
+
+        assert self.progress_gain >= 1.0, "Progress gain must be >= 1."
 
         # radius to consider done
         self.start_thresh = 0.5  # 10cm
@@ -687,6 +692,8 @@ class F110Env(gym.Env):
             "out_of_bounds_penalty": -1,
             "progress_gain": 5.0,
             "negative_vel_penalty": -1,
+            "minimum_speed_penalty": 0.2,
+            "max_episode_steps": 5000,
         }
 
     def configure(self, config: dict) -> None:
@@ -707,7 +714,8 @@ class F110Env(gym.Env):
 
     def _check_done(self):
         """
-        Check if the current rollout is done
+        Check if the current rollout is done. Distinguishes between
+        natural termination (collision/boundary) and truncation (time limit).
 
         Reset behavior depends on collision detection mode:
         - Predictive (TTC): Reset when ego agent has TTC collision or all agents complete 2 laps
@@ -717,7 +725,8 @@ class F110Env(gym.Env):
             None
 
         Returns:
-            done (bool): whether the rollout is done
+            done (bool): whether the rollout is done (terminated or truncated)
+            truncated (bool): whether the episode was truncated due to time limit
             toggle_list (list[int]): each agent's toggle list for crossing the finish zone
         """
 
@@ -749,13 +758,19 @@ class F110Env(gym.Env):
             if self.toggle_list[i] < 4:
                 self.lap_times[i] = self.current_time
 
-        # Conditional reset logic based on collision detection mode
+        # Determine natural termination based on collision detection mode
         if self.predictive_collision:
-            done = (self.collisions[self.ego_idx]) or np.all(self.toggle_list >= 4)
+            terminated = (self.collisions[self.ego_idx]) or np.all(self.toggle_list >= 4)
         else:
-            done = self.boundary_exceeded[self.ego_idx]
+            terminated = self.boundary_exceeded[self.ego_idx]
 
-        return bool(done), self.toggle_list >= 4
+        # Truncate based on timestep limit
+        truncated = self.current_step > self.max_episode_steps
+
+        # Episode ends if either condition is met
+        done = terminated or truncated
+
+        return bool(done), bool(truncated), self.toggle_list >= 4
 
     def _update_state(self):
         """
@@ -977,6 +992,10 @@ class F110Env(gym.Env):
                     reward += prog_r  # Only get progress if within boundaries
 
             self.last_s[i] = current_s
+
+        # apply constant penalty to encourage faster speed
+        reward += self.time_penalty_per_step
+
         return reward
 
     def step(self, action):
@@ -1003,8 +1022,9 @@ class F110Env(gym.Env):
         if self.record_obs_min_max:
             self._update_obs_min_max()
 
-        # times
+        # increment time and step
         self.current_time = self.current_time + self.timestep
+        self.current_step += 1
 
         # update data member
         self._update_state()
@@ -1023,9 +1043,12 @@ class F110Env(gym.Env):
         }
 
         # check done
-        done, toggle_list = self._check_done()
-        truncated = False
-        info = {"checkpoint_done": toggle_list}
+        done, truncated, toggle_list = self._check_done()
+        info = {
+            "checkpoint_done": toggle_list,
+            "episode_length": self.current_step,
+            "TimeLimit.truncated": truncated,  # For SB3 compatibility
+        }
 
         # calc reward
         reward = self._get_reward()
@@ -1058,6 +1081,7 @@ class F110Env(gym.Env):
         self.near_start = True
         self.near_starts = np.array([True] * self.num_agents)
         self.toggle_list = np.zeros((self.num_agents,))
+        self.current_step = 0
 
         # states after reset
         if options is not None and "poses" in options:
