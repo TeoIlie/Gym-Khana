@@ -83,7 +83,14 @@ def calculate_norm_bounds(env):
     s_min = params.get("s_min", None)
     s_max = params.get("s_max", None)
     bounds["delta"] = (s_min, s_max)
-    bounds["prev_steering_cmd"] = (s_min, s_max)
+
+    if env.unwrapped.normalize_act:
+        # if the actions are normalized, the raw steering command is recorded in prev_steering_cmd
+        # which is in range (-1, 1)
+        bounds["prev_steering_cmd"] = (-1, 1)
+    else:
+        # else, for unnormalized actions the bounds are taken from the params
+        bounds["prev_steering_cmd"] = (s_min, s_max)
 
     # Acceleration: symmetric about zero (negative acceleration is braking)
     a_max = params.get("a_max", None)  # m/s²
