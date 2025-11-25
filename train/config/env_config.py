@@ -63,6 +63,9 @@ TRAIN_DEBUG_RENDER = _config["train_debug_render"]
 # Callback config
 CKPT_SAVE_FREQ = _config["ckpt_save_freq"]
 
+# LiDAR beams
+NUM_BEAMS = _config["num_beams"]
+
 
 # ====================================
 # Gym config functions
@@ -81,6 +84,7 @@ def get_drift_test_config():
         "timestep": TIMESTEP,
         "integrator": INTEGRATOR,
         "model": MODEL,
+        "num_beams": NUM_BEAMS,
         "control_input": ACTION_INPUT,
         "observation_config": {"type": OBS_TYPE},
         "reset_config": {"type": RESET_CONFIG},
@@ -108,6 +112,7 @@ def get_drift_train_config():
         "timestep": TIMESTEP,
         "integrator": INTEGRATOR,
         "model": MODEL,
+        "num_beams": NUM_BEAMS,
         "control_input": ACTION_INPUT,
         "observation_config": {"type": OBS_TYPE},
         "reset_config": {"type": RESET_CONFIG},
