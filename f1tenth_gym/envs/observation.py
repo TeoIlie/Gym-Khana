@@ -680,7 +680,7 @@ class VectorObservation(Observation):
         self.bounds = {}
         self.normalize_obs = self.env.unwrapped.normalize_obs
         if self.normalize_obs:
-            self.bounds = calculate_norm_bounds(self.env.unwrapped)
+            self.bounds = calculate_norm_bounds(self.env.unwrapped, self.features)
 
     def space(self):
         scan_size = self.env.unwrapped.sim.agents[0].scan_simulator.num_beams

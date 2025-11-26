@@ -247,23 +247,27 @@ class F110Env(gym.Env):
         # Handle normalization configuration
         normalize_obs = self.config["normalize_obs"]
 
+        supported_obs_types = ["drift", "race", "frenet"]
+        obs_norm_supported = obs_type in supported_obs_types
+
         if normalize_obs is None:
             # User did not set normalize - auto-set based on observation type
-            self.normalize_obs = obs_type == "drift"
+            # Default to True for observation types that support normalization (drift, race, frenet, etc.)
+            self.normalize_obs = obs_norm_supported
         else:
             # User explicitly set normalize
-            if normalize_obs and obs_type != "drift":
+            if normalize_obs and not obs_norm_supported:
                 # If user wants normalization, but obs_type is incompatible, warn and overwrite normalize to False to prevent failures
                 warnings.warn(
-                    f"Normalization is only supported for 'drift' observation type, not '{obs_type}'. "
-                    "Setting normalize=False.",
+                    f"Observation normalization is only supported for {supported_obs_types} observation types, not '{obs_type}'. "
+                    "Setting normalize_obs=False.",
                     UserWarning,
                 )
                 self.normalize_obs = False
-            elif not normalize_obs and obs_type == "drift":
-                # If user chose drift obs_type but set normalize to False, allow the input but warn
+            elif not normalize_obs and obs_norm_supported:
+                # If user chose supported obs_type but set normalize to False, allow but warn
                 warnings.warn(
-                    "Normalization is recommended for 'drift' observation type but was disabled. "
+                    f"Observation normalization is recommended for {obs_type} observation type but was disabled. "
                     "Verify this is intentional.",
                     UserWarning,
                 )
@@ -277,23 +281,22 @@ class F110Env(gym.Env):
 
         # Initialize observation min/max tracking if requested
 
-        # If user requests obseration min/max tracking for non-drift type, warn and default to no tracking
-        if self.record_obs_min_max and obs_type != "drift":
-            warnings.warn(
-                f"Observation min/max tracking only supported for 'drift' observation type, not '{obs_type}'. "
-                "Setting record_obs_min_max=False.",
-                UserWarning,
-            )
-            self.record_obs_min_max = False
-
-        # Only track observation min/max if there is normalizing
-        if self.record_obs_min_max and not self.normalize_obs:
-            warnings.warn(
-                f"Observation min/max tracking only supported if 'normalize_obs' is True. "
-                "Setting record_obs_min_max=False.",
-                UserWarning,
-            )
-            self.record_obs_min_max = False
+        # If user requests observation min/max tracking, check it is allowed
+        if self.record_obs_min_max:
+            if not obs_norm_supported:
+                warnings.warn(
+                    f"Observation min/max tracking only supported for {supported_obs_types} observation types, not '{obs_type}'. "
+                    "Setting record_obs_min_max=False.",
+                    UserWarning,
+                )
+                self.record_obs_min_max = False
+            if not self.normalize_obs:
+                warnings.warn(
+                    f"Observation min/max tracking only supported if 'normalize_obs' is True. "
+                    "Setting record_obs_min_max=False.",
+                    UserWarning,
+                )
+                self.record_obs_min_max = False
 
         # Set up obs tracking if requested by user and allowed
         if self.record_obs_min_max:
