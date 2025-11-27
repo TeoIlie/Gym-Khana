@@ -45,9 +45,7 @@ from .utils import deep_update
 
 class F110Env(gym.Env):
     """
-    OpenAI gym environment for F1TENTH
-
-    Env should be initialized by calling gym.make('f110_gym:f110-v0', **kwargs)
+    Gymnasium environment for F1TENTH. For API specs, see https://gymnasium.farama.org/api/env/#
 
     Args:
         kwargs:
@@ -715,7 +713,7 @@ class F110Env(gym.Env):
 
     def _check_done(self):
         """
-        Check if the current rollout is done. Distinguishes between
+        Check if the current episode should end. Distinguishes between
         natural termination (collision/boundary) and truncation (time limit).
 
         Reset behavior depends on collision detection mode:
@@ -726,7 +724,7 @@ class F110Env(gym.Env):
             None
 
         Returns:
-            done (bool): whether the rollout is done (terminated or truncated)
+            terminated (bool): whether the episode ended due to a terminal state
             truncated (bool): whether the episode was truncated due to time limit
             toggle_list (list[int]): each agent's toggle list for crossing the finish zone
         """
@@ -768,10 +766,7 @@ class F110Env(gym.Env):
         # Truncate based on timestep limit
         truncated = self.current_step > self.max_episode_steps
 
-        # Episode ends if either condition is met
-        done = terminated or truncated
-
-        return bool(done), bool(truncated), self.toggle_list >= 4
+        return bool(terminated), bool(truncated), self.toggle_list >= 4
 
     def _update_state(self):
         """
@@ -1041,17 +1036,16 @@ class F110Env(gym.Env):
         }
 
         # check done
-        done, truncated, toggle_list = self._check_done()
+        terminated, truncated, toggle_list = self._check_done()
         info = {
             "checkpoint_done": toggle_list,
             "episode_length": self.current_step,
-            "TimeLimit.truncated": truncated,  # For SB3 compatibility
         }
 
         # calc reward
         reward = self._get_reward()
 
-        return obs, reward, done, truncated, info
+        return obs, reward, terminated, truncated, info
 
     def reset(self, seed=None, options=None):
         """
