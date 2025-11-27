@@ -680,7 +680,7 @@ class VectorObservation(Observation):
         self.bounds = {}
         self.normalize_obs = self.env.unwrapped.normalize_obs
         if self.normalize_obs:
-            self.bounds = calculate_norm_bounds(self.env.unwrapped)
+            self.bounds = calculate_norm_bounds(self.env.unwrapped, self.features)
 
     def space(self):
         scan_size = self.env.unwrapped.sim.agents[0].scan_simulator.num_beams
@@ -888,6 +888,16 @@ def observation_factory(env, type: str | None, **kwargs) -> Observation:
         return VectorObservation(env, features=features)
     elif type == "frenet":
         features = ["frenet_u", "frenet_n"]
+        return VectorObservation(env, features=features)
+    elif type == "race":
+        features = [
+            "linear_vel_x",  # vx - longitudinal velocity, vehicle frame
+            "linear_vel_y",  # vy - lateral velocity, vehicle frame
+            "frenet_u",  # u - angle between car heading, track heading, in Frenet coords
+            "frenet_n",  # n - lateral distance from centerline, in Frenet coords
+            "ang_vel_z",  # r - yaw rate
+            "lookahead_curvatures",  # c - track curvatures
+        ]
         return VectorObservation(env, features=features)
     else:
         raise ValueError(f"Invalid observation type {type}.")

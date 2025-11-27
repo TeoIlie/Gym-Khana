@@ -73,10 +73,15 @@ Default configurations are stored in `/train/config/env_config.py`, with paramet
     4. Lookahead curvature/width observations can be configured with spacing and number parameters, and when `render_lookahead_curvatures": True` these will be reflected
         1. `lookahead_n_points` - Number of lookahead points (default: 10)
         2. `lookahead_ds` - Spacing between points in meters (default: 0.3m)
-    5. Set `normalize_obs` to `True/False` for normalizing the observation space. Only `"drift"` observation type currently is able to be normalized
+    5. Set `normalize_obs` to `True/False` for normalizing the observation space. Only specific observation types can be normalized
     6. Set `normalize_act` to `True/False` for normalizing the action space. Supported for all action types
-    6. Set `predictive_collision` to `True` to use TTC collision checking and `False` for Frenet-based collision checking
+    6. Set `predictive_collision` to `True` to use TTC collision checking and `False` for Frenet-based collision checking. Note that this also modifies the reward function.
     7. Set `wall_deflection` to `False` to treat track edges as boundaries, and `True` to treat them as walls that cause a collision and halt the vehicle
+    8. Reward configuration options:
+        1. `progress_gain`: set amount of gain by which to multiply forward progress reward. Must be >= 1
+        2. `out_of_bounds_penalty`: penalty for driving off the track boundary
+        3. `negative_vel_penalty`: penalty for driving backward
+        4. `max_episode_steps`: the maximum number of episode steps
 
 ## Wanbd
 
@@ -135,18 +140,3 @@ gym 0.17.3 requires pyglet<=1.5.0,>=1.4.0, but you'll have pyglet 1.5.11 which i
 ```
 
 which could be ignored. The environment should still work without error.
-
-## Citing
-
-If you find this Gym environment useful, please consider citing:
-
-```
-@inproceedings{okelly2020f1tenth,
-  title={F1TENTH: An Open-source Evaluation Environment for Continuous Control and Reinforcement Learning},
-  author={O’Kelly, Matthew and Zheng, Hongrui and Karthik, Dhruv and Mangharam, Rahul},
-  booktitle={NeurIPS 2019 Competition and Demonstration Track},
-  pages={77--89},
-  year={2020},
-  organization={PMLR}
-}
-```

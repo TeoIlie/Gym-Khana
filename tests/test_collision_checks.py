@@ -103,6 +103,7 @@ class TestFrenetBoundaryChecking(unittest.TestCase):
                 "observation_config": {"type": None},
                 "reset_config": {"type": "rl_random_static"},
                 "predictive_collision": False,  # Enable Frenet boundary checking
+                "progress_gain": 1.0,
             },
         )
         self.env.reset()
@@ -235,6 +236,7 @@ class TestFrenetBoundaryChecking(unittest.TestCase):
                 "observation_config": {"type": None},
                 "reset_config": {"type": "rl_random_static"},
                 "predictive_collision": False,  # Frenet mode
+                "progress_gain": 1.0,
             },
         )
 
@@ -246,6 +248,7 @@ class TestFrenetBoundaryChecking(unittest.TestCase):
                 "observation_config": {"type": None},
                 "reset_config": {"type": "rl_random_static"},
                 "predictive_collision": True,  # Predictive mode
+                "progress_gain": 1.0,
             },
         )
 

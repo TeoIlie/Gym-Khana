@@ -1,7 +1,8 @@
 # This file contains RL-specific hyperparameters for PPO training
 
 seed: 42 # seed for reproducibility
-n_envs: 64  # 64 parallel environments experimentally found to be best - approx 2 x [# of CPU cores], found with nproc
+core_mult: 2  # n_envs = core_mult * [# of CPU cores]
+              # experimentally, the ideal number of envs was found to be 2 x [# of CPU cores]
 total_timesteps: 120000000  # 120 million timesteps
 n_steps: 1024  # Number of steps per rollout per environment
 batch_size: 1024  # Minibatch size for each gradient update

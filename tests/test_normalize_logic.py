@@ -54,7 +54,7 @@ class TestNormalizationBounds:
         ]
 
         # Get normalization bounds
-        bounds = calculate_norm_bounds(env.unwrapped)
+        bounds = calculate_norm_bounds(env.unwrapped, expected_features)
 
         # Assert all drift features exist as keys
         for feature in expected_features:
@@ -66,6 +66,59 @@ class TestNormalizationBounds:
             assert max_val is not None, f"Feature '{feature}' has None max value"
             # Allow min == max for constant features (e.g., constant track width)
             assert min_val <= max_val, f"Feature '{feature}' has invalid bounds: min={min_val} > max={max_val}"
+
+        env.close()
+
+    def test_prev_steering_cmd_bounds_with_normalized_actions(self):
+        """Verify prev_steering_cmd bounds are (-1, 1) when actions are normalized."""
+        env = gym.make(
+            "f1tenth_gym:f1tenth-v0",
+            config={
+                "map": "Spielberg",
+                "num_agents": 1,
+                "model": "std",
+                "observation_config": {"type": "drift"},
+                "params": F110Env.f1tenth_std_vehicle_params(),
+                "normalize_act": True,  # Actions normalized
+                "normalize_obs": True,
+            },
+        )
+
+        bounds = calculate_norm_bounds(env.unwrapped, ["prev_steering_cmd"])
+
+        # When actions are normalized, raw steering is in [-1, 1]
+        assert bounds["prev_steering_cmd"] == (
+            -1,
+            1,
+        ), f"Expected (-1, 1), got {bounds['prev_steering_cmd']}"
+
+        env.close()
+
+    def test_prev_steering_cmd_bounds_with_unnormalized_actions(self):
+        """Verify prev_steering_cmd bounds are (s_min, s_max) when actions are unnormalized."""
+        env = gym.make(
+            "f1tenth_gym:f1tenth-v0",
+            config={
+                "map": "Spielberg",
+                "num_agents": 1,
+                "model": "std",
+                "observation_config": {"type": "drift"},
+                "params": F110Env.f1tenth_std_vehicle_params(),
+                "normalize_act": False,  # Actions NOT normalized
+                "normalize_obs": True,
+            },
+        )
+
+        bounds = calculate_norm_bounds(env.unwrapped, ["prev_steering_cmd"])
+        params = F110Env.f1tenth_std_vehicle_params()
+        s_min = params["s_min"]
+        s_max = params["s_max"]
+
+        # When actions are unnormalized, raw steering is in [s_min, s_max]
+        assert bounds["prev_steering_cmd"] == (
+            s_min,
+            s_max,
+        ), f"Expected ({s_min}, {s_max}), got {bounds['prev_steering_cmd']}"
 
         env.close()
 
@@ -223,6 +276,47 @@ class TestNormalizeFeature:
         result_array = normalize_feature("constant_feature", input_array, bounds)
         assert np.allclose(result_array, 0.0), "Constant array should normalize to zeros"
 
+    def test_prev_steering_cmd_normalization_with_normalized_bounds(self):
+        """Test normalize_feature with prev_steering_cmd when bounds are (-1, 1)."""
+        # This case occurs when normalize_act=True
+        bounds = {"prev_steering_cmd": (-1, 1)}
+
+        # Test boundary values - should map to themselves (identity)
+        result = normalize_feature("prev_steering_cmd", np.float32(-1.0), bounds)
+        assert np.isclose(result, -1.0), f"Expected -1.0, got {result}"
+
+        result = normalize_feature("prev_steering_cmd", np.float32(1.0), bounds)
+        assert np.isclose(result, 1.0), f"Expected 1.0, got {result}"
+
+        # Test center value
+        result = normalize_feature("prev_steering_cmd", np.float32(0.0), bounds)
+        assert np.isclose(result, 0.0), f"Expected 0.0, got {result}"
+
+        # Test intermediate value
+        result = normalize_feature("prev_steering_cmd", np.float32(0.5), bounds)
+        assert np.isclose(result, 0.5), f"Expected 0.5, got {result}"
+
+    def test_prev_steering_cmd_normalization_with_physical_bounds(self):
+        """Test normalize_feature with prev_steering_cmd when bounds are (s_min, s_max)."""
+        # This case occurs when normalize_act=False
+        params = F110Env.f1tenth_std_vehicle_params()
+        s_min = params["s_min"]
+        s_max = params["s_max"]
+        bounds = {"prev_steering_cmd": (s_min, s_max)}
+
+        # Test s_min maps to -1.0
+        result = normalize_feature("prev_steering_cmd", np.float32(s_min), bounds)
+        assert np.isclose(result, -1.0), f"Expected -1.0, got {result}"
+
+        # Test s_max maps to 1.0
+        result = normalize_feature("prev_steering_cmd", np.float32(s_max), bounds)
+        assert np.isclose(result, 1.0), f"Expected 1.0, got {result}"
+
+        # Test midpoint (s_min + s_max) / 2 maps to 0.0
+        midpoint = (s_min + s_max) / 2.0
+        result = normalize_feature("prev_steering_cmd", np.float32(midpoint), bounds)
+        assert np.isclose(result, 0.0), f"Expected 0.0, got {result}"
+
 
 class TestNormalizedObservation:
     """Test end-to-end normalized observation pipeline."""
@@ -330,9 +424,11 @@ class TestNormalizedObservation:
             },
         )
 
+        features = ["lookahead_curvatures", "lookahead_widths", "linear_vel_x", "delta", "prev_accl_cmd"]
+
         # Get bounds from both environments
-        bounds1 = calculate_norm_bounds(env1.unwrapped)
-        bounds2 = calculate_norm_bounds(env2.unwrapped)
+        bounds1 = calculate_norm_bounds(env1.unwrapped, features)
+        bounds2 = calculate_norm_bounds(env2.unwrapped, features)
 
         # Track-dependent bounds should differ (curvatures or widths)
         # Use tuple comparison to handle numpy arrays in bounds
@@ -789,6 +885,116 @@ class TestActionEdgeCases:
 
                 if terminated or truncated:
                     break
+
+        env.close()
+
+
+class TestPrevSteeringCmdNormalization:
+    """Integration tests for prev_steering_cmd observation normalization."""
+
+    def test_end_to_end_with_normalized_actions(self):
+        """Test prev_steering_cmd normalization when actions are normalized."""
+        env = gym.make(
+            "f1tenth_gym:f1tenth-v0",
+            config={
+                "map": "Spielberg",
+                "num_agents": 1,
+                "model": "std",
+                "observation_config": {"type": "drift"},
+                "params": F110Env.f1tenth_std_vehicle_params(),
+                "normalize_act": True,
+                "normalize_obs": True,
+            },
+        )
+
+        obs, _ = env.reset()
+
+        # Get the index of prev_steering_cmd in observation
+        # For drift obs: [vx, vy, u, n, omega_z, delta, prev_steer, prev_accl,
+        #                 prev_wheel_omega, curr_vel_cmd, lookahead_curv..., lookahead_width...]
+        prev_steer_idx = 6  # Based on drift observation structure
+
+        # Test with maximum left steering (-1)
+        # Note: prev_steering_cmd holds the PREVIOUS step's steering, so we need to step twice
+        action = np.array([[-1.0, 0.5]], dtype=np.float32)
+        obs, _, _, _, _ = env.step(action)  # First step: prev=0 (from reset), curr=-1
+        obs, _, _, _, _ = env.step(action)  # Second step: prev=-1, curr=-1
+        prev_steer_obs = obs[prev_steer_idx]
+
+        # When normalize_act=True, raw action is -1, bounds are (-1, 1)
+        # So normalize_feature(-1, (-1, 1)) should give -1
+        assert np.isclose(prev_steer_obs, -1.0, atol=1e-5), f"Expected prev_steering_cmd ≈ -1.0, got {prev_steer_obs}"
+
+        # Test with maximum right steering (1)
+        action = np.array([[1.0, 0.5]], dtype=np.float32)
+        obs, _, _, _, _ = env.step(action)  # First step: prev=-1, curr=1
+        obs, _, _, _, _ = env.step(action)  # Second step: prev=1, curr=1
+        prev_steer_obs = obs[prev_steer_idx]
+
+        assert np.isclose(prev_steer_obs, 1.0, atol=1e-5), f"Expected prev_steering_cmd ≈ 1.0, got {prev_steer_obs}"
+
+        # Test with zero steering
+        action = np.array([[0.0, 0.5]], dtype=np.float32)
+        obs, _, _, _, _ = env.step(action)  # First step: prev=1, curr=0
+        obs, _, _, _, _ = env.step(action)  # Second step: prev=0, curr=0
+        prev_steer_obs = obs[prev_steer_idx]
+
+        assert np.isclose(prev_steer_obs, 0.0, atol=1e-5), f"Expected prev_steering_cmd ≈ 0.0, got {prev_steer_obs}"
+
+        env.close()
+
+    def test_end_to_end_with_unnormalized_actions(self):
+        """Test prev_steering_cmd normalization when actions are NOT normalized."""
+        params = F110Env.f1tenth_std_vehicle_params()
+        s_min = params["s_min"]
+        s_max = params["s_max"]
+
+        env = gym.make(
+            "f1tenth_gym:f1tenth-v0",
+            config={
+                "map": "Spielberg",
+                "num_agents": 1,
+                "model": "std",
+                "observation_config": {"type": "drift"},
+                "params": params,
+                "normalize_act": False,
+                "normalize_obs": True,
+            },
+        )
+
+        obs, _ = env.reset()
+        prev_steer_idx = 6
+
+        # Test with maximum left steering (s_min)
+        # Note: prev_steering_cmd holds the PREVIOUS step's steering, so we need to step twice
+        action = np.array([[s_min, 2.0]], dtype=np.float32)
+        obs, _, _, _, _ = env.step(action)  # First step: prev=0 (from reset), curr=s_min
+        obs, _, _, _, _ = env.step(action)  # Second step: prev=s_min, curr=s_min
+        prev_steer_obs = obs[prev_steer_idx]
+
+        # When normalize_act=False, raw action is s_min, bounds are (s_min, s_max)
+        # So normalize_feature(s_min, (s_min, s_max)) should give -1
+        assert np.isclose(prev_steer_obs, -1.0, atol=1e-5), f"Expected prev_steering_cmd ≈ -1.0, got {prev_steer_obs}"
+
+        # Test with maximum right steering (s_max)
+        action = np.array([[s_max, 2.0]], dtype=np.float32)
+        obs, _, _, _, _ = env.step(action)  # First step: prev=s_min, curr=s_max
+        obs, _, _, _, _ = env.step(action)  # Second step: prev=s_max, curr=s_max
+        prev_steer_obs = obs[prev_steer_idx]
+
+        assert np.isclose(prev_steer_obs, 1.0, atol=1e-5), f"Expected prev_steering_cmd ≈ 1.0, got {prev_steer_obs}"
+
+        # Test with zero steering (should map to normalized center)
+        action = np.array([[0.0, 2.0]], dtype=np.float32)
+        obs, _, _, _, _ = env.step(action)  # First step: prev=s_max, curr=0
+        obs, _, _, _, _ = env.step(action)  # Second step: prev=0, curr=0
+        prev_steer_obs = obs[prev_steer_idx]
+
+        # 0.0 is between s_min and s_max, should normalize to corresponding value
+        expected_normalized = 2.0 * (0.0 - s_min) / (s_max - s_min) - 1.0
+        assert np.isclose(
+            prev_steer_obs, expected_normalized, atol=1e-5
+        ), f"Expected prev_steering_cmd ≈ {expected_normalized}, got {prev_steer_obs}"
 
         env.close()
 

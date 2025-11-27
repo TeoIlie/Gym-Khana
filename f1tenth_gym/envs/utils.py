@@ -1,4 +1,5 @@
 from typing import Any, Dict, TypeVar
+import warnings
 
 import numpy as np
 
@@ -22,9 +23,9 @@ def deep_update(mapping: Dict[KeyType, Any], *updating_mappings: Dict[KeyType, A
     return updated_mapping
 
 
-def calculate_norm_bounds(env):
+def calculate_norm_bounds(env, features: list[str]):
     """
-    Calculate normalization bounds for each feature in the drift observation.
+    Calculate normalization bounds for requested observation features.
 
     Extracts bounds from three sources:
     1. Vehicle parameters (velocity limits, control limits, wheel dynamics)
@@ -37,125 +38,188 @@ def calculate_norm_bounds(env):
     ----------
     env : F110Env
         The environment to extract parameters from
+    features : list[str]
+        List of feature names that require normalization bounds
 
     Returns
     -------
     dict
-        Mapping of feature names to (min, max) tuples for normalization
+        Mapping of requested feature names to (min, max) tuples for normalization
+
+    Raises
+    ------
+    ValueError
+        If any requested feature is unknown or required parameters are missing
 
     Notes
     -----
-    - ValueError raised if requires params are missing
-    - Track-dependent bounds use defaults if track/centerline not available
+    - Only calculates bounds for features in the provided list
+    - ValueError raised if required params are missing for requested features
+    - Track-dependent bounds require track/centerline to be available
     - Asymmetric physical bounds (e.g., wheel speed ≥ 0) still map to [-1, 1] for best DRL training
     """
     params = env.params
     bounds = {}
+    features_set = set(features)  # For efficient lookup
 
     # ===========================
     # 1. VELOCITY BOUNDS
     # ===========================
 
-    # Longitudinal velocity: [0, v_max]
-    v_max = params.get("v_max", None)  # m/s
-    bounds["linear_vel_x"] = (0.0, v_max)
-    bounds["curr_vel_cmd"] = (0.0, v_max)  # Same as vx
+    # Longitudinal velocity: [v_min, v_max]
+    if "linear_vel_x" in features_set or "curr_vel_cmd" in features_set or "linear_vel_y" in features_set:
+        v_max = params.get("v_max", None)  # m/s
+        v_min = params.get("v_min", None)  # m/s
 
-    # Lateral velocity: symmetric, friction-limited
-    # Set to 1/2 of max longitudinal velocity
-    linear_vel_bound = 0.5 * v_max if v_max is not None else None
-    bounds["linear_vel_y"] = (
-        (-linear_vel_bound, linear_vel_bound) if linear_vel_bound is not None else (None, None)
-    )  # m/s
+        if v_max is None or v_min is None:
+            raise ValueError(
+                "Features 'linear_vel_x', 'linear_vel_y' and 'curr_vel_cmd' require 'v_max' and 'v_min' parameters. "
+                "Please ensure these are configured in env.params."
+            )
 
-    # Yaw rate: can compute from v_max / min(lf, lr) or use conservative bound
-    # For F1TENTH: v_max=10 / wheelbase~0.3 ≈ 33 rad/s, but use conservative 5 rad/s
+        if "linear_vel_x" in features_set:
+            bounds["linear_vel_x"] = (v_min, v_max)
+        if "curr_vel_cmd" in features_set:
+            bounds["curr_vel_cmd"] = (v_min, v_max)
+        if "linear_vel_y" in features_set:
+            linear_vel_bound = 0.5 * v_max
+            bounds["linear_vel_y"] = (-linear_vel_bound, linear_vel_bound)
 
-    # TODO current max yaw found experimentally in sim, but this could be off
-    experimental_max_yaw = 4.0
-    bounds["ang_vel_z"] = (-experimental_max_yaw, experimental_max_yaw)  # rad/s
+    # Yaw rate: experimentally determined bound
+    if "ang_vel_z" in features_set:
+        experimental_max_yaw = 4.0  # rad/s, found experimentally in sim
+        bounds["ang_vel_z"] = (-experimental_max_yaw, experimental_max_yaw)
 
     # ===========================
     # 2. CONTROL INPUT BOUNDS
     # ===========================
 
-    # Steering angle: from vehicle parameters
-    s_min = params.get("s_min", None)
-    s_max = params.get("s_max", None)
-    bounds["delta"] = (s_min, s_max)
-    bounds["prev_steering_cmd"] = (s_min, s_max)
+    # Steering: [s_min, s_max]
+    if "delta" in features_set or "prev_steering_cmd" in features_set:
+        s_min = params.get("s_min", None)
+        s_max = params.get("s_max", None)
+        if s_min is None or s_max is None:
+            raise ValueError(
+                "Features 'delta' and 'prev_steering_cmd' require 's_min' and 's_max' parameters. "
+                "Please configure in env.params."
+            )
+        if "delta" in features_set:
+            bounds["delta"] = (s_min, s_max)
+        if "prev_steering_cmd" in features_set:
+            if env.unwrapped.normalize_act:
+                # if the actions are normalized, the raw steering command is recorded in prev_steering_cmd
+                # which is in range (-1, 1)
+                bounds["prev_steering_cmd"] = (-1, 1)
+            else:
+                # else, for unnormalized actions the bounds are taken from the params
+                bounds["prev_steering_cmd"] = (s_min, s_max)
 
     # Acceleration: symmetric about zero (negative acceleration is braking)
-    a_max = params.get("a_max", None)  # m/s²
-    bounds["prev_accl_cmd"] = (-a_max, a_max) if a_max is not None else (None, None)
-    bounds["curr_accl_cmd"] = (-a_max, a_max) if a_max is not None else (None, None)
+    if "prev_accl_cmd" in features_set or "curr_accl_cmd" in features_set:
+        a_max = params.get("a_max", None)
+        if a_max is None:
+            raise ValueError(
+                "Features 'prev_accl_cmd' or 'curr_accl_cmd' require 'a_max' parameter. "
+                "Please configure in env.params."
+            )
+
+        if "prev_accl_cmd" in features_set:
+            bounds["prev_accl_cmd"] = (-a_max, a_max)
+        if "curr_accl_cmd" in features_set:
+            bounds["curr_accl_cmd"] = (-a_max, a_max)
 
     # ===========================
     # 3. WHEEL DYNAMICS BOUNDS
     # ===========================
 
-    # Wheel angular velocity: depends on wheel radius if available
-    # omega_max = v_max / R_w
-    R_w = params.get("R_w", None)  # Wheel radius (STD model has this)
+    # Wheel angular velocity: depends on wheel radius
+    if "prev_avg_wheel_omega" in features_set or "curr_avg_wheel_omega" in features_set:
+        R_w = params.get("R_w", None)
+        v_max = params.get("v_max", None)
 
-    if R_w is not None and R_w > 0 and v_max is not None:
+        if R_w is None or v_max is None:
+            raise ValueError(
+                "Features 'prev_avg_wheel_omega' or 'curr_avg_wheel_omega' require 'R_w' and 'v_max' parameters. "
+                "Please configure in env.params."
+            )
+
+        if R_w <= 0:
+            raise ValueError(f"Wheel radius 'R_w' must be positive, got {R_w}")
+
         omega_max = v_max / R_w  # rad/s
-        bounds["prev_avg_wheel_omega"] = (0.0, omega_max)
-    else:
-        bounds["prev_avg_wheel_omega"] = (None, None)
+        experimental_gain = 6.4  # True max wheel omega found experimentally to be ~2610
+        omega_bounds = (0.0, omega_max * experimental_gain)
+        if "prev_avg_wheel_omega" in features_set:
+            bounds["prev_avg_wheel_omega"] = omega_bounds
+        if "curr_avg_wheel_omega" in features_set:
+            bounds["curr_avg_wheel_omega"] = omega_bounds
 
     # ===========================
     # 4. PHYSICAL CONSTANTS
     # ===========================
 
     # Heading error: wraps at +/- pi
-    bounds["frenet_u"] = (-np.pi, np.pi)  # rad
+    if "frenet_u" in features_set:
+        bounds["frenet_u"] = (-np.pi, np.pi)
 
     # ===========================
     # 5. TRACK-DEPENDENT BOUNDS
     # ===========================
 
-    # Ensure track exists
-    if not hasattr(env, "track") or env.track is None:
-        raise ValueError(
-            "Track must be set before calculating normalization bounds. "
-            "Ensure env.track is initialized before using normalized observations."
-        )
+    # Check if any track-dependent features are requested
+    track_features = {"frenet_n", "lookahead_widths", "lookahead_curvatures"}
+    needs_track = bool(features_set & track_features)  # intersection of features_set and track_features is non-empty
 
-    # Extract track width and curvature info
-    track = env.track
-    min_width, max_width = get_min_max_track_width(track)
-    half_max_width = 0.5 * max_width
-    min_curv, max_curv = get_min_max_curvature(track)
+    if needs_track:
+        # Ensure track exists
+        if not hasattr(env, "track") or env.track is None:
+            raise ValueError(
+                f"Features {features_set & track_features} require track data. "
+                "Ensure env.track is initialized before using these features."
+            )
 
-    # Use info for frenet_n, lookahead obs bounds
-    bounds["frenet_n"] = (-half_max_width, half_max_width)
-    bounds["lookahead_widths"] = (min_width, max_width)
-    bounds["lookahead_curvatures"] = (min_curv, max_curv)
+        track = env.track
+
+        # Frenet lateral distance and track widths
+        if "frenet_n" in features_set or "lookahead_widths" in features_set:
+            min_width, max_width = get_min_max_track_width(track)
+
+            if "frenet_n" in features_set:
+                half_max_width = 0.5 * max_width
+                bounds["frenet_n"] = (-half_max_width, half_max_width)
+
+            if "lookahead_widths" in features_set:
+                bounds["lookahead_widths"] = (min_width, max_width)
+
+        # Lookahead curvatures
+        if "lookahead_curvatures" in features_set:
+            min_curv, max_curv = get_min_max_curvature(track)
+            bounds["lookahead_curvatures"] = (min_curv, max_curv)
 
     # ===========================
     # 6. VALIDATION
     # ===========================
 
-    # Check for missing parameters (None values in bounds)
-    missing_features = []
-    for feature_name, (min_val, max_val) in bounds.items():
-        if min_val is None or max_val is None:
-            missing_features.append(feature_name)
-
+    # Verify all requested features have bounds
+    missing_features = features_set - set(bounds.keys())
     if missing_features:
         raise ValueError(
-            f"Missing required vehicle parameters. The following features have None bounds: {missing_features}. "
-            f"Please ensure all required parameters (v_max, s_min, s_max, a_max, R_w) are configured in env.params."
+            f"Cannot calculate bounds for features: {missing_features}. "
+            f"These features either don't support normalization or are unknown. "
+            f"Supported features: linear_vel_x, linear_vel_y, ang_vel_z, delta, "
+            f"prev_steering_cmd, prev_accl_cmd, curr_accl_cmd, prev_avg_wheel_omega, "
+            f"curr_avg_wheel_omega, curr_vel_cmd, frenet_u, frenet_n, lookahead_widths, lookahead_curvatures"
         )
 
-    # Ensure all bounds have min < max
+    # Ensure all bounds have min <= max (allow min == max for constant features)
     for feature_name, (min_val, max_val) in bounds.items():
         if min_val > max_val:
             raise ValueError(
-                f"Invalid bounds for feature '{feature_name}': min={min_val} >= max={max_val}. "
-                f"Bounds must satisfy min < max."
+                f"Invalid bounds for feature '{feature_name}': min={min_val} > max={max_val}. "
+                f"Bounds must satisfy min <= max."
             )
+        if min_val == max_val:
+            warnings.warn(f"Feature {feature_name} has equal min, max bounds. Verify this is intentional", UserWarning)
 
     return bounds
 

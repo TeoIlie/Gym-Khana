@@ -45,9 +45,7 @@ from .utils import deep_update
 
 class F110Env(gym.Env):
     """
-    OpenAI gym environment for F1TENTH
-
-    Env should be initialized by calling gym.make('f110_gym:f110-v0', **kwargs)
+    Gymnasium environment for F1TENTH. For API specs, see https://gymnasium.farama.org/api/env/#
 
     Args:
         kwargs:
@@ -112,6 +110,21 @@ class F110Env(gym.Env):
         self.debug_frenet_projection = self.config["debug_frenet_projection"]
         self.record_obs_min_max = self.config["record_obs_min_max"]
 
+        # reward params
+        self.out_of_bounds_penalty = self.config["out_of_bounds_penalty"]
+        self.progress_gain = self.config["progress_gain"]
+        self.negative_vel_penalty = self.config["negative_vel_penalty"]
+        self.max_episode_steps = self.config["max_episode_steps"]
+        self.current_step = 0
+
+        # collision detection strategy
+        self.predictive_collision = self.config["predictive_collision"]
+
+        # wall deflection behavior
+        self.wall_deflection = self.config["wall_deflection"]
+
+        assert self.progress_gain >= 1.0, "Progress gain must be >= 1."
+
         # radius to consider done
         self.start_thresh = 0.5  # 10cm
 
@@ -140,29 +153,6 @@ class F110Env(gym.Env):
         self.start_ys = np.zeros((self.num_agents,))
         self.start_thetas = np.zeros((self.num_agents,))
         self.start_rot = np.eye(2)
-
-        # Store observation type for validation related to 'drift' logic
-        obs_type = self.observation_config["type"]
-
-        # determine wall collision value before passing to Simulator __init__
-        wall_deflection = self.config["wall_deflection"]
-
-        if wall_deflection is None:
-            # User did not set wall collision - auto-set based on observation type
-            self.wall_deflection = obs_type != "drift"
-        else:
-            # User explicitly set wall_deflection
-            if wall_deflection and obs_type == "drift":
-                # If user chose drift obs_type but set wall collision to True, allow the input but warn
-                warnings.warn(
-                    "wall_deflection=False is recommended for 'drift' observation type but was set to True. "
-                    "Verify this is intentional.",
-                    UserWarning,
-                )
-                self.wall_deflection = True
-            else:
-                # In all other cases, accept user input
-                self.wall_deflection = wall_deflection
 
         # initiate stuff
         self.sim = Simulator(
@@ -195,6 +185,9 @@ class F110Env(gym.Env):
         assert self.params["s_min"] == -self.params["s_max"], "s_min must be equal to -s_max"
         assert self.params["sv_min"] == -self.params["sv_max"], "sv_min must be equal to -sv_max"
 
+        # Store observation type for validation
+        obs_type = self.observation_config["type"]
+
         # Validate drift observation requires STD model
         if obs_type == "drift" and self.model != DynamicModel.STD:
             raise ValueError(
@@ -203,57 +196,31 @@ class F110Env(gym.Env):
                 "Please set model='std' (or model=DynamicModel.STD) when creating the environment."
             )
 
-        # Handle collision detection strategy configuration
-        predictive_collision = self.config["predictive_collision"]
-
-        if predictive_collision is None:
-            # User did not set predictive_collision - auto-set based on observation type
-            # Drift mode uses explicit Frenet-based boundary detection (False)
-            # Other modes use predictive TTC collision detection (True)
-            self.predictive_collision = obs_type != "drift"
-        else:
-            # User explicitly set predictive_collision - validate and warn if conflicts
-            if not predictive_collision and obs_type != "drift":
-                # User disabled predictive collision for non-drift mode
-                warnings.warn(
-                    f"Disabling predictive collision (TTC-based) for '{obs_type}' observation type. "
-                    "This may affect collision detection behavior. Verify this is intentional.",
-                    UserWarning,
-                )
-                self.predictive_collision = False
-            elif predictive_collision and obs_type == "drift":
-                # User enabled predictive collision for drift mode
-                warnings.warn(
-                    "Enabling predictive collision (TTC-based) for 'drift' observation type. "
-                    "Drift mode typically uses explicit Frenet-based boundary detection. "
-                    "Verify this is intentional.",
-                    UserWarning,
-                )
-                self.predictive_collision = True
-            else:
-                # In all other cases, accept user input
-                self.predictive_collision = predictive_collision
-
         # Handle normalization configuration
         normalize_obs = self.config["normalize_obs"]
 
+        # Identify whether the chosen observation type is supported for normalization
+        supported_obs_types = ["drift", "race", "frenet"]
+        obs_norm_supported = obs_type in supported_obs_types
+
         if normalize_obs is None:
             # User did not set normalize - auto-set based on observation type
-            self.normalize_obs = obs_type == "drift"
+            # Default to True for observation types that support normalization (drift, race, frenet, etc.)
+            self.normalize_obs = obs_norm_supported
         else:
             # User explicitly set normalize
-            if normalize_obs and obs_type != "drift":
+            if normalize_obs and not obs_norm_supported:
                 # If user wants normalization, but obs_type is incompatible, warn and overwrite normalize to False to prevent failures
                 warnings.warn(
-                    f"Normalization is only supported for 'drift' observation type, not '{obs_type}'. "
-                    "Setting normalize=False.",
+                    f"Observation normalization is only supported for {supported_obs_types} observation types, not '{obs_type}'. "
+                    "Setting normalize_obs=False.",
                     UserWarning,
                 )
                 self.normalize_obs = False
-            elif not normalize_obs and obs_type == "drift":
-                # If user chose drift obs_type but set normalize to False, allow the input but warn
+            elif not normalize_obs and obs_norm_supported:
+                # If user chose supported obs_type but set normalize to False, allow but warn
                 warnings.warn(
-                    "Normalization is recommended for 'drift' observation type but was disabled. "
+                    f"Observation normalization is recommended for {obs_type} observation type but was disabled. "
                     "Verify this is intentional.",
                     UserWarning,
                 )
@@ -267,23 +234,22 @@ class F110Env(gym.Env):
 
         # Initialize observation min/max tracking if requested
 
-        # If user requests obseration min/max tracking for non-drift type, warn and default to no tracking
-        if self.record_obs_min_max and obs_type != "drift":
-            warnings.warn(
-                f"Observation min/max tracking only supported for 'drift' observation type, not '{obs_type}'. "
-                "Setting record_obs_min_max=False.",
-                UserWarning,
-            )
-            self.record_obs_min_max = False
-
-        # Only track observation min/max if there is normalizing
-        if self.record_obs_min_max and not self.normalize_obs:
-            warnings.warn(
-                f"Observation min/max tracking only supported if 'normalize_obs' is True. "
-                "Setting record_obs_min_max=False.",
-                UserWarning,
-            )
-            self.record_obs_min_max = False
+        # If user requests observation min/max tracking, check it is allowed
+        if self.record_obs_min_max:
+            if not obs_norm_supported:
+                warnings.warn(
+                    f"Observation min/max tracking only supported for {supported_obs_types} observation types, not '{obs_type}'. "
+                    "Setting record_obs_min_max=False.",
+                    UserWarning,
+                )
+                self.record_obs_min_max = False
+            if not self.normalize_obs:
+                warnings.warn(
+                    f"Observation min/max tracking only supported if 'normalize_obs' is True. "
+                    "Setting record_obs_min_max=False.",
+                    UserWarning,
+                )
+                self.record_obs_min_max = False
 
         # Set up obs tracking if requested by user and allowed
         if self.record_obs_min_max:
@@ -676,9 +642,13 @@ class F110Env(gym.Env):
             "debug_frenet_projection": False,
             "normalize_obs": None,  # None = auto-set based on observation type
             "normalize_act": True,
-            "predictive_collision": None,  # None = auto-set based on observation type
+            "predictive_collision": False,  # default Frenet-based boundary check
             "record_obs_min_max": False,
-            "wall_deflection": None,  # None = auto-set based on observation type
+            "wall_deflection": False,  # default to no wall deflections
+            "out_of_bounds_penalty": -1,
+            "progress_gain": 5.0,
+            "negative_vel_penalty": -1,
+            "max_episode_steps": 4096,
         }
 
     def configure(self, config: dict) -> None:
@@ -699,7 +669,8 @@ class F110Env(gym.Env):
 
     def _check_done(self):
         """
-        Check if the current rollout is done
+        Check if the current episode should end. Distinguishes between
+        natural termination (collision/boundary) and truncation (time limit).
 
         Reset behavior depends on collision detection mode:
         - Predictive (TTC): Reset when ego agent has TTC collision or all agents complete 2 laps
@@ -709,7 +680,8 @@ class F110Env(gym.Env):
             None
 
         Returns:
-            done (bool): whether the rollout is done
+            terminated (bool): whether the episode ended due to a terminal state
+            truncated (bool): whether the episode was truncated due to time limit
             toggle_list (list[int]): each agent's toggle list for crossing the finish zone
         """
 
@@ -741,13 +713,16 @@ class F110Env(gym.Env):
             if self.toggle_list[i] < 4:
                 self.lap_times[i] = self.current_time
 
-        # Conditional reset logic based on collision detection mode
+        # Determine natural termination based on collision detection mode
         if self.predictive_collision:
-            done = (self.collisions[self.ego_idx]) or np.all(self.toggle_list >= 4)
+            terminated = (self.collisions[self.ego_idx]) or np.all(self.toggle_list >= 4)
         else:
-            done = self.boundary_exceeded[self.ego_idx]
+            terminated = self.boundary_exceeded[self.ego_idx]
 
-        return bool(done), self.toggle_list >= 4
+        # Truncate based on timestep limit
+        truncated = self.current_step > self.max_episode_steps
+
+        return bool(terminated), bool(truncated), self.toggle_list >= 4
 
     def _update_state(self):
         """
@@ -944,22 +919,32 @@ class F110Env(gym.Env):
             # correct forward/backward track wraparound
             prog = self._correct_wraparound_prog(prog=prog, track_length=track_length)
 
+            # reward forward progress, multiplied by progress_gain
+            prog_r = prog * self.progress_gain
+
+            # penalize negative longitudinal velocity v_x, as agent should not drive backward
+            agent = self.sim.agents[i]
+            vel = agent.standard_state["v_x"]
+            if vel < 0:
+                reward += self.negative_vel_penalty
+
             # Apply reward based on collision detection strategy
             if self.predictive_collision:
                 # Predictive TTC mode: additive reward structure
                 # Reward = sum(progress) - sum(collision_penalties)
-                reward += prog
+                reward += prog_r
                 if self.collisions[i]:
-                    reward -= 1.0
+                    reward += self.out_of_bounds_penalty
             else:
                 # Frenet boundary mode (drift): exclusive reward structure
                 # Reward = -1 if boundary exceeded, else progress
                 if self.boundary_exceeded[i]:
-                    reward += -1.0  # Exclusive penalty for boundary violation
+                    reward += self.out_of_bounds_penalty  # Exclusive penalty for boundary violation
                 else:
-                    reward += prog  # Only get progress if within boundaries
+                    reward += prog_r  # Only get progress if within boundaries
 
             self.last_s[i] = current_s
+
         return reward
 
     def step(self, action):
@@ -986,8 +971,9 @@ class F110Env(gym.Env):
         if self.record_obs_min_max:
             self._update_obs_min_max()
 
-        # times
+        # increment time and step
         self.current_time = self.current_time + self.timestep
+        self.current_step += 1
 
         # update data member
         self._update_state()
@@ -1006,14 +992,16 @@ class F110Env(gym.Env):
         }
 
         # check done
-        done, toggle_list = self._check_done()
-        truncated = False
-        info = {"checkpoint_done": toggle_list}
+        terminated, truncated, toggle_list = self._check_done()
+        info = {
+            "checkpoint_done": toggle_list,
+            "episode_length": self.current_step,
+        }
 
         # calc reward
         reward = self._get_reward()
 
-        return obs, reward, done, truncated, info
+        return obs, reward, terminated, truncated, info
 
     def reset(self, seed=None, options=None):
         """
@@ -1041,6 +1029,7 @@ class F110Env(gym.Env):
         self.near_start = True
         self.near_starts = np.array([True] * self.num_agents)
         self.toggle_list = np.zeros((self.num_agents,))
+        self.current_step = 0
 
         # states after reset
         if options is not None and "poses" in options:

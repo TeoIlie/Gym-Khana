@@ -13,7 +13,7 @@ from train.config.env_config import (
 )
 
 
-def make_env(seed: int, rank: int):
+def make_env(seed: int, rank: int, config=get_drift_train_config()):
     """
     Create a single F1TENTH gym environment, wrapped in Monitor.
     Args:
@@ -23,7 +23,7 @@ def make_env(seed: int, rank: int):
     """
 
     def _init():
-        env = gym.make(get_env_id(), config=get_drift_train_config())
+        env = gym.make(get_env_id(), config=config)
         env = Monitor(env)
         env.reset(seed=seed + rank)  # Seed each env differently for diverse experiences
         return env

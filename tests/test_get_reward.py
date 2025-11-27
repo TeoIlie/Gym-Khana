@@ -22,6 +22,8 @@ class TestGetRewardWraparound:
                 "map": "Spielberg",
                 "num_agents": 1,
                 "timestep": 0.01,
+                "progress_gain": 1.0,
+                "predictive_collision": True,
             },
             render_mode=None,
         )
@@ -214,6 +216,7 @@ class TestGetRewardWraparound:
             config={
                 "map": "Spielberg",
                 "num_agents": 2,
+                "progress_gain": 1.0,
             },
             render_mode=None,
         )
@@ -432,7 +435,11 @@ class TestGetRewardEdgeCases:
     @pytest.fixture
     def env(self):
         """Create environment for testing"""
-        env = gym.make("f1tenth_gym:f1tenth-v0", config={"map": "Spielberg", "num_agents": 1}, render_mode=None)
+        env = gym.make(
+            "f1tenth_gym:f1tenth-v0",
+            config={"map": "Spielberg", "num_agents": 1, "progress_gain": 1.0},
+            render_mode=None,
+        )
         env.reset()
         return env.unwrapped
 
@@ -474,6 +481,118 @@ class TestGetRewardEdgeCases:
         print(f"  Actual reward: {reward:.2f}m")
 
         assert np.isclose(reward, expected_reward), f"Expected reward {expected_reward}, got {reward}"
+
+
+class TestRewardCalculation:
+    """Test suite validating core reward calculation components in Frenet mode"""
+
+    @pytest.fixture
+    def env(self):
+        """Create F110 environment in Frenet mode (predictive_collision=False)"""
+        env = gym.make(
+            "f1tenth_gym:f1tenth-v0",
+            config={
+                "map": "Spielberg",
+                "num_agents": 1,
+                "timestep": 0.01,
+                "progress_gain": 1.0,
+                "predictive_collision": False,
+                "out_of_bounds_penalty": -1.0,
+                "negative_vel_penalty": -0.5,
+            },
+            render_mode=None,
+        )
+        env.reset()
+        return env.unwrapped
+
+    def test_out_of_bounds_penalty_applied_frenet_boundary(self, env):
+        """Test that out_of_bounds_penalty is applied when boundary_exceeded is True"""
+        # Set up Frenet mode with boundary exceeded
+        last_s = 50.0
+        env.last_s = [last_s]
+        env.boundary_exceeded = np.array([True])  # Boundary violation
+        env.poses_x = [env.track.centerline.xs[0]]
+        env.poses_y = [env.track.centerline.ys[0]]
+
+        # Mock position at same location (zero progress)
+        env.track.centerline.spline.calc_arclength_inaccurate = lambda x, y: (50.0, 0)
+
+        # Set agent velocity (state[3] = v_x for ST model)
+        env.sim.agents[0].state[3] = 5.0
+
+        reward = env._get_reward()
+
+        print(f"\n✓ Out-of-bounds penalty (Frenet mode):")
+        print(f"  Boundary exceeded: True")
+        print(f"  Progress: 0.0m")
+        print(f"  Out-of-bounds penalty: {env.out_of_bounds_penalty}")
+        print(f"  Expected reward: {env.out_of_bounds_penalty}")
+        print(f"  Actual reward: {reward:.2f}")
+
+        # In Frenet mode with boundary_exceeded=True, only penalty is applied
+        assert np.isclose(
+            reward, env.out_of_bounds_penalty
+        ), f"Expected out-of-bounds penalty {env.out_of_bounds_penalty}, got {reward}"
+
+    def test_progress_gain_multiplier_application(self, env):
+        """Test that forward progress is multiplied by progress_gain before reward calculation"""
+        env.progress_gain = 2.0  # Custom multiplier
+        last_s = 50.0
+        env.last_s = [last_s]
+        env.boundary_exceeded = np.array([False])  # No boundary violation
+        env.poses_x = [env.track.centerline.xs[0]]
+        env.poses_y = [env.track.centerline.ys[0]]
+
+        # Mock position 1.0m ahead
+        env.track.centerline.spline.calc_arclength_inaccurate = lambda x, y: (51.0, 0)
+
+        # Set agent velocity (state[3] = v_x for ST model)
+        env.sim.agents[0].state[3] = 5.0
+
+        reward = env._get_reward()
+
+        # Expected: progress (1.0m) * progress_gain (2.0) = 2.0
+        expected_reward = 1.0 * env.progress_gain
+
+        print(f"\n✓ Progress gain multiplier:")
+        print(f"  Raw progress: 1.0m")
+        print(f"  Progress gain: {env.progress_gain}")
+        print(f"  Expected reward: {expected_reward:.2f}")
+        print(f"  Actual reward: {reward:.2f}")
+
+        assert np.isclose(
+            reward, expected_reward, atol=0.01
+        ), f"Expected progress gain reward {expected_reward:.2f}, got {reward:.2f}"
+
+    def test_negative_velocity_penalty_application(self, env):
+        """Test that negative_vel_penalty is applied when longitudinal velocity is negative"""
+        last_s = 50.0
+        env.last_s = [last_s]
+        env.boundary_exceeded = np.array([False])  # No boundary violation
+        env.poses_x = [env.track.centerline.xs[0]]
+        env.poses_y = [env.track.centerline.ys[0]]
+
+        # Mock position 0.1m ahead (small forward progress)
+        env.track.centerline.spline.calc_arclength_inaccurate = lambda x, y: (50.1, 0)
+
+        # Set agent with NEGATIVE velocity (state[3] = v_x for ST model)
+        env.sim.agents[0].state[3] = -2.0
+
+        reward = env._get_reward()
+
+        # Expected: progress (0.1m) * progress_gain (1.0) + negative_vel_penalty (-0.5)
+        expected_reward = (0.1 * 1.0) + (-0.5)
+
+        print(f"\n✓ Negative velocity penalty:")
+        print(f"  Agent velocity: -2.0 m/s")
+        print(f"  Raw progress: 0.1m")
+        print(f"  Negative velocity penalty: {env.negative_vel_penalty}")
+        print(f"  Expected reward: {expected_reward:.2f}")
+        print(f"  Actual reward: {reward:.2f}")
+
+        assert np.isclose(
+            reward, expected_reward, atol=0.01
+        ), f"Expected reward with velocity penalty {expected_reward:.2f}, got {reward:.2f}"
 
 
 if __name__ == "__main__":

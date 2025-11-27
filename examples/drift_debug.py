@@ -6,10 +6,9 @@ import gymnasium as gym
 import numpy as np
 
 from examples.examples_utils import display_drift_obs
-from train.config.env_config import get_drift_test_config, get_env_id
+from train.config.env_config import LOOKAHEAD_N_POINTS, get_drift_test_config, get_env_id
 
 if __name__ == "__main__":
-    LOOKAHEAD_N_POINTS = 10
     config = get_drift_test_config()
     config["map"] = "Spielberg"
 
