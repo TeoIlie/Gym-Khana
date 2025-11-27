@@ -116,7 +116,6 @@ class F110Env(gym.Env):
         self.out_of_bounds_penalty = self.config["out_of_bounds_penalty"]
         self.progress_gain = self.config["progress_gain"]
         self.negative_vel_penalty = self.config["negative_vel_penalty"]
-        self.time_penalty_per_step = -self.config["minimum_speed_penalty"] * self.timestep * self.progress_gain
         self.max_episode_steps = self.config["max_episode_steps"]
         self.current_step = 0
 
@@ -695,8 +694,7 @@ class F110Env(gym.Env):
             "out_of_bounds_penalty": -1,
             "progress_gain": 5.0,
             "negative_vel_penalty": -1,
-            "minimum_speed_penalty": 0.2,
-            "max_episode_steps": 5000,
+            "max_episode_steps": 4096,
         }
 
     def configure(self, config: dict) -> None:
@@ -995,9 +993,6 @@ class F110Env(gym.Env):
                     reward += prog_r  # Only get progress if within boundaries
 
             self.last_s[i] = current_s
-
-        # apply constant penalty to encourage faster speed
-        reward += self.time_penalty_per_step
 
         return reward
 

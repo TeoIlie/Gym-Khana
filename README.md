@@ -81,8 +81,7 @@ Default configurations are stored in `/train/config/env_config.py`, with paramet
         1. `progress_gain`: set amount of gain by which to multiply forward progress reward. Must be >= 1
         2. `out_of_bounds_penalty`: penalty for driving off the track boundary
         3. `negative_vel_penalty`: penalty for driving backward
-        4. `minimum_speed_penalty`: minimum speed the agent must travel per timestep to receive 0 progress reward. Calculated as `minimum_speed_penalty * timestep * progress_gain`
-        5. `max_episode_steps`: the maximum number of episode steps
+        4. `max_episode_steps`: the maximum number of episode steps
 
 ## Wanbd
 
