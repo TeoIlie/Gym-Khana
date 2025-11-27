@@ -117,6 +117,12 @@ class F110Env(gym.Env):
         self.max_episode_steps = self.config["max_episode_steps"]
         self.current_step = 0
 
+        # collision detection strategy
+        self.predictive_collision = self.config["predictive_collision"]
+
+        # wall deflection behavior
+        self.wall_deflection = self.config["wall_deflection"]
+
         assert self.progress_gain >= 1.0, "Progress gain must be >= 1."
 
         # radius to consider done
@@ -147,29 +153,6 @@ class F110Env(gym.Env):
         self.start_ys = np.zeros((self.num_agents,))
         self.start_thetas = np.zeros((self.num_agents,))
         self.start_rot = np.eye(2)
-
-        # Store observation type for validation related to 'drift' logic
-        obs_type = self.observation_config["type"]
-
-        # determine wall collision value before passing to Simulator __init__
-        wall_deflection = self.config["wall_deflection"]
-
-        if wall_deflection is None:
-            # User did not set wall collision - auto-set based on observation type
-            self.wall_deflection = obs_type != "drift"
-        else:
-            # User explicitly set wall_deflection
-            if wall_deflection and obs_type == "drift":
-                # If user chose drift obs_type but set wall collision to True, allow the input but warn
-                warnings.warn(
-                    "wall_deflection=False is recommended for 'drift' observation type but was set to True. "
-                    "Verify this is intentional.",
-                    UserWarning,
-                )
-                self.wall_deflection = True
-            else:
-                # In all other cases, accept user input
-                self.wall_deflection = wall_deflection
 
         # initiate stuff
         self.sim = Simulator(
@@ -202,6 +185,9 @@ class F110Env(gym.Env):
         assert self.params["s_min"] == -self.params["s_max"], "s_min must be equal to -s_max"
         assert self.params["sv_min"] == -self.params["sv_max"], "sv_min must be equal to -sv_max"
 
+        # Store observation type for validation
+        obs_type = self.observation_config["type"]
+
         # Validate drift observation requires STD model
         if obs_type == "drift" and self.model != DynamicModel.STD:
             raise ValueError(
@@ -210,40 +196,10 @@ class F110Env(gym.Env):
                 "Please set model='std' (or model=DynamicModel.STD) when creating the environment."
             )
 
-        # Handle collision detection strategy configuration
-        predictive_collision = self.config["predictive_collision"]
-
-        if predictive_collision is None:
-            # User did not set predictive_collision - auto-set based on observation type
-            # Drift mode uses explicit Frenet-based boundary detection (False)
-            # Other modes use predictive TTC collision detection (True)
-            self.predictive_collision = obs_type != "drift"
-        else:
-            # User explicitly set predictive_collision - validate and warn if conflicts
-            if not predictive_collision and obs_type != "drift":
-                # User disabled predictive collision for non-drift mode
-                warnings.warn(
-                    f"Disabling predictive collision (TTC-based) for '{obs_type}' observation type. "
-                    "This may affect collision detection behavior. Verify this is intentional.",
-                    UserWarning,
-                )
-                self.predictive_collision = False
-            elif predictive_collision and obs_type == "drift":
-                # User enabled predictive collision for drift mode
-                warnings.warn(
-                    "Enabling predictive collision (TTC-based) for 'drift' observation type. "
-                    "Drift mode typically uses explicit Frenet-based boundary detection. "
-                    "Verify this is intentional.",
-                    UserWarning,
-                )
-                self.predictive_collision = True
-            else:
-                # In all other cases, accept user input
-                self.predictive_collision = predictive_collision
-
         # Handle normalization configuration
         normalize_obs = self.config["normalize_obs"]
 
+        # Identify whether the chosen observation type is supported for normalization
         supported_obs_types = ["drift", "race", "frenet"]
         obs_norm_supported = obs_type in supported_obs_types
 
@@ -686,9 +642,9 @@ class F110Env(gym.Env):
             "debug_frenet_projection": False,
             "normalize_obs": None,  # None = auto-set based on observation type
             "normalize_act": True,
-            "predictive_collision": None,  # None = auto-set based on observation type
+            "predictive_collision": False,  # default Frenet-based boundary check
             "record_obs_min_max": False,
-            "wall_deflection": None,  # None = auto-set based on observation type
+            "wall_deflection": False,  # default to no wall deflections
             "out_of_bounds_penalty": -1,
             "progress_gain": 5.0,
             "negative_vel_penalty": -1,

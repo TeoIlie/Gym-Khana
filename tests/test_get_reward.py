@@ -23,6 +23,7 @@ class TestGetRewardWraparound:
                 "num_agents": 1,
                 "timestep": 0.01,
                 "progress_gain": 1.0,
+                "predictive_collision": True,
             },
             render_mode=None,
         )
