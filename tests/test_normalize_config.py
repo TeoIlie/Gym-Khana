@@ -46,7 +46,7 @@ def test_normalize_default_other():
 
 def test_normalize_override_true_with_non_drift():
     """Test that normalize=True with non-drift type sets to False with warning."""
-    with pytest.warns(UserWarning, match="Normalization is only supported"):
+    with pytest.warns(UserWarning, match="Observation normalization is only supported"):
         env = gym.make(
             "f1tenth_gym:f1tenth-v0",
             config={
@@ -63,7 +63,7 @@ def test_normalize_override_true_with_non_drift():
 
 def test_normalize_override_false_with_drift():
     """Test that normalize=False with drift type keeps False but warns."""
-    with pytest.warns(UserWarning, match="Normalization is recommended"):
+    with pytest.warns(UserWarning, match="Observation normalization is recommended"):
         env = gym.make(
             "f1tenth_gym:f1tenth-v0",
             config={

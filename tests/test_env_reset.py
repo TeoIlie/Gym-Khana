@@ -49,7 +49,7 @@ class TestFrenetModeReset(unittest.TestCase):
             # Update state to populate boundary_exceeded array
             unwrapped._update_state()
             # Check if done
-            done, _ = unwrapped._check_done()
+            done, _, _ = unwrapped._check_done()
 
         self.assertTrue(done, "Environment should reset when ego agent exceeds track boundary in Frenet mode")
 
@@ -75,7 +75,7 @@ class TestFrenetModeReset(unittest.TestCase):
             # Update state to populate boundary_exceeded array
             unwrapped._update_state()
             # Check if done
-            done, _ = unwrapped._check_done()
+            done, _, _ = unwrapped._check_done()
 
         self.assertFalse(done, "Environment should NOT reset when ego agent is within track boundaries in Frenet mode")
 

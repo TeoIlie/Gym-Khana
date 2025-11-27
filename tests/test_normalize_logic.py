@@ -54,7 +54,7 @@ class TestNormalizationBounds:
         ]
 
         # Get normalization bounds
-        bounds = calculate_norm_bounds(env.unwrapped)
+        bounds = calculate_norm_bounds(env.unwrapped, expected_features)
 
         # Assert all drift features exist as keys
         for feature in expected_features:
@@ -84,7 +84,7 @@ class TestNormalizationBounds:
             },
         )
 
-        bounds = calculate_norm_bounds(env.unwrapped)
+        bounds = calculate_norm_bounds(env.unwrapped, ["prev_steering_cmd"])
 
         # When actions are normalized, raw steering is in [-1, 1]
         assert bounds["prev_steering_cmd"] == (
@@ -109,7 +109,7 @@ class TestNormalizationBounds:
             },
         )
 
-        bounds = calculate_norm_bounds(env.unwrapped)
+        bounds = calculate_norm_bounds(env.unwrapped, ["prev_steering_cmd"])
         params = F110Env.f1tenth_std_vehicle_params()
         s_min = params["s_min"]
         s_max = params["s_max"]
@@ -424,9 +424,11 @@ class TestNormalizedObservation:
             },
         )
 
+        features = ["lookahead_curvatures", "lookahead_widths", "linear_vel_x", "delta", "prev_accl_cmd"]
+
         # Get bounds from both environments
-        bounds1 = calculate_norm_bounds(env1.unwrapped)
-        bounds2 = calculate_norm_bounds(env2.unwrapped)
+        bounds1 = calculate_norm_bounds(env1.unwrapped, features)
+        bounds2 = calculate_norm_bounds(env2.unwrapped, features)
 
         # Track-dependent bounds should differ (curvatures or widths)
         # Use tuple comparison to handle numpy arrays in bounds

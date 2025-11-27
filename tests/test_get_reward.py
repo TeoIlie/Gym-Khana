@@ -22,6 +22,7 @@ class TestGetRewardWraparound:
                 "map": "Spielberg",
                 "num_agents": 1,
                 "timestep": 0.01,
+                "progress_gain": 1.0,
             },
             render_mode=None,
         )
@@ -214,6 +215,7 @@ class TestGetRewardWraparound:
             config={
                 "map": "Spielberg",
                 "num_agents": 2,
+                "progress_gain": 1.0,
             },
             render_mode=None,
         )
@@ -432,7 +434,11 @@ class TestGetRewardEdgeCases:
     @pytest.fixture
     def env(self):
         """Create environment for testing"""
-        env = gym.make("f1tenth_gym:f1tenth-v0", config={"map": "Spielberg", "num_agents": 1}, render_mode=None)
+        env = gym.make(
+            "f1tenth_gym:f1tenth-v0",
+            config={"map": "Spielberg", "num_agents": 1, "progress_gain": 1.0},
+            render_mode=None,
+        )
         env.reset()
         return env.unwrapped
 
