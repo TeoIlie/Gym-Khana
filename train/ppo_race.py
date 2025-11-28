@@ -130,19 +130,17 @@ def main():
     parser.add_argument(
         "--m",
         choices=["t", "e"],
-        default="e",
-        help="Run mode: 'train' to train a new model or 'eval' to evaluate an existing model",
+        default="t",
+        help="Run mode: 't' to train a new model or 'e' to evaluate an existing model",
     )
     parser.add_argument(
         "--path",
         type=str,
-        default=None,
+        default="",
         help="Path to trained model for evaluation (uses latest if not specified)",
     )
 
     args = parser.parse_args()
-
-    args.m = "t"
 
     if args.m == "t":
         train_ppo_race()
