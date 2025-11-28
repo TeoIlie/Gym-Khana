@@ -8,7 +8,8 @@ from train.config.env_config import PROJECT_NAME, SEED
 from train.training_utils import get_output_dirs, make_output_dirs, get_ckpt_callback
 
 # toggle this to train or evaluate
-train = True
+train = False
+map = "Spielberg"
 
 
 def main():
@@ -22,7 +23,7 @@ def main():
         env = gym.make(
             "f1tenth_gym:f1tenth-v0",
             config={
-                "map": "Spielberg",
+                "map": map,
                 "num_agents": 1,
                 "timestep": 0.01,
                 "num_beams": 36,
@@ -66,12 +67,12 @@ def main():
     else:
         proj_root, _ = get_output_dirs()
         run_id = "q81h6jga"  # replace with your run ID
-        model_path = os.path.join(proj_root, "outputs", "models", "wlbjsjbv", "checkpoints", f"ckpt_3500000_steps.zip")
+        model_path = os.path.join(proj_root, "outputs", "models", "5ybfzkyr", "checkpoints", f"ckpt_1000000_steps.zip")
         model = PPO.load(model_path, print_system_info=True, device="cpu")
         eval_env = gym.make(
             "f1tenth_gym:f1tenth-v0",
             config={
-                "map": "Spielberg",
+                "map": map,
                 "num_agents": 1,
                 "timestep": 0.01,
                 "num_beams": 36,
@@ -83,16 +84,29 @@ def main():
                 "normalize_obs": False,
                 "predictive_collision": True,
                 "wall_deflection": True,
+                "debug_frenet_projection": True,
+                "render_track_lines": True,
             },
             render_mode="human",
         )
         np.random.seed()
         obs, info = eval_env.reset()
         done = False
+        reward = 0.0
+        total_reward = 0.0
+        i = 0
         while not done:
             action, _states = model.predict(obs, deterministic=True)
             obs, reward, done, trunc, info = eval_env.step(action)
+            total_reward += reward
+
+            print(f"\nStep: {i}")
+            print(f"Reward: {reward}")
+            print(f"Total Reward: {total_reward}")
+
             eval_env.render()
+
+            i += 1
 
             # VecEnv resets automatically
             # if done:
