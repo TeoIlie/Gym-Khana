@@ -45,6 +45,7 @@ class TestNormalizationBounds:
             "frenet_n",
             "ang_vel_z",
             "delta",
+            "beta",
             "prev_steering_cmd",
             "prev_accl_cmd",
             "prev_avg_wheel_omega",
@@ -119,6 +120,53 @@ class TestNormalizationBounds:
             s_min,
             s_max,
         ), f"Expected ({s_min}, {s_max}), got {bounds['prev_steering_cmd']}"
+
+        env.close()
+
+    def test_beta_normalization_bounds(self):
+        """Verify beta (slip angle) normalization with conservative ±π/3 bounds."""
+        env = gym.make(
+            "f1tenth_gym:f1tenth-v0",
+            config={
+                "map": "Spielberg",
+                "num_agents": 1,
+                "model": "std",
+                "observation_config": {"type": "drift"},
+                "params": F110Env.f1tenth_std_vehicle_params(),
+                "normalize_obs": True,
+            },
+        )
+
+        bounds = calculate_norm_bounds(env.unwrapped, ["beta"])
+
+        # Verify bounds are (-π/3, π/3)
+        expected_min = -np.pi / 3
+        expected_max = np.pi / 3
+
+        assert np.isclose(bounds["beta"][0], expected_min), f"Expected beta min={expected_min}, got {bounds['beta'][0]}"
+        assert np.isclose(bounds["beta"][1], expected_max), f"Expected beta max={expected_max}, got {bounds['beta'][1]}"
+
+        # Test normalization at key points
+        # Min: -π/3 → -1.0
+        result = normalize_feature("beta", np.float32(-np.pi / 3), bounds)
+        assert np.isclose(result, -1.0), f"Expected -1.0, got {result}"
+
+        # Zero: 0 → 0.0
+        result = normalize_feature("beta", np.float32(0.0), bounds)
+        assert np.isclose(result, 0.0), f"Expected 0.0, got {result}"
+
+        # Max: π/3 → 1.0
+        result = normalize_feature("beta", np.float32(np.pi / 3), bounds)
+        assert np.isclose(result, 1.0), f"Expected 1.0, got {result}"
+
+        # Test clipping for extreme values beyond ±π/3
+        # -π/2 (extreme drift) → clips to -1.0
+        result = normalize_feature("beta", np.float32(-np.pi / 2), bounds)
+        assert np.isclose(result, -1.0), f"Expected -1.0 (clipped), got {result}"
+
+        # π/2 (extreme drift) → clips to 1.0
+        result = normalize_feature("beta", np.float32(np.pi / 2), bounds)
+        assert np.isclose(result, 1.0), f"Expected 1.0 (clipped), got {result}"
 
         env.close()
 
@@ -910,9 +958,9 @@ class TestPrevSteeringCmdNormalization:
         obs, _ = env.reset()
 
         # Get the index of prev_steering_cmd in observation
-        # For drift obs: [vx, vy, u, n, omega_z, delta, prev_steer, prev_accl,
+        # For drift obs: [vx, vy, u, n, omega_z, delta, beta, prev_steer, prev_accl,
         #                 prev_wheel_omega, curr_vel_cmd, lookahead_curv..., lookahead_width...]
-        prev_steer_idx = 6  # Based on drift observation structure
+        prev_steer_idx = 7  # Based on drift observation structure (beta was added at index 6)
 
         # Test with maximum left steering (-1)
         # Note: prev_steering_cmd holds the PREVIOUS step's steering, so we need to step twice
@@ -963,7 +1011,7 @@ class TestPrevSteeringCmdNormalization:
         )
 
         obs, _ = env.reset()
-        prev_steer_idx = 6
+        prev_steer_idx = 7  # Beta was added at index 6, shifting prev_steering_cmd to index 7
 
         # Test with maximum left steering (s_min)
         # Note: prev_steering_cmd holds the PREVIOUS step's steering, so we need to step twice

@@ -162,6 +162,10 @@ def calculate_norm_bounds(env, features: list[str]):
     if "frenet_u" in features_set:
         bounds["frenet_u"] = (-np.pi, np.pi)
 
+    # Slip angle: conservative bounds for typical drift ranges (±60°)
+    if "beta" in features_set:
+        bounds["beta"] = (-np.pi / 3, np.pi / 3)
+
     # ===========================
     # 5. TRACK-DEPENDENT BOUNDS
     # ===========================
@@ -208,7 +212,7 @@ def calculate_norm_bounds(env, features: list[str]):
             f"These features either don't support normalization or are unknown. "
             f"Supported features: linear_vel_x, linear_vel_y, ang_vel_z, delta, "
             f"prev_steering_cmd, prev_accl_cmd, curr_accl_cmd, prev_avg_wheel_omega, "
-            f"curr_avg_wheel_omega, curr_vel_cmd, frenet_u, frenet_n, lookahead_widths, lookahead_curvatures"
+            f"curr_avg_wheel_omega, curr_vel_cmd, frenet_u, frenet_n, lookahead_widths, lookahead_curvatures, beta"
         )
 
     # Ensure all bounds have min <= max (allow min == max for constant features)
