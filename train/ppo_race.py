@@ -3,10 +3,9 @@ import os
 import gymnasium as gym
 import numpy as np
 from stable_baselines3 import PPO
-from stable_baselines3.common.vec_env import SubprocVecEnv, VecNormalize
 from wandb.integration.sb3 import WandbCallback
-from train.config.env_config import N_ENVS, PROJECT_NAME, SEED
-from train.training_utils import get_output_dirs, make_env, make_output_dirs, get_ckpt_callback
+from train.config.env_config import N_ENVS, N_STEPS, PROJECT_NAME, SEED
+from train.training_utils import get_output_dirs, make_output_dirs, get_ckpt_callback, make_subprocvecenv
 from f1tenth_gym.envs.f110_env import F110Env
 
 # toggle this to train or evaluate
@@ -28,8 +27,8 @@ CONFIG = {
     "normalize_obs": True,
     "predictive_collision": False,
     "wall_deflection": False,
-    "lookahead_n_points": 5,
-    "lookahead_ds": 0.5,
+    "lookahead_n_points": 7,
+    "lookahead_ds": 0.7,
 }
 
 
@@ -46,9 +45,17 @@ def main():
 
         tensorboard_dir, models_dir, videos_dir = make_output_dirs(run.id, output_root)
 
-        env = SubprocVecEnv([make_env(seed=SEED, rank=i, config=CONFIG) for i in range(N_ENVS)])
+        env = make_subprocvecenv(SEED, CONFIG, N_ENVS)
 
-        model = PPO("MlpPolicy", env, verbose=1, tensorboard_log=tensorboard_dir, device="auto", seed=SEED)
+        model = PPO(
+            policy="MlpPolicy",
+            env=env,
+            n_steps=N_STEPS,
+            verbose=1,
+            tensorboard_log=tensorboard_dir,
+            device="auto",
+            seed=SEED,
+        )
         model.learn(
             total_timesteps=100_000_000,
             callback=[

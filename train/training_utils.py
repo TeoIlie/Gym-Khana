@@ -2,18 +2,38 @@ import os
 from pathlib import Path
 import gymnasium as gym
 import torch.nn as nn
+from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.callbacks import CheckpointCallback
 
 from train.config.env_config import (
     ACT_FUNC_NEG_SLOPE,
     CKPT_SAVE_FREQ,
-    get_drift_train_config,
     get_env_id,
 )
 
 
-def make_env(seed: int, rank: int, config=get_drift_train_config()):
+def make_subprocvecenv(seed: int, config: dict, n_envs: int):
+    """
+    Create a SubprocVecEnv parallelized environment.
+    Args:
+        seed: Seed for reproducibility
+        config: Gym env config
+        n_envs: How many parallel envs to create
+    Returns:
+        SubprocVecEnc parallelized gym env
+    """
+    print(f"Creating {n_envs} parallel environments...")
+
+    env = SubprocVecEnv([make_env(seed=seed, rank=i, config=config) for i in range(n_envs)])
+
+    print(f"Created {n_envs} parallel environments as SubProcVecEnv with seed {seed}")
+    print(f"Config: {config}")
+
+    return env
+
+
+def make_env(seed: int, rank: int, config: dict):
     """
     Create a single F1TENTH gym environment, wrapped in Monitor.
     Args:

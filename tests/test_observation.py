@@ -248,6 +248,7 @@ class TestDriftObservation(unittest.TestCase):
             + 1  # frenet_u
             + 1  # frenet_n
             + 1  # ang_vel_z
+            + 1  # beta
             + 1  # delta
             + 1  # prev_steering_cmd
             + 1  # prev_accl_cmd
@@ -408,8 +409,8 @@ class TestDriftObservation(unittest.TestCase):
         obs2, _, _, _, _ = self.env.step(action2)
 
         # After second step, prev_steering_cmd should equal first_steering
-        # Extract from observation (seventh element)
-        observed_prev_steer = obs2[6]
+        # Extract from observation
+        observed_prev_steer = obs2[7]
 
         self.assertAlmostEqual(
             observed_prev_steer,
@@ -467,8 +468,8 @@ class TestDriftObservation(unittest.TestCase):
         obs_next, _, _, _, _ = self.env.step(action)
 
         # After next step, prev_avg_wheel_omega should equal curr from previous step
-        # Extract from observation (ninth element, since curr_accl_cmd is not in drift)
-        observed_prev_omega = obs_next[8]
+        # Extract from observation
+        observed_prev_omega = obs_next[9]
 
         # The prev value in next step should equal curr value from this step
         self.assertAlmostEqual(
@@ -502,8 +503,8 @@ class TestDriftObservation(unittest.TestCase):
         v_max = agent.params["v_max"]
         expected_vel_cmd = np.clip(expected_vel_cmd, v_min, v_max)
 
-        # Extract from observation (tenth element)
-        observed_vel_cmd = obs[9]
+        # Extract from observation
+        observed_vel_cmd = obs[10]
 
         self.assertAlmostEqual(
             observed_vel_cmd,
@@ -537,8 +538,8 @@ class TestDriftObservation(unittest.TestCase):
         actual_accl_2 = agent.curr_accl_cmd
         expected_vel_cmd_2 = np.clip(expected_vel_cmd_1 + actual_accl_2 * timestep, v_min, v_max)
 
-        # Extract from observation (tenth element)
-        observed_vel_cmd = obs2[9]
+        # Extract from observation
+        observed_vel_cmd = obs2[10]
 
         self.assertAlmostEqual(
             observed_vel_cmd,
@@ -568,8 +569,8 @@ class TestDriftObservation(unittest.TestCase):
             track, s, n_points=self.lookahead_n_points, ds=self.lookahead_ds
         )
 
-        # Extract from observation (elements 10 to 10+n_points)
-        observed_curvatures = obs[10 : 10 + self.lookahead_n_points]
+        # Extract from observation
+        observed_curvatures = obs[11 : 11 + self.lookahead_n_points]
 
         np.testing.assert_array_almost_equal(
             observed_curvatures,
@@ -597,9 +598,9 @@ class TestDriftObservation(unittest.TestCase):
         # Get expected widths using the same function
         expected_widths = sample_lookahead_widths_fast(track, s, n_points=self.lookahead_n_points, ds=self.lookahead_ds)
 
-        # Extract from observation (elements 10+n_points to 10+2*n_points)
-        start_idx = 10 + self.lookahead_n_points
-        end_idx = 10 + 2 * self.lookahead_n_points
+        # Extract from observation
+        start_idx = 11 + self.lookahead_n_points
+        end_idx = 11 + 2 * self.lookahead_n_points
         observed_widths = obs[start_idx:end_idx]
 
         np.testing.assert_array_almost_equal(
@@ -628,8 +629,8 @@ class TestDriftObservation(unittest.TestCase):
         # Step once more - prev_avg_wheel_omega in next observation should match curr from this step
         obs_next, _, _, _, _ = self.env.step(action)
 
-        # Extract prev_avg_wheel_omega (ninth element)
-        observed_prev_omega = obs_next[8]
+        # Extract prev_avg_wheel_omega
+        observed_prev_omega = obs_next[9]
 
         # The prev value at step 6 should equal curr value from step 5
         self.assertAlmostEqual(
@@ -677,8 +678,8 @@ class TestDriftObservation(unittest.TestCase):
         # Step 2
         action2 = np.array([[0.3, 0.5]])
         obs2, _, _, _, _ = self.env.step(action2)
-        prev_steer_2 = obs2[6]
-        prev_omega_2 = obs2[8]
+        prev_steer_2 = obs2[7]
+        prev_omega_2 = obs2[9]
 
         # Verify temporal shift
         self.assertAlmostEqual(prev_steer_2, curr_steer_1, places=5, msg="Steering command not shifted correctly")

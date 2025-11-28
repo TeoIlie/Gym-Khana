@@ -21,17 +21,17 @@ from config.env_config import (
     START_LEARNING_RATE,
     TOTAL_TIMESTEPS,
     PROJECT_NAME,
+    get_drift_train_config,
 )
 from stable_baselines3 import PPO
 from stable_baselines3.common.utils import set_random_seed
-from stable_baselines3.common.vec_env import SubprocVecEnv
 from train.training_utils import (
     CustomLeakyReLU,
     get_ckpt_callback,
     get_output_dirs,
     linear_schedule,
-    make_env,
     make_output_dirs,
+    make_subprocvecenv,
 )
 
 
@@ -71,8 +71,7 @@ def main():
     # cudnn.benchmark = False
 
     # Create vectorized training environments
-    print(f"Creating {N_ENVS} parallel environments...")
-    env = SubprocVecEnv([make_env(seed=SEED, rank=i) for i in range(N_ENVS)])
+    env = env = make_subprocvecenv(SEED, get_drift_train_config(), N_ENVS)
 
     # Configure network architecture
     policy_kwargs = dict(
