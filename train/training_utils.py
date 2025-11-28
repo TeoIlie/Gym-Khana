@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 import gymnasium as gym
 import torch.nn as nn
+import yaml
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.callbacks import CheckpointCallback
@@ -27,8 +28,7 @@ def make_subprocvecenv(seed: int, config: dict, n_envs: int):
 
     env = SubprocVecEnv([make_env(seed=seed, rank=i, config=config) for i in range(n_envs)])
 
-    print(f"Created {n_envs} parallel environments as SubProcVecEnv with seed {seed}")
-    print(f"Config: {config}")
+    print(f"✅ Successfully created {n_envs} parallel environments as SubProcVecEnv with seed {seed}")
 
     return env
 
@@ -80,13 +80,13 @@ def make_output_dirs(run_id: str, root_dir: str) -> tuple[str, str, str]:
     """
     tensorboard_dir = f"{root_dir}/tensorboard/{run_id}"
     models_dir = f"{root_dir}/models/{run_id}"
-    videos_dir = f"{root_dir}/videos/{run_id}"
+    config_dir = f"{root_dir}/config/{run_id}"
 
     os.makedirs(tensorboard_dir, exist_ok=True)
     os.makedirs(models_dir, exist_ok=True)
-    os.makedirs(videos_dir, exist_ok=True)
+    os.makedirs(config_dir, exist_ok=True)
 
-    return tensorboard_dir, models_dir, videos_dir
+    return tensorboard_dir, models_dir, config_dir
 
 
 def get_output_dirs() -> tuple[str, str]:
@@ -109,3 +109,42 @@ def get_ckpt_callback(models_dir: str, save_freq: int = CKPT_SAVE_FREQ) -> Check
         save_vecnormalize=True,
         verbose=1,
     )
+
+
+def save_config(config: dict, config_dir: str, filename: str) -> None:
+    """
+    Save config to YAML file for future reference.
+
+    Args:
+        config: Configuration dictionary to save
+        config_dir: Directory path where config will be saved
+        filename: Name of the config file (default: config.yaml)
+    """
+    config_file_path = os.path.join(config_dir, filename)
+    with open(config_file_path, "w") as f:
+        yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+
+    print(f"Config file {filename} saved to {config_file_path}")
+
+
+def extract_rl_config(model: object, total_timesteps: int, n_envs: int) -> dict:
+    """
+    Extract RL training configuration from trained PPO model.
+
+    Args:
+        model: Trained PPO model
+        total_timesteps: Total timesteps used in training
+        n_envs: Number of parallel environments
+
+    Returns:
+        Dictionary containing RL hyperparameters
+    """
+    return {
+        "n_steps": model.n_steps,
+        "batch_size": model.batch_size,
+        "gamma": model.gamma,
+        "learning_rate": float(model.learning_rate),
+        "seed": model.seed,
+        "total_timesteps": total_timesteps,
+        "n_envs": n_envs,
+    }
