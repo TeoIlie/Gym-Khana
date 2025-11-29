@@ -1,3 +1,18 @@
+"""
+PPO Race Training and Evaluation Script
+
+Usage:
+    # Train a new model
+    python train/ppo_race.py --m t
+
+    # Evaluate a local model (uses latest wandb run if --path not specified)
+    python train/ppo_race.py --m e
+    python train/ppo_race.py --m e --path /path/to/model.zip
+
+    # Download model from wandb and evaluate (uses cache if already downloaded)
+    python train/ppo_race.py --m d --run_id <wandb_run_id>
+"""
+
 import wandb
 import os
 import argparse
@@ -13,11 +28,15 @@ from train.training_utils import (
     make_subprocvecenv,
     save_config,
     extract_rl_config,
+    download_model_from_wandb,
+    print_header,
 )
 from f1tenth_gym.envs.f110_env import F110Env
 
 
-TOTAL_TIMESTEPS = 100_000_000
+# Extract model prefix from filename (e.g., "ppo_race" from "ppo_race.py")
+MODEL_PREFIX = os.path.splitext(os.path.basename(__file__))[0]
+TOTAL_TIMESTEPS = 10_000
 # config for train and test
 CONFIG = {
     "map": "Drift_large",
@@ -40,9 +59,7 @@ CONFIG = {
 
 
 def train_ppo_race():
-    print("=" * 40)
-    print("PPO Race Training")
-    print("=" * 40)
+    print_header("PPO Race Training")
 
     proj_root, output_root = get_output_dirs()
 
@@ -70,14 +87,15 @@ def train_ppo_race():
     model.learn(
         total_timesteps=TOTAL_TIMESTEPS,
         callback=[
-            WandbCallback(gradient_save_freq=0, model_save_path=models_dir, verbose=2),
+            WandbCallback(gradient_save_freq=0, verbose=2),
             get_ckpt_callback(models_dir=models_dir, save_freq=10000),
         ],
         progress_bar=True,
     )
 
-    final_model_path = f"{models_dir}/ppo_drift_final_{run_id}"
+    final_model_path = f"{models_dir}/{MODEL_PREFIX}_{run_id}"
     model.save(final_model_path)
+    run.save(f"{final_model_path}.zip", base_path=models_dir)
 
     env.close()
 
@@ -85,9 +103,7 @@ def train_ppo_race():
 
 
 def evaluate_ppo_race(model_path: str = ""):
-    print("=" * 40)
-    print("PPO Race Evaluation")
-    print("=" * 40)
+    print_header("PPO Race Evaluation")
 
     proj_root, _ = get_output_dirs()
 
@@ -125,19 +141,44 @@ def evaluate_ppo_race(model_path: str = ""):
     print(f"Total reward: {total_reward}")
 
 
+def download_and_evaluate(run_id: str):
+    """Download model from wandb and evaluate it."""
+    print_header("Downloading and Evaluating PPO Model")
+
+    _, output_root = get_output_dirs()
+    download_dir = os.path.join(output_root, "downloads", run_id)
+    model_cache_path = os.path.join(download_dir, "model.zip")
+
+    # Use cached model if available, otherwise download
+    if os.path.exists(model_cache_path):
+        print(f"Using cached model from {download_dir}")
+    else:
+        print(f"Downloading model from wandb run: {run_id}")
+        model_cache_path = download_model_from_wandb(run_id, download_dir, MODEL_PREFIX)
+        print(f"Model cached to {download_dir}")
+
+    evaluate_ppo_race(model_path=model_cache_path)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Train or evaluate a PPO model for autonomous racing")
     parser.add_argument(
         "--m",
-        choices=["t", "e"],
+        choices=["t", "e", "d"],
         default="t",
-        help="Run mode: 't' to train a new model or 'e' to evaluate an existing model",
+        help="Run mode: 't' to train a new model, 'e' to evaluate an existing model, or 'd' to download and evaluate from wandb",
     )
     parser.add_argument(
         "--path",
         type=str,
         default="",
         help="Path to trained model for evaluation (uses latest if not specified)",
+    )
+    parser.add_argument(
+        "--run_id",
+        type=str,
+        default="",
+        help="Wandb run ID to download model from (required for mode 'd')",
     )
 
     args = parser.parse_args()
@@ -146,6 +187,10 @@ def main():
         train_ppo_race()
     elif args.m == "e":
         evaluate_ppo_race(model_path=args.path)
+    elif args.m == "d":
+        if not args.run_id:
+            parser.error("--run_id is required when using mode 'd' (download)")
+        download_and_evaluate(run_id=args.run_id)
 
 
 if __name__ == "__main__":

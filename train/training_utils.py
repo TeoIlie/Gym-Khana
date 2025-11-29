@@ -3,6 +3,7 @@ from pathlib import Path
 import gymnasium as gym
 import torch.nn as nn
 import yaml
+import wandb
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.callbacks import CheckpointCallback
@@ -10,6 +11,7 @@ from stable_baselines3.common.callbacks import CheckpointCallback
 from train.config.env_config import (
     ACT_FUNC_NEG_SLOPE,
     CKPT_SAVE_FREQ,
+    PROJECT_NAME,
     get_env_id,
 )
 
@@ -148,3 +150,50 @@ def extract_rl_config(model: object, total_timesteps: int, n_envs: int) -> dict:
         "total_timesteps": total_timesteps,
         "n_envs": n_envs,
     }
+
+
+def download_model_from_wandb(run_id: str, download_dir: str, model_prefix: str) -> str:
+    """
+    Download model from wandb and return the path to cached model.
+
+    Args:
+        run_id: Wandb run ID to download from
+        download_dir: Directory to cache the downloaded model
+        model_prefix: Model filename prefix (e.g., "ppo_race", "ppo_drift")
+
+    Returns:
+        Path to the cached model file
+    """
+    os.makedirs(download_dir, exist_ok=True)
+
+    api = wandb.Api()
+    run_path = f"{api.default_entity}/{PROJECT_NAME}/runs/{run_id}"
+
+    run = api.run(run_path)
+    print(f"Found run: {run.name} ({run.state})")
+
+    # Find and download model file
+    print("Downloading model file...")
+    model_files = [f for f in run.files() if f.name.endswith(".zip") and f"{model_prefix}_" in f.name]
+    if not model_files:
+        raise FileNotFoundError(f"No model file found with prefix '{model_prefix}' in run {run_id}")
+
+    model_file = model_files[0]
+    model_file.download(root=download_dir, replace=False)
+
+    # Rename to standardized name
+    model_cache_path = os.path.join(download_dir, "model.zip")
+    downloaded_path = os.path.join(download_dir, model_file.name)
+    if downloaded_path != model_cache_path:
+        os.rename(downloaded_path, model_cache_path)
+
+    return model_cache_path
+
+
+def print_header(title: str) -> None:
+    """
+    Print a formatted header for better console readability.
+    """
+    print("=" * 45)
+    print(f"  {title}")
+    print("=" * 45)
