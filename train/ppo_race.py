@@ -29,13 +29,13 @@ CONFIG = {
     "integrator": "rk4",
     "control_input": ["accl", "steering_angle"],
     "observation_config": {"type": "drift"},
-    "reset_config": {"type": "rl_random_static"},
+    "reset_config": {"type": "cl_random_static"},
     "normalize_act": True,
     "normalize_obs": True,
     "predictive_collision": False,
     "wall_deflection": False,
-    "lookahead_n_points": 7,
-    "lookahead_ds": 0.7,
+    "lookahead_n_points": 3,
+    "lookahead_ds": 0.5,
 }
 
 

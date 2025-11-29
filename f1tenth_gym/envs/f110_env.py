@@ -545,12 +545,12 @@ class F110Env(gym.Env):
             "h": 0.074,
             "m": 3.74,
             "I_z": 0.04712,  # moment of inertia for sprung mass in yaw [kg m^2]
-            "s_min": -0.4189,
-            "s_max": 0.4189,
+            "s_min": -0.5,  # originally -0.4189
+            "s_max": 0.5,  # originally 0.4189
             "sv_min": -3.2,
             "sv_max": 3.2,
             "v_switch": 7.319,
-            "a_max": 9.51,  # TODO possible set to 5 m/s^2 as per the "On learning..." paper
+            "a_max": 5.0,  # originally 9.51
             "v_min": -5.0,
             "v_max": 20.0,
             "width": 0.31,
@@ -645,7 +645,7 @@ class F110Env(gym.Env):
             "predictive_collision": False,  # default Frenet-based boundary check
             "record_obs_min_max": False,
             "wall_deflection": False,  # default to no wall deflections
-            "out_of_bounds_penalty": -1,
+            "out_of_bounds_penalty": -50,
             "progress_gain": 5.0,
             "negative_vel_penalty": -1,
             "max_episode_steps": 4096,
