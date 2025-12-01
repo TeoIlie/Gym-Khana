@@ -61,6 +61,7 @@ TRAIN_DEBUG_RENDER = _config["train_debug_render"]
 # Callback config
 CKPT_SAVE_FREQ = _config["ckpt_save_freq"]
 N_EVAL_EPISODES = _config["n_eval_episodes"]
+BEST_MODEL = "best_model"
 
 # LiDAR beams
 NUM_BEAMS = _config["num_beams"]

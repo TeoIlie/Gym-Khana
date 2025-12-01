@@ -24,6 +24,7 @@ import numpy as np
 from stable_baselines3 import PPO
 from wandb.integration.sb3 import WandbCallback
 from train.config.env_config import (
+    BEST_MODEL,
     CKPT_SAVE_FREQ,
     END_LEARNING_RATE,
     EVAL_SEED,
@@ -100,7 +101,10 @@ def train_ppo_race():
 
     final_model_path = f"{models_dir}/{MODEL_PREFIX}_{run_id}"
     model.save(final_model_path)
-    run.save(f"{final_model_path}.zip", base_path=models_dir)
+
+    # Save best model
+    best_model_path = f"{models_dir}/{BEST_MODEL}/{BEST_MODEL}"
+    run.save(f"{best_model_path}.zip", base_path=models_dir)
 
     env.close()
     eval_env.close()
@@ -212,7 +216,10 @@ def continue_training_ppo_race(model_path: str, additional_timesteps: int):
 
     final_model_path = f"{models_dir}/{MODEL_PREFIX}_{new_run_id}"
     model.save(final_model_path)
-    run.save(f"{final_model_path}.zip", base_path=models_dir)
+
+    # Save best model
+    best_model_path = f"{models_dir}/{BEST_MODEL}/{BEST_MODEL}"
+    run.save(f"{best_model_path}.zip", base_path=models_dir)
 
     print(f"\nContinued training completed!")
     print(f"Final model saved: {final_model_path}.zip")

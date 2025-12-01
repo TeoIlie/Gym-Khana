@@ -418,27 +418,9 @@ class Track:
                     f"[DEBUG Frenet] Discrepancy: Δs={s_error:.2f}m, Δey={ey_error:.3f}m, dist={actual_distance:.3f}m"
                 )
 
-                # Optimization failure detection
-                if s_error > 20.0:
-                    print(f"[WARNING] Optimization converged to WRONG location! ({s_error:.2f}m error)")
-                    print(f"[WARNING] → Likely stuck in wrong local minimum. Use precise=False for robustness.")
-                elif s_error > 5.0:
-                    print(f"[INFO] Moderate discrepancy ({s_error:.2f}m). Optimization may be in different basin.")
-
-                if ey_error > 1.0:
-                    print(f"[WARNING] Large lateral deviation error ({ey_error:.3f}m)")
-
-            else:
-                # Robust method is ground truth - just report results
-                print(f"[DEBUG Frenet] Method: ROBUST (global search)")
-                print(f"[DEBUG Frenet] Vehicle: ({x:.2f}, {y:.2f}) -> Projected: ({x_eval:.2f}, {y_eval:.2f})")
-                print(f"[DEBUG Frenet] s={s:.2f}m, ey={ey:.3f}m, distance={actual_distance:.3f}m")
-                print(f"[DEBUG Frenet] Note: s_guess parameter is ignored by robust method")
-
             # Common warnings (applies to both methods)
             if actual_distance > 10.0:
-                print(f"[WARNING] Vehicle FAR from track! Distance={actual_distance:.2f}m (typical track width ~10m)")
-                print(f"[WARNING] → Vehicle may be off-track or in collision")
+                print(f"[WARNING] Vehicle far from track! Distance={actual_distance:.2f}m (typical track width ~10m)")
 
         phi = phi - yaw
         return s, ey, np.arctan2(np.sin(phi), np.cos(phi))

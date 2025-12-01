@@ -10,6 +10,7 @@ from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
 
 from train.config.env_config import (
     ACT_FUNC_NEG_SLOPE,
+    BEST_MODEL,
     CKPT_SAVE_FREQ,
     N_EVAL_EPISODES,
     PROJECT_NAME,
@@ -131,7 +132,7 @@ def get_eval_callback(
     """
     return EvalCallback(
         eval_env=eval_env,
-        best_model_save_path=f"{models_dir}/best_model",
+        best_model_save_path=f"{models_dir}/{BEST_MODEL}",
         log_path=f"{models_dir}/eval_logs",
         eval_freq=eval_freq,
         n_eval_episodes=n_eval_episodes,
@@ -219,11 +220,18 @@ def download_model_from_wandb(run_id: str, download_dir: str, model_prefix: str)
     run = api.run(run_path)
     print(f"Found run: {run.name} ({run.state})")
 
-    # Find and download model file
+    # Find and download model file (prioritize best model)
     print("Downloading model file...")
-    model_files = [f for f in run.files() if f.name.endswith(".zip") and f"{model_prefix}_" in f.name]
+    best_model_files = [f for f in run.files() if f.name.endswith(".zip") and BEST_MODEL in f.name]
+    if best_model_files:
+        model_files = best_model_files
+    else:
+        model_files = [f for f in run.files() if f.name.endswith(".zip") and f"{model_prefix}_" in f.name]
+
     if not model_files:
-        raise FileNotFoundError(f"No model file found with prefix '{model_prefix}' in run {run_id}")
+        raise FileNotFoundError(
+            f"No model file found (searched for '{BEST_MODEL}.zip' or '{model_prefix}_*.zip') in run {run_id}"
+        )
 
     model_file = model_files[0]
     model_file.download(root=download_dir, replace=False)
