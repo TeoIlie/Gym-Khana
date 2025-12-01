@@ -11,6 +11,9 @@ Usage:
 
     # Download model from wandb and evaluate (uses cache if already downloaded)
     python train/ppo_race.py --m d --run_id <wandb_run_id>
+
+    # Continue training from existing model
+    python train/ppo_race.py --m c --path /path/to/model.zip --additional_timesteps 10000000
 """
 
 import wandb
@@ -134,6 +137,83 @@ def evaluate_ppo_race(model_path: str = ""):
     print(f"Total reward: {total_reward}")
 
 
+def continue_training_ppo_race(model_path: str, additional_timesteps: int):
+    """
+    Continue training from a saved model checkpoint with a new wandb run.
+
+    Args:
+        model_path: Path to saved model.zip file
+        additional_timesteps: additional steps to train
+    """
+    print_header("PPO Race - Continue Training")
+
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"Model file not found: {model_path}")
+
+    if not model_path.endswith(".zip"):
+        raise ValueError(f"Model path must be a .zip file, got: {model_path}")
+
+    if additional_timesteps <= 0:
+        raise ValueError(f"additional_timesteps must be positive, got: {additional_timesteps}")
+
+    print(f"Loading model from: {model_path}")
+    print(f"Additional timesteps: {additional_timesteps:,}")
+
+    proj_root, output_root = get_output_dirs()
+
+    run = wandb.init(
+        project=PROJECT_NAME,
+        sync_tensorboard=True,
+        monitor_gym=True,
+        dir=proj_root,
+        save_code=True,
+    )
+    new_run_id = run.id
+
+    print(f"New run ID: {new_run_id}")
+
+    # Create output directories for this continuation run
+    tensorboard_dir, models_dir, config_dir = make_output_dirs(new_run_id, output_root)
+
+    # Uses current env_config.py
+    env = make_subprocvecenv(SEED, TRAIN_CONFIG, N_ENVS)
+
+    model = PPO.load(model_path, env=env, device="auto")
+
+    model.tensorboard_log = tensorboard_dir
+
+    print(f"Model loaded successfully")
+    print(f"Continuing from checkpoint's timestep count")
+
+    save_config(TRAIN_CONFIG, config_dir, "gym_config.yaml")
+
+    rl_config = extract_rl_config(model, additional_timesteps, N_ENVS)
+    save_config(rl_config, config_dir, "rl_config.yaml")
+
+    print("\nContinuing training...")
+
+    model.learn(
+        total_timesteps=additional_timesteps,
+        callback=[
+            WandbCallback(gradient_save_freq=0, verbose=2),
+            get_ckpt_callback(models_dir=models_dir, save_freq=CKPT_SAVE_FREQ),
+        ],
+        progress_bar=True,
+        reset_num_timesteps=False,  # False to continue from checkpoint
+    )
+
+    final_model_path = f"{models_dir}/{MODEL_PREFIX}_{new_run_id}"
+    model.save(final_model_path)
+    run.save(f"{final_model_path}.zip", base_path=models_dir)
+
+    print(f"\nContinued training completed!")
+    print(f"Final model saved: {final_model_path}.zip")
+    print(f"New run ID: {new_run_id}")
+
+    env.close()
+    run.finish()
+
+
 def download_and_evaluate(run_id: str):
     """Download model from wandb and evaluate it."""
     print_header("Downloading and Evaluating PPO Model")
@@ -157,21 +237,27 @@ def main():
     parser = argparse.ArgumentParser(description="Train or evaluate a PPO model for autonomous racing")
     parser.add_argument(
         "--m",
-        choices=["t", "e", "d"],
+        choices=["t", "e", "d", "c"],
         default="t",
-        help="Run mode: 't' to train a new model, 'e' to evaluate an existing model, or 'd' to download and evaluate from wandb",
+        help="Run mode: 't' to train a new model, 'e' to evaluate, 'd' to download and evaluate, 'c' to continue training",
     )
     parser.add_argument(
         "--path",
         type=str,
         default="",
-        help="Path to trained model for evaluation (uses latest if not specified)",
+        help="Path to trained model for evaluation or continue training (uses latest if not specified for mode 'e')",
     )
     parser.add_argument(
         "--run_id",
         type=str,
         default="",
         help="Wandb run ID to download model from (required for mode 'd')",
+    )
+    parser.add_argument(
+        "--additional_timesteps",
+        type=int,
+        default=10_000_000,
+        help="Additional timesteps to train for when continuing training (mode 'c'). Default: 10,000,000",
     )
 
     args = parser.parse_args()
@@ -184,6 +270,10 @@ def main():
         if not args.run_id:
             parser.error("--run_id is required when using mode 'd' (download)")
         download_and_evaluate(run_id=args.run_id)
+    elif args.m == "c":
+        if not args.path:
+            parser.error("--path is required when using mode 'c' (continue training)")
+        continue_training_ppo_race(model_path=args.path, additional_timesteps=args.additional_timesteps)
 
 
 if __name__ == "__main__":
