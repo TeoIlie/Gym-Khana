@@ -19,13 +19,9 @@ with open(_rl_config_path, "r") as f:
 N_ENVS = _rl_config["core_mult"] * multiprocessing.cpu_count()  # CPU core count * multiplier
 TOTAL_TIMESTEPS = _rl_config["total_timesteps"]
 N_STEPS = _rl_config["n_steps"]
-BATCH_SIZE = _rl_config["batch_size"]
-GAMMA = _rl_config["gamma"]
 START_LEARNING_RATE = _rl_config["start_learning_rate"]
 END_LEARNING_RATE = _rl_config["end_learning_rate"]
 SEED = _rl_config["seed"]
-ACTOR_LAYER_SIZE = _rl_config["actor_layer_size"]
-CRITIC_LAYER_SIZE = _rl_config["critic_layer_size"]
 ACT_FUNC_NEG_SLOPE = _rl_config["act_func_neg_slope"]
 
 
@@ -55,7 +51,7 @@ NORM_ACT = _config["normalize_act"]
 WALL_DEFLECTION = _config["wall_deflection"]
 
 # Vehicle parameters
-PARAMS = F110Env.f1tenth_std_vehicle_params()
+PARAMS = F110Env.f1tenth_std_drift_bias_params()
 
 # Render/debug params
 TEST_DEBUG_RENDER = _config["test_debug_render"]

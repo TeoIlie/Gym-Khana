@@ -525,6 +525,26 @@ class F110Env(gym.Env):
         return params
 
     @classmethod
+    def f1tenth_std_drift_bias_params(cls) -> dict:
+        """
+        Returns params for Single Track Drift (STD) model with drift bias.
+
+        Returns:
+            dict: Parameter dictionary with drift bias for STD model
+        """
+        params = cls.f1tenth_std_vehicle_params().copy()
+
+        # Overwrite specific params
+        params["lf"] = 0.19812  # originally 0.15875 to promote rear weight bias
+        params["lr"] = 0.13208  # originally 0.17145 to promote rear weight bias
+        params["a_max"] = 7.0  # originally 9.51 (greater than 5.0 to allow more wheelspin)
+        params["tire_p_dy1"] = 1.0  # adjusted from original 1.101 for more oversteer
+        params["tire_p_ky1"] = -50.0  # adjusted from original -65.76 for more oversteer
+        params["T_se"] = 0.0  # adjusted from original 0.5 to simulate RWD
+
+        return params
+
+    @classmethod
     def f1tenth_std_vehicle_params(cls) -> dict:
         """
         Returns default parameters for Single Track Drift (STD) model.

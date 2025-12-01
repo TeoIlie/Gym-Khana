@@ -20,9 +20,22 @@ import gymnasium as gym
 import numpy as np
 from stable_baselines3 import PPO
 from wandb.integration.sb3 import WandbCallback
-from train.config.env_config import N_ENVS, N_STEPS, PROJECT_NAME, SEED
+from train.config.env_config import (
+    CKPT_SAVE_FREQ,
+    END_LEARNING_RATE,
+    N_ENVS,
+    N_STEPS,
+    PROJECT_NAME,
+    SEED,
+    START_LEARNING_RATE,
+    TOTAL_TIMESTEPS,
+    get_drift_test_config,
+    get_drift_train_config,
+    get_env_id,
+)
 from train.training_utils import (
     get_output_dirs,
+    linear_schedule,
     make_output_dirs,
     get_ckpt_callback,
     make_subprocvecenv,
@@ -31,31 +44,12 @@ from train.training_utils import (
     download_model_from_wandb,
     print_header,
 )
-from f1tenth_gym.envs.f110_env import F110Env
 
 
 # Extract model prefix from filename (e.g., "ppo_race" from "ppo_race.py")
 MODEL_PREFIX = os.path.splitext(os.path.basename(__file__))[0]
-TOTAL_TIMESTEPS = 10_000
-# config for train and test
-CONFIG = {
-    "map": "Drift_large",
-    "num_agents": 1,
-    "model": "std",
-    "params": F110Env.f1tenth_std_vehicle_params(),  # new vehicle params with rear weight bias
-    "timestep": 0.01,
-    "num_beams": 2,
-    "integrator": "rk4",
-    "control_input": ["accl", "steering_angle"],
-    "observation_config": {"type": "drift"},
-    "reset_config": {"type": "cl_random_static"},
-    "normalize_act": True,
-    "normalize_obs": True,
-    "predictive_collision": False,
-    "wall_deflection": False,
-    "lookahead_n_points": 3,
-    "lookahead_ds": 0.5,
-}
+TRAIN_CONFIG = get_drift_train_config()
+TEST_CONFIG = get_drift_test_config()
 
 
 def train_ppo_race():
@@ -67,9 +61,11 @@ def train_ppo_race():
     run_id = run.id
 
     tensorboard_dir, models_dir, config_dir = make_output_dirs(run.id, output_root)
-    save_config(CONFIG, config_dir, "gym_config.yaml")
+    save_config(TRAIN_CONFIG, config_dir, "gym_config.yaml")
 
-    env = make_subprocvecenv(SEED, CONFIG, N_ENVS)
+    env = make_subprocvecenv(SEED, TRAIN_CONFIG, N_ENVS)
+
+    learning_rate = linear_schedule(START_LEARNING_RATE, END_LEARNING_RATE)
 
     model = PPO(
         policy="MlpPolicy",
@@ -79,6 +75,7 @@ def train_ppo_race():
         tensorboard_log=tensorboard_dir,
         device="auto",
         seed=SEED,
+        learning_rate=learning_rate,
     )
 
     rl_config = extract_rl_config(model, TOTAL_TIMESTEPS, N_ENVS)
@@ -88,7 +85,7 @@ def train_ppo_race():
         total_timesteps=TOTAL_TIMESTEPS,
         callback=[
             WandbCallback(gradient_save_freq=0, verbose=2),
-            get_ckpt_callback(models_dir=models_dir, save_freq=10000),
+            get_ckpt_callback(models_dir=models_dir, save_freq=CKPT_SAVE_FREQ),
         ],
         progress_bar=True,
     )
@@ -113,13 +110,9 @@ def evaluate_ppo_race(model_path: str = ""):
     model = PPO.load(model_path, print_system_info=True, device="cpu")
     print(f"Loaded model from {model_path}")
 
-    CONFIG["debug_frenet_projection"] = True
-    CONFIG["render_track_lines"] = True
-    CONFIG["render_lookahead_curvatures"] = True
-
     eval_env = gym.make(
-        "f1tenth_gym:f1tenth-v0",
-        config=CONFIG,
+        get_env_id(),
+        config=TEST_CONFIG,
         render_mode="human",
     )
     np.random.seed()

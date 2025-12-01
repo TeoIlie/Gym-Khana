@@ -141,15 +141,24 @@ def extract_rl_config(model: object, total_timesteps: int, n_envs: int) -> dict:
     Returns:
         Dictionary containing RL hyperparameters
     """
-    return {
+    config = {
         "n_steps": model.n_steps,
         "batch_size": model.batch_size,
         "gamma": model.gamma,
-        "learning_rate": float(model.learning_rate),
         "seed": model.seed,
         "total_timesteps": total_timesteps,
         "n_envs": n_envs,
     }
+
+    # Handle learning rate schedule (callable) vs constant (float)
+    if callable(model.learning_rate):
+        # Extract start and end learning rates from schedule
+        config["start_learning_rate"] = float(model.learning_rate(1.0))
+        config["end_learning_rate"] = float(model.learning_rate(0.0))
+    else:
+        config["learning_rate"] = float(model.learning_rate)
+
+    return config
 
 
 def download_model_from_wandb(run_id: str, download_dir: str, model_prefix: str) -> str:

@@ -87,6 +87,7 @@ def calculate_norm_bounds(env, features: list[str]):
 
     # Yaw rate: experimentally determined bound
     if "ang_vel_z" in features_set:
+        # TODO set to 5.0 after testing
         experimental_max_yaw = 4.0  # rad/s, found experimentally in sim
         bounds["ang_vel_z"] = (-experimental_max_yaw, experimental_max_yaw)
 
