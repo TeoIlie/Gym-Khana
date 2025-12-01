@@ -18,7 +18,7 @@ def main():
 
         run = wandb.init(project=PROJECT_NAME, sync_tensorboard=True, monitor_gym=True, dir=proj_root, save_code=True)
         run_id = run.id
-        tensorboard_dir, models_dir, videos_dir = make_output_dirs(run.id, output_root)
+        tensorboard_dir, models_dir, _ = make_output_dirs(run.id, output_root)
 
         env = gym.make(
             "f1tenth_gym:f1tenth-v0",

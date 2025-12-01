@@ -195,7 +195,7 @@ class TestGetRewardWraparound:
 
         reward = env._get_reward()
 
-        expected_reward = 50.1 - last_s - 1.0  # progress - collision penalty
+        expected_reward = 50.1 - last_s - 50.0  # progress - collision penalty
 
         print(f"\nCollision penalty test:")
         print(f"  Last s: {last_s:.2f}m")

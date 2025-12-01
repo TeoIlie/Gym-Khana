@@ -2,7 +2,7 @@
 
 # Environment
 project_name: "f1tenth-ppo-drift"
-map: "Drift"
+map: "Drift_large"
 model: "std"  # Vehicle dynamics model: "std" or "mb" (multi-body)
 timestep: 0.01  # Simulation timestep in seconds
 num_agents: 1
@@ -20,8 +20,8 @@ normalize_act: true
 obs_type: "drift"
 normalize_obs: true
 record_obs_min_max: true
-lookahead_n_points: 10
-lookahead_ds: 0.3  # Distance between lookahead points
+lookahead_n_points: 5
+lookahead_ds: 0.5  # Distance between lookahead points
 
 # Reset configuration
 reset_config: "cl_random_static"
@@ -31,7 +31,8 @@ test_debug_render: true
 train_debug_render: false
 
 # Callback config
-ckpt_save_freq: 20000
+ckpt_save_freq: 10000
+n_eval_episodes: 5
 
 # LiDAR beams config - keep minimal for fast training, as it isn't needed
 num_beams: 2

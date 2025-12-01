@@ -6,11 +6,13 @@ import yaml
 import wandb
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.callbacks import CheckpointCallback
+from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
 
 from train.config.env_config import (
     ACT_FUNC_NEG_SLOPE,
+    BEST_MODEL,
     CKPT_SAVE_FREQ,
+    N_EVAL_EPISODES,
     PROJECT_NAME,
     get_env_id,
 )
@@ -113,6 +115,43 @@ def get_ckpt_callback(models_dir: str, save_freq: int = CKPT_SAVE_FREQ) -> Check
     )
 
 
+def get_eval_callback(
+    eval_env,
+    models_dir: str,
+    eval_freq: int = CKPT_SAVE_FREQ,
+    n_eval_episodes: int = N_EVAL_EPISODES,
+) -> EvalCallback:
+    """
+    Create evaluation callback for periodic model evaluation during training.
+
+    Args:
+        eval_env: Single evaluation environment (must be Monitor-wrapped)
+        models_dir: Base directory for model outputs
+        eval_freq: Evaluation frequency in steps (default: CKPT_SAVE_FREQ)
+        n_eval_episodes: Number of episodes per evaluation (default: 5)
+    """
+    return EvalCallback(
+        eval_env=eval_env,
+        best_model_save_path=f"{models_dir}/{BEST_MODEL}",
+        log_path=f"{models_dir}/eval_logs",
+        eval_freq=eval_freq,
+        n_eval_episodes=n_eval_episodes,
+        deterministic=True,
+        render=False,
+        verbose=1,
+    )
+
+
+def make_eval_env(seed: int, config: dict):
+    """
+    Create a single evaluation environment for EvalCallback.
+    """
+    env = gym.make(get_env_id(), config=config)
+    env = Monitor(env)
+    env.reset(seed=seed)
+    return env
+
+
 def save_config(config: dict, config_dir: str, filename: str) -> None:
     """
     Save config to YAML file for future reference.
@@ -141,15 +180,24 @@ def extract_rl_config(model: object, total_timesteps: int, n_envs: int) -> dict:
     Returns:
         Dictionary containing RL hyperparameters
     """
-    return {
+    config = {
         "n_steps": model.n_steps,
         "batch_size": model.batch_size,
         "gamma": model.gamma,
-        "learning_rate": float(model.learning_rate),
         "seed": model.seed,
         "total_timesteps": total_timesteps,
         "n_envs": n_envs,
     }
+
+    # Handle learning rate schedule (callable) vs constant (float)
+    if callable(model.learning_rate):
+        # Extract start and end learning rates from schedule
+        config["start_learning_rate"] = float(model.learning_rate(1.0))
+        config["end_learning_rate"] = float(model.learning_rate(0.0))
+    else:
+        config["learning_rate"] = float(model.learning_rate)
+
+    return config
 
 
 def download_model_from_wandb(run_id: str, download_dir: str, model_prefix: str) -> str:
@@ -172,11 +220,18 @@ def download_model_from_wandb(run_id: str, download_dir: str, model_prefix: str)
     run = api.run(run_path)
     print(f"Found run: {run.name} ({run.state})")
 
-    # Find and download model file
+    # Find and download model file (prioritize best model)
     print("Downloading model file...")
-    model_files = [f for f in run.files() if f.name.endswith(".zip") and f"{model_prefix}_" in f.name]
+    best_model_files = [f for f in run.files() if f.name.endswith(".zip") and BEST_MODEL in f.name]
+    if best_model_files:
+        model_files = best_model_files
+    else:
+        model_files = [f for f in run.files() if f.name.endswith(".zip") and f"{model_prefix}_" in f.name]
+
     if not model_files:
-        raise FileNotFoundError(f"No model file found with prefix '{model_prefix}' in run {run_id}")
+        raise FileNotFoundError(
+            f"No model file found (searched for '{BEST_MODEL}.zip' or '{model_prefix}_*.zip') in run {run_id}"
+        )
 
     model_file = model_files[0]
     model_file.download(root=download_dir, replace=False)
