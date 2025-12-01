@@ -4,11 +4,11 @@
 
 # The F1TENTH Gym environment
 
-This is the repository of the F1TENTH Gym environment.
+This repository contains a custom gym environment for training Deep Reinforcement Learning policies to race and drift on 1/10 scale or full-size Ackermann vehicles. **SB3** and **wandb** integration included. Based on the f1tenth_gym simulator built by UPenn.
 
-This project is still under heavy developement.
+![Demo](tests/test_figures/F1TENTH_PPO_Drift.gif)
 
-You can find the [documentation](https://f1tenth-gym.readthedocs.io/en/latest/) of the environment here.
+You can find the original sim [documentation](https://f1tenth-gym.readthedocs.io/en/latest/) here.
 
 ## Quickstart
 
@@ -36,6 +36,12 @@ cd examples
 python3 waypoint_follow.py
 ```
 
+Or a simple centerline follow example:
+```bash
+cd examples
+python3 pd_steer_controller.py
+```
+
 A Dockerfile is also provided with support for the GUI with nvidia-docker (nvidia GPU required):
 
 ```bash
@@ -56,32 +62,33 @@ Default configurations are stored in `/train/config/env_config.py`, with paramet
 
 ### Debugging configuration
 
-1. Debug with breakpoints by looping through environment steps, as in `tests/drift_observation_test.py`
-2. `gym.make()` configurations:
-    1. Run with `render_mode` set to `human` to visualize the process
-    2. Set `"render_track_lines": True` (it is `False` by default) to render the centerline  in **green** and the raceline in **red**
-    3. Set `"render_lookahead_curvatures": True` (it is `False` by default) to visualize lookahead curvature sampling points ahead of the vehicle in **yellow**. Optional parameters:
-    4. Set `"debug_frenet_projection" = True` to visualize the Frenet coordinates are correct
-    5. Set `"record_obs_min_max"` to `True/False` to record min/max observation values during training, and tweak normalization bounds if necessary, defined in `utils.py::calculate_norm_bounds`
+ `gym.make()` configurations:
+ 
+1. Run with `render_mode` set to `human` to visualize the process
+2. Set `"render_track_lines": True` (it is `False` by default) to render the centerline  in **green** and the raceline in **red**
+3. Set `"render_lookahead_curvatures": True` (it is `False` by default) to visualize lookahead curvature sampling points ahead of the vehicle in **yellow**. Optional parameters:
+4. Set `"debug_frenet_projection" = True` to visualize the Frenet coordinates are correct
+5. Set `"record_obs_min_max"` to `True/False` to record min/max observation values during training, and tweak normalization bounds if necessary, defined in `utils.py::calculate_norm_bounds`
 
 ### Important configuration options
 
-1. `gym.make()` configurations:
-    1. Set `model` to `std` for drifting model with PAC2002 tire model
-    2. Use `control_input` `["accl", "steering_angle"]` for best RL drift training
-    3. Use parameter dictionary `params` as `F110Env.f1tenth_std_vehicle_params()` for drift parameters on 1/10 scale F1TENTH car
-    4. Lookahead curvature/width observations can be configured with spacing and number parameters, and when `render_lookahead_curvatures": True` these will be reflected
-        1. `lookahead_n_points` - Number of lookahead points (default: 10)
-        2. `lookahead_ds` - Spacing between points in meters (default: 0.3m)
-    5. Set `normalize_obs` to `True/False` for normalizing the observation space. Only specific observation types can be normalized
-    6. Set `normalize_act` to `True/False` for normalizing the action space. Supported for all action types
-    6. Set `predictive_collision` to `True` to use TTC collision checking and `False` for Frenet-based collision checking. Note that this also modifies the reward function.
-    7. Set `wall_deflection` to `False` to treat track edges as boundaries, and `True` to treat them as walls that cause a collision and halt the vehicle
-    8. Reward configuration options:
-        1. `progress_gain`: set amount of gain by which to multiply forward progress reward. Must be >= 1
-        2. `out_of_bounds_penalty`: penalty for driving off the track boundary
-        3. `negative_vel_penalty`: penalty for driving backward
-        4. `max_episode_steps`: the maximum number of episode steps
+`gym.make()` configurations:
+
+1. Set `model` to `std` for drifting model with PAC2002 tire model
+2. Use `control_input` `["accl", "steering_angle"]` for best RL drift training
+3. Use parameter dictionary `params` as `F110Env.f1tenth_std_vehicle_params()` or `F110Env.f1tenth_std_drift_bias_params()` for drift parameters on 1/10 scale F1TENTH car
+4. Lookahead curvature/width observations can be configured with spacing and number parameters, and when `render_lookahead_curvatures": True` these will be reflected
+    1. `lookahead_n_points` - Number of lookahead points (default: 10)
+    2. `lookahead_ds` - Spacing between points in meters (default: 0.3m)
+5. Set `normalize_obs` to `True/False` for normalizing the observation space. Only specific observation types can be normalized
+6. Set `normalize_act` to `True/False` for normalizing the action space. Supported for all action types
+6. Set `predictive_collision` to `True` to use TTC collision checking and `False` for Frenet-based collision checking. Note that this also modifies the reward function.
+7. Set `wall_deflection` to `False` to treat track edges as boundaries, and `True` to treat them as walls that cause a collision and halt the vehicle
+8. Reward configuration options:
+    1. `progress_gain`: set amount of gain by which to multiply forward progress reward. Must be >= 1
+    2. `out_of_bounds_penalty`: penalty for driving off the track boundary
+    3. `negative_vel_penalty`: penalty for driving backward
+    4. `max_episode_steps`: the maximum number of episode steps
 
 ## Wanbd
 
@@ -98,18 +105,18 @@ Run formatting mannually with `black .`. Linting also runs automatically due to 
 ## Important files
 
 * `f1tenth_gym/envs/base_classes.py:503` defines the `step` method.
-  * notice that the action space is defined as an `ndarray` with
+  * the action space is defined as an `ndarray` with
     1. the first element being desired **steering angle**
     2. second element is desired **velocity**.
 * dynamics models are defined in `f1tenth_gym/envs/dynamic_models`
-  * `single_track.py` models the single-track dynamics model, but no tires
-  * `multi_body.py` models the car in far more detail, including tires, but may be overkill with RL
-  * to replicate the paper - single-track dynamics + Pacejka tire model - it may be necessary to write a custom hybrid approach using `single_track.py` and `multi_body.py`
+  * `single_track.py` models the single-track dynamics model, but only basic tire modelling
+  * `single_track_drift.py` models the single-track dynamics model with PAC2002 tire model, ideal for drift training
+  * `multi_body.py` models the car in greatest detail, but parameters are only available for a full-scale vehicle
 
 ## Branches and the f1tenth_gym fork
 
 * The original `f1tenth_gym` project has branch `main` which in this project is renamed to `f1tenth_main_original`, and `rl_example`, which in this project is renamed to `main`
-* This is bc the `rl_example` contains all the code I am actively using to build this project
+* This is bc the `rl_example` contained all the base code I used to build this project
 
 ## Tire parameters
 
