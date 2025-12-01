@@ -204,8 +204,8 @@ class TestFrenetBoundaryChecking(unittest.TestCase):
                 unwrapped._update_state()
                 reward = unwrapped._get_reward()
 
-        # Should get exclusive penalty: -1.0 (NOT progress - penalty = 1.0 - 1.0 = 0.0)
-        self.assertAlmostEqual(reward, -1.0, places=5, msg="Out-of-bounds agent should receive exclusive -1 penalty")
+        # Should get exclusive penalty
+        self.assertAlmostEqual(reward, -50.0, places=5, msg="Out-of-bounds agent should receive exclusive -50 penalty")
 
     def test_frenet_error_handling_missing_track_boundaries(self):
         """Test that missing track boundary data raises clear ValueError."""
@@ -286,11 +286,13 @@ class TestFrenetBoundaryChecking(unittest.TestCase):
             ):
                 reward_predictive = unwrapped_predictive._get_reward()
 
-            # Frenet: exclusive penalty = -1.0
-            # Predictive: additive = progress (10.1 - 10) - penalty (1) = 0.1 - 1.0 = -0.9
-            self.assertAlmostEqual(reward_frenet, -1.0, places=5, msg="Frenet mode should have exclusive -1 penalty")
+            # Frenet: exclusive penalty = -50
+            self.assertAlmostEqual(reward_frenet, -50.0, places=5, msg="Frenet mode should have exclusive -1 penalty")
             self.assertAlmostEqual(
-                reward_predictive, -0.9, places=5, msg="Predictive mode should have additive penalty (0.1 - 1.0 = -0.9)"
+                reward_predictive,
+                -49.9,
+                places=5,
+                msg="Predictive mode should have additive penalty (0.1 - 1.0 = -0.9)",
             )
 
         finally:

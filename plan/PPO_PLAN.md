@@ -46,13 +46,13 @@ Implement training script `train/train_ppo_drift.py` that uses PPO from SB3 to i
 | Status | Task |
 |------|-------|
 | [ ] | Integration with **wandb** video recording with `monitor_gym=True` to debug training, recording only samples of training to save memory space |
-| [ ] | Save config params with `wandb.init(config={..})` to save params for comparison |
-| [ ] | Save training config as `config.json` alongside each model |
-| [ ] | Best model tracking with evaluation callback |
-| [ ] | Resume capability from checkpoint|
-| [ ] | Create a separate evaluation environment for periodic evaluation of the current policy with full episodes, → `from stable_baselines3.common.callbacks import EvalCallback`|
-| [ ] | Enable the callback for wandb for better integration → `from wandb.integration.sb3 import WandbCallback` |
 | [ ] | Enable early stopping with reward plateau detection → `from stable_baselines3.common.callbacks import StopTrainingOnNoModelImprovement`|
+| [ ] | Best model tracking with evaluation callback |
+| [ ] | Create a separate evaluation environment for periodic evaluation of the current policy with full episodes, → `from stable_baselines3.common.callbacks import EvalCallback`|
+| [X] | Save config params with `wandb.init(config={..})` to save params for comparison |
+| [X] | Save training config as `config.json` alongside each model |
+| [X] | Resume capability from checkpoint|
+| [X] | Enable the callback for wandb for better integration → `from wandb.integration.sb3 import WandbCallback` |
 | [X] | Periodic checkpoint saving → `from stable_baselines3.common.callbacks import CheckpointCallback` |
 | [X] | Live visualization of training, including key RL metrics such as reward convergence, and NN metrics like `policy_loss` and `value_loss` |
 | [X] | Integration with **tensorboard** with `sync_tensorboard=True` |

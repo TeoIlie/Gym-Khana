@@ -49,7 +49,14 @@ docker build -t f1tenth_gym_container -f Dockerfile .
 docker run --gpus all -it -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix f1tenth_gym_container
 ````
 
-Then the same example can be ran.
+Then the same examples can be ran.
+
+## Training
+The main training script is at `train/ppo_race.py`, and includes functionality for:
+1. Training mode with parallel environments using `SubprocVecEnv` and `train/config` params
+2. Evaluation mode with visualization
+3. Download mode, to fetch model from **wandb**
+4. Continue training mode to continue training an existing model
 
 ## Configuration
 
