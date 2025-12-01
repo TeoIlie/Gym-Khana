@@ -22,6 +22,7 @@ N_STEPS = _rl_config["n_steps"]
 START_LEARNING_RATE = _rl_config["start_learning_rate"]
 END_LEARNING_RATE = _rl_config["end_learning_rate"]
 SEED = _rl_config["seed"]
+EVAL_SEED = _rl_config["eval_seed"]
 ACT_FUNC_NEG_SLOPE = _rl_config["act_func_neg_slope"]
 
 
@@ -59,6 +60,7 @@ TRAIN_DEBUG_RENDER = _config["train_debug_render"]
 
 # Callback config
 CKPT_SAVE_FREQ = _config["ckpt_save_freq"]
+N_EVAL_EPISODES = _config["n_eval_episodes"]
 
 # LiDAR beams
 NUM_BEAMS = _config["num_beams"]

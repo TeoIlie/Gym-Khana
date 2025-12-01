@@ -32,6 +32,7 @@ train_debug_render: false
 
 # Callback config
 ckpt_save_freq: 10000
+n_eval_episodes: 5
 
 # LiDAR beams config - keep minimal for fast training, as it isn't needed
 num_beams: 2

@@ -1,6 +1,9 @@
 # This file contains RL-specific hyperparameters for PPO training
 
-seed: 42 # seed for reproducibility
+# seeds for reproducibility
+seed: 42
+eval_seed: 1000
+
 core_mult: 2  # n_envs = core_mult * [# of CPU cores]
               # experimentally, the ideal number of envs was found to be 2 x [# of CPU cores]
 total_timesteps: 120000000  # 120 million timesteps

@@ -26,6 +26,7 @@ from wandb.integration.sb3 import WandbCallback
 from train.config.env_config import (
     CKPT_SAVE_FREQ,
     END_LEARNING_RATE,
+    EVAL_SEED,
     N_ENVS,
     N_STEPS,
     PROJECT_NAME,
@@ -41,6 +42,8 @@ from train.training_utils import (
     linear_schedule,
     make_output_dirs,
     get_ckpt_callback,
+    get_eval_callback,
+    make_eval_env,
     make_subprocvecenv,
     save_config,
     extract_rl_config,
@@ -67,6 +70,7 @@ def train_ppo_race():
     save_config(TRAIN_CONFIG, config_dir, "gym_config.yaml")
 
     env = make_subprocvecenv(SEED, TRAIN_CONFIG, N_ENVS)
+    eval_env = make_eval_env(EVAL_SEED, TRAIN_CONFIG)
 
     learning_rate = linear_schedule(START_LEARNING_RATE, END_LEARNING_RATE)
 
@@ -89,6 +93,7 @@ def train_ppo_race():
         callback=[
             WandbCallback(gradient_save_freq=0, verbose=2),
             get_ckpt_callback(models_dir=models_dir, save_freq=CKPT_SAVE_FREQ),
+            get_eval_callback(eval_env=eval_env, models_dir=models_dir),
         ],
         progress_bar=True,
     )
@@ -98,6 +103,7 @@ def train_ppo_race():
     run.save(f"{final_model_path}.zip", base_path=models_dir)
 
     env.close()
+    eval_env.close()
 
     run.finish()
 
@@ -177,6 +183,7 @@ def continue_training_ppo_race(model_path: str, additional_timesteps: int):
 
     # Uses current env_config.py
     env = make_subprocvecenv(SEED, TRAIN_CONFIG, N_ENVS)
+    eval_env = make_eval_env(EVAL_SEED, TRAIN_CONFIG)
 
     model = PPO.load(model_path, env=env, device="auto")
 
@@ -197,6 +204,7 @@ def continue_training_ppo_race(model_path: str, additional_timesteps: int):
         callback=[
             WandbCallback(gradient_save_freq=0, verbose=2),
             get_ckpt_callback(models_dir=models_dir, save_freq=CKPT_SAVE_FREQ),
+            get_eval_callback(eval_env=eval_env, models_dir=models_dir),
         ],
         progress_bar=True,
         reset_num_timesteps=False,  # False to continue from checkpoint
@@ -211,6 +219,7 @@ def continue_training_ppo_race(model_path: str, additional_timesteps: int):
     print(f"New run ID: {new_run_id}")
 
     env.close()
+    eval_env.close()
     run.finish()
 
 

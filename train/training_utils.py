@@ -6,11 +6,12 @@ import yaml
 import wandb
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.callbacks import CheckpointCallback
+from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
 
 from train.config.env_config import (
     ACT_FUNC_NEG_SLOPE,
     CKPT_SAVE_FREQ,
+    N_EVAL_EPISODES,
     PROJECT_NAME,
     get_env_id,
 )
@@ -111,6 +112,43 @@ def get_ckpt_callback(models_dir: str, save_freq: int = CKPT_SAVE_FREQ) -> Check
         save_vecnormalize=True,
         verbose=1,
     )
+
+
+def get_eval_callback(
+    eval_env,
+    models_dir: str,
+    eval_freq: int = CKPT_SAVE_FREQ,
+    n_eval_episodes: int = N_EVAL_EPISODES,
+) -> EvalCallback:
+    """
+    Create evaluation callback for periodic model evaluation during training.
+
+    Args:
+        eval_env: Single evaluation environment (must be Monitor-wrapped)
+        models_dir: Base directory for model outputs
+        eval_freq: Evaluation frequency in steps (default: CKPT_SAVE_FREQ)
+        n_eval_episodes: Number of episodes per evaluation (default: 5)
+    """
+    return EvalCallback(
+        eval_env=eval_env,
+        best_model_save_path=f"{models_dir}/best_model",
+        log_path=f"{models_dir}/eval_logs",
+        eval_freq=eval_freq,
+        n_eval_episodes=n_eval_episodes,
+        deterministic=True,
+        render=False,
+        verbose=1,
+    )
+
+
+def make_eval_env(seed: int, config: dict):
+    """
+    Create a single evaluation environment for EvalCallback.
+    """
+    env = gym.make(get_env_id(), config=config)
+    env = Monitor(env)
+    env.reset(seed=seed)
+    return env
 
 
 def save_config(config: dict, config_dir: str, filename: str) -> None:
