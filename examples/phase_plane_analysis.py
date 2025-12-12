@@ -28,7 +28,7 @@ from train.training_utils import get_output_dirs, print_header
 
 # Configuration constants
 PROJ_ROOT = get_output_dirs()[0]
-NUM_EPISODES = 1  # Number of episodes to collect data
+NUM_EPISODES = 20  # Number of episodes to collect data
 MODEL_PATH = PROJ_ROOT + "/outputs/downloads/ol035sw5/model.zip"  # Edit this to point to your trained model
 DT = 0.01  # Timestep from config (0.01 seconds = 100 Hz)
 OUTPUT_FILENAME = PROJ_ROOT + "/tests/test_figures/phase_plane_vector_field.png"
