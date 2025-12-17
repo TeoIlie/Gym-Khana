@@ -12,10 +12,15 @@ Arrows show the direction and rate of state evolution:
 - Arrow length: Normalized for clarity
 - Arrow color: Velocity magnitude (speed of evolution)
 
+Corner Filtering:
+    Set ENABLE_CORNER_FILTER = True and specify CORNER_S_MIN/CORNER_S_MAX
+    to analyze only a specific track segment (e.g., corner exit region).
+
 Usage:
     1. Edit MODEL_PATH constant to point to your trained model
-    2. Run: python examples/phase_plane_analysis.py
-    3. View generated plots in phase_plane_vector_field.png
+    2. (Optional) Set ENABLE_CORNER_FILTER = True and configure corner range
+    3. Run: python examples/phase_plane_analysis.py
+    4. View generated plots in phase_plane_vector_field.png
 """
 
 import gymnasium as gym
@@ -23,15 +28,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 from stable_baselines3 import PPO
-from train.config.env_config import get_drift_train_config, get_env_id
+from train.config.env_config import TIMESTEP, get_drift_train_config, get_env_id
 from train.training_utils import get_output_dirs, print_header
 
 # Configuration constants
 PROJ_ROOT = get_output_dirs()[0]
 NUM_EPISODES = 20  # Number of episodes to collect data
 MODEL_PATH = PROJ_ROOT + "/outputs/downloads/ol035sw5/model.zip"  # Edit this to point to your trained model
-DT = 0.01  # Timestep from config (0.01 seconds = 100 Hz)
 OUTPUT_FILENAME = PROJ_ROOT + "/tests/test_figures/phase_plane_vector_field.png"
+CSV_OUTPUT_FILENAME = PROJ_ROOT + "/tests/test_figures/phase_plane_data.csv"
 SUBSAMPLE_RATE = 50  # Subsample before plotting to reduce clutter
 COLOR_PERCENTILE_CLIP = (10, 90)  # Clip outliers for clearer color distribution
 
@@ -39,6 +44,11 @@ COLOR_PERCENTILE_CLIP = (10, 90)  # Clip outliers for clearer color distribution
 APPLY_SMOOTHING = True  # Enable/disable smoothing
 SMOOTH_WINDOW_LENGTH = 5  # Must be odd (larger = smoother)
 SMOOTH_POLYORDER = 3  # Polynomial order (typically 2-4)
+
+# Corner segment filtering (set to your desired corner exit range)
+ENABLE_CORNER_FILTER = False  # Set True to analyze specific corner segment
+CORNER_S_MIN = 0.0  # Start of corner segment (meters)
+CORNER_S_MAX = 5.0  # End of corner segment (meters)
 
 
 def compute_angle_derivative(angles, dt):
@@ -79,6 +89,7 @@ def collect_phase_plane_data(model, env, num_episodes, dt):
     """
     frenet_u_all = []
     frenet_n_all = []
+    s_all = []
     d_frenet_u_all = []
     d_frenet_n_all = []
     d2_frenet_u_all = []
@@ -91,6 +102,7 @@ def collect_phase_plane_data(model, env, num_episodes, dt):
         # Trajectory storage for this episode
         frenet_u_traj = []
         frenet_n_traj = []
+        s_traj = []
 
         while not (done or trunc):
             # Get action from trained model
@@ -108,12 +120,16 @@ def collect_phase_plane_data(model, env, num_episodes, dt):
 
             s, ey, ephi = track.cartesian_to_frenet(x, y, theta, use_raceline=False)
 
-            frenet_u_traj.append(ephi)  # heading error
-            frenet_n_traj.append(ey)  # lateral deviation
+            # Only store data if in desired corner segment (or if filtering disabled)
+            if not ENABLE_CORNER_FILTER or (CORNER_S_MIN <= s <= CORNER_S_MAX):
+                s_traj.append(s)  # arc length position
+                frenet_u_traj.append(ephi)  # heading error
+                frenet_n_traj.append(ey)  # lateral deviation
 
         # Convert to numpy arrays
         frenet_u_traj = np.array(frenet_u_traj)
         frenet_n_traj = np.array(frenet_n_traj)
+        s_traj = np.array(s_traj)
 
         # Compute derivatives (with optional smoothing)
         if APPLY_SMOOTHING and len(frenet_u_traj) >= SMOOTH_WINDOW_LENGTH:
@@ -130,6 +146,7 @@ def collect_phase_plane_data(model, env, num_episodes, dt):
             # Note: Derivatives are continuous after unwrapping, no need to re-wrap
 
             # Align array lengths: savgol_filter maintains length, trim last 2 for consistency
+            s_all.extend(s_traj[:-2])
             frenet_u_all.extend(frenet_u_traj[:-2])
             frenet_n_all.extend(frenet_n_traj[:-2])
             d_frenet_u_all.extend(d_frenet_u[:-2])
@@ -144,6 +161,7 @@ def collect_phase_plane_data(model, env, num_episodes, dt):
             d2_frenet_n = np.diff(d_frenet_n) / dt
 
             # Align array lengths (N -> N-1 -> N-2)
+            s_all.extend(s_traj[:-2])
             frenet_u_all.extend(frenet_u_traj[:-2])
             frenet_n_all.extend(frenet_n_traj[:-2])
             d_frenet_u_all.extend(d_frenet_u[:-1])
@@ -154,6 +172,7 @@ def collect_phase_plane_data(model, env, num_episodes, dt):
         print(f"Episode {episode+1}/{num_episodes} complete: {len(frenet_u_traj)} steps")
 
     return {
+        "s": np.array(s_all),
         "frenet_u": np.array(frenet_u_all),
         "frenet_n": np.array(frenet_n_all),
         "d_frenet_u": np.array(d_frenet_u_all),
@@ -302,7 +321,7 @@ def main():
 
     # 3. Collect phase plane data
     print(f"\nCollecting data from {NUM_EPISODES} episodes...")
-    data = collect_phase_plane_data(model, env, NUM_EPISODES, DT)
+    data = collect_phase_plane_data(model, env, NUM_EPISODES, TIMESTEP)
 
     print(f"\nTotal data points collected: {len(data['frenet_u'])}")
     print(f"  frenet_u range: [{np.min(data['frenet_u']):.3f}, {np.max(data['frenet_u']):.3f}] rad")
@@ -312,11 +331,34 @@ def main():
     print(f"  d²(frenet_u)/dt² range: [{np.min(data['d2_frenet_u']):.3f}, {np.max(data['d2_frenet_u']):.3f}] rad/s²")
     print(f"  d²(frenet_n)/dt² range: [{np.min(data['d2_frenet_n']):.3f}, {np.max(data['d2_frenet_n']):.3f}] m/s²")
 
-    # 4. Generate plots
+    # 4. Export data to CSV
+    print(f"\nExporting data to CSV: {CSV_OUTPUT_FILENAME}")
+    csv_data = np.column_stack(
+        (
+            data["s"],
+            data["frenet_u"],
+            data["frenet_n"],
+            data["d_frenet_u"],
+            data["d_frenet_n"],
+            data["d2_frenet_u"],
+            data["d2_frenet_n"],
+        )
+    )
+    np.savetxt(
+        CSV_OUTPUT_FILENAME,
+        csv_data,
+        delimiter=",",
+        header="s,frenet_u,frenet_n,d_frenet_u,d_frenet_n,d2_frenet_u,d2_frenet_n",
+        comments="",
+        fmt="%.6f",
+    )
+    print(f"  Exported {len(csv_data)} rows with 7 columns")
+
+    # 5. Generate plots
     print("\nGenerating phase plane vector field plots...")
     plot_phase_planes(data, OUTPUT_FILENAME, subsample_rate=SUBSAMPLE_RATE)
 
-    # 5. Cleanup
+    # 6. Cleanup
     env.close()
     print("\nAnalysis complete!")
     print("=" * 60)
