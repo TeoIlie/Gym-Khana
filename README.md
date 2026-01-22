@@ -73,9 +73,12 @@ Default configurations are stored in `/train/config/env_config.py`, with paramet
  
 1. Run with `render_mode` set to `human` to visualize the process
 2. Set `"render_track_lines": True` (it is `False` by default) to render the centerline  in **green** and the raceline in **red**
-3. Set `"render_lookahead_curvatures": True` (it is `False` by default) to visualize lookahead curvature sampling points ahead of the vehicle in **yellow**. Optional parameters:
-4. Set `"debug_frenet_projection" = True` to visualize the Frenet coordinates are correct
-5. Set `"record_obs_min_max"` to `True/False` to record min/max observation values during training, and tweak normalization bounds if necessary, defined in `utils.py::calculate_norm_bounds`
+3. Rendering track arc-length points **s** in Frenet coordinates at discrete intervals:
+    1. First, `"render_arc_length_annotations": True` (it is `False` by default) to render points along the centerline in **orange** 
+    2. Optionally, also set `"arc_length_annotation_interval"` to modify the point spacing (`2.0` metres by default)
+4. Set `"render_lookahead_curvatures": True` (it is `False` by default) to visualize lookahead curvature sampling points ahead of the vehicle in **yellow**. Optional parameters:
+5. Set `"debug_frenet_projection" = True` to visualize the Frenet coordinates are correct
+6. Set `"record_obs_min_max"` to `True/False` to record min/max observation values during training, and tweak normalization bounds if necessary, defined in `utils.py::calculate_norm_bounds`
 
 ### Important configuration options
 

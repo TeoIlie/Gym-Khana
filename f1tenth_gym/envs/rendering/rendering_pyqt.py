@@ -354,6 +354,52 @@ class PyQtEnvRenderer(EnvRenderer):
             symbolSize=size,
         )
 
+    def render_text(
+        self,
+        text: str,
+        position: tuple[float, float],
+        color: Optional[tuple[int, int, int]] = (255, 255, 255),
+        font_size: Optional[int] = 12,
+        anchor: Optional[str] = "center",
+    ) -> pg.TextItem:
+        """
+        Render text at world coordinates using PyQtGraph TextItem.
+
+        Parameters
+        ----------
+        text : str
+            text string to render
+        position : tuple[float, float]
+            world coordinate position (x, y) for text placement
+        color : tuple[int, int, int], optional
+            RGB color tuple, by default white (255, 255, 255)
+        font_size : int, optional
+            font size in points, by default 12
+        anchor : str, optional
+            text anchor point ('center', 'left', 'right'), by default 'center'
+
+        Returns
+        -------
+        pg.TextItem
+            the created text item object
+        """
+        # Convert anchor string to tuple for PyQtGraph
+        if anchor == "center":
+            anchor_tuple = (0.5, 0.5)
+        elif anchor == "left":
+            anchor_tuple = (0, 0.5)
+        elif anchor == "right":
+            anchor_tuple = (1.0, 0.5)
+        else:
+            anchor_tuple = (0.5, 0.5)
+
+        # Create text item
+        text_item = pg.TextItem(text, color=color, anchor=anchor_tuple)
+        text_item.setFont(QtGui.QFont("Arial", font_size))
+        text_item.setPos(position[0], position[1])
+        self.canvas.addItem(text_item)
+        return text_item
+
     def render_lines(
         self,
         points: list | np.ndarray,

@@ -303,6 +303,59 @@ class PygameEnvRenderer(EnvRenderer):
         for point in points:
             pygame.draw.circle(self.map_canvas, color, point, size)
 
+    def render_text(
+        self,
+        text: str,
+        position: tuple[float, float],
+        color: Optional[tuple[int, int, int]] = (255, 255, 255),
+        font_size: Optional[int] = 12,
+        anchor: Optional[str] = "center",
+    ):
+        """
+        Render text at world coordinates.
+
+        Parameters
+        ----------
+        text : str
+            text string to render
+        position : tuple[float, float]
+            world coordinate position (x, y) for text placement
+        color : tuple[int, int, int], optional
+            RGB color tuple, by default white (255, 255, 255)
+        font_size : int, optional
+            font size in points, by default 12
+        anchor : str, optional
+            text anchor point ('center', 'left', 'right'), by default 'center'
+        """
+        # Create font if not cached or if size changed
+        if not hasattr(self, "_world_text_font") or self._world_text_font_size != font_size:
+            self._world_text_font = pygame.font.SysFont("Arial", font_size)
+            self._world_text_font_size = font_size
+
+        # Render text to surface
+        text_surface = self._world_text_font.render(text, True, color)
+
+        # Convert world coordinates to screen coordinates (same pattern as render_points)
+        origin = self.map_origin
+        ppu = self.ppus[self.active_map_renderer]
+        resolution = self.map_resolution * ppu
+        screen_x = int((position[0] - origin[0]) / resolution)
+        screen_y = int((position[1] - origin[1]) / resolution)
+
+        # Apply anchor offset
+        text_width, text_height = text_surface.get_size()
+        if anchor == "center":
+            screen_x -= text_width // 2
+            screen_y -= text_height // 2
+        elif anchor == "right":
+            screen_x -= text_width
+            screen_y -= text_height // 2
+        elif anchor == "left":
+            screen_y -= text_height // 2
+
+        # Blit to map canvas
+        self.map_canvas.blit(text_surface, (screen_x, screen_y))
+
     def render_lines(
         self,
         points: list | np.ndarray,

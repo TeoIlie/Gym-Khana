@@ -104,6 +104,8 @@ class F110Env(gym.Env):
 
         # rendering and debug configuration
         self.render_track_lines = self.config["render_track_lines"]
+        self.render_arc_length_annotations = self.config["render_arc_length_annotations"]
+        self.arc_length_annotation_interval = self.config["arc_length_annotation_interval"]
         self.render_lookahead_curvatures = self.config["render_lookahead_curvatures"]
         self.lookahead_n_points = self.config["lookahead_n_points"]
         self.lookahead_ds = self.config["lookahead_ds"]
@@ -285,6 +287,12 @@ class F110Env(gym.Env):
         # automatically add track line rendering callback if configured
         if self.render_track_lines:
             self.add_render_callback(self.track.render_both_lines)
+
+        # automatically add arc length annotation rendering callback if configured
+        if self.render_arc_length_annotations:
+            self.add_render_callback(
+                lambda e: self.track.render_arc_length_annotations(e, interval=self.arc_length_annotation_interval)
+            )
 
         # automatically add lookahead curvature rendering callback if configured
         if self.render_lookahead_curvatures:
@@ -656,6 +664,8 @@ class F110Env(gym.Env):
             "scale": 1.0,
             "num_beams": 1080,
             "render_track_lines": False,
+            "render_arc_length_annotations": False,
+            "arc_length_annotation_interval": 2.0,
             "render_lookahead_curvatures": False,
             "lookahead_n_points": 10,
             "lookahead_ds": 0.3,

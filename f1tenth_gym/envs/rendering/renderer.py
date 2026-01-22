@@ -150,6 +150,33 @@ class EnvRenderer(ABC):
         raise NotImplementedError()
 
     @abstractmethod
+    def render_text(
+        self,
+        text: str,
+        position: tuple[float, float],
+        color: Optional[tuple[int, int, int]] = (255, 255, 255),
+        font_size: Optional[int] = 12,
+        anchor: Optional[str] = "center",
+    ):
+        """
+        Render text at world coordinates.
+
+        Parameters
+        ----------
+        text : str
+            text string to render
+        position : tuple[float, float]
+            world coordinate position (x, y) for text placement
+        color : tuple[int, int, int], optional
+            RGB color tuple, by default white (255, 255, 255)
+        font_size : int, optional
+            font size in points, by default 12
+        anchor : str, optional
+            text anchor point ('center', 'left', 'right'), by default 'center'
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
     def close(self):
         """
         Close the rendering window.

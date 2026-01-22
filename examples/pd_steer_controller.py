@@ -57,6 +57,7 @@ def get_config(obs_type, lookahead_n_points, lookahead_ds):
     config["debug_frenet_projection"] = False
     config["lookahead_n_points"] = lookahead_n_points
     config["lookahead_ds"] = lookahead_ds
+    config["render_arc_length_annotations"] = True
     return config
 
 
@@ -64,14 +65,14 @@ def main():
     # Create controller with tunable gains
     FRENET_N_GAIN = 1.0  # Lateral deviation gain
     FRENET_K_GAIN = 0.5  # Heading error gain
-    TARGET_SPEED = 2.0  # m/s
+    TARGET_SPEED = 1.0  # m/s
 
     # config constants
     LOOKAHEAD_N_POINTS = 10
     LOOKAHEAD_DS = 0.3
     OBS_TYPE = "drift"
 
-    NUM_STEPS = 10_000
+    NUM_STEPS = 20_000
 
     env = gym.make(
         "f1tenth_gym:f1tenth-v0",

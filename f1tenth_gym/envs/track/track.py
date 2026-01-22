@@ -72,6 +72,10 @@ class Track:
         # Render handle for lookahead curvature visualization
         self.lookahead_render = None
 
+        # Arc length annotation rendering cache
+        self.arc_annotation_points_render = None
+        self.arc_annotation_text_renders = []
+
         # Debug: Store last projected point for visualization
         self.debug_projected_point = None
         self.debug_vehicle_point = None
@@ -468,6 +472,94 @@ class Track:
         """
         self.render_centerline(e)
         self.render_raceline(e)
+
+    def render_arc_length_annotations(
+        self,
+        e: EnvRenderer,
+        interval: float = 5.0,
+        point_color: tuple[int, int, int] = (255, 165, 0),  # Orange
+        text_color: tuple[int, int, int] = (255, 165, 0),  # Orange
+        point_size: int = 6,
+        font_size: int = 10,
+    ) -> None:
+        """
+        Render arc length annotations along the centerline at specified intervals.
+
+        Shows arc length values (s in Frenet coordinates) at regular intervals
+        to help identify positions along the track.
+
+        Parameters
+        ----------
+        e : EnvRenderer
+            Environment renderer object.
+        interval : float, optional
+            Distance interval between annotations in meters, by default 5.0
+        point_color : tuple[int, int, int], optional
+            RGB color for annotation points, by default orange (255, 165, 0)
+        text_color : tuple[int, int, int], optional
+            RGB color for text labels, by default orange (255, 165, 0)
+        point_size : int, optional
+            Size of annotation points in pixels, by default 6
+        font_size : int, optional
+            Font size for text labels, by default 10
+        """
+        if self.centerline is None or self.centerline.ss is None:
+            return
+
+        # Get centerline data
+        ss = self.centerline.ss
+        xs = self.centerline.xs
+        ys = self.centerline.ys
+
+        # Calculate annotation positions
+        # Find arc length values at multiples of interval
+        max_s = ss[-1]
+        annotation_s_values = np.arange(0, max_s, interval)
+
+        # Interpolate x, y positions at annotation arc lengths
+        annotation_points = []
+        annotation_labels = []
+
+        for s_val in annotation_s_values:
+            # Find closest waypoint index
+            idx = np.argmin(np.abs(ss - s_val))
+            annotation_points.append([xs[idx], ys[idx]])
+            annotation_labels.append(f"{s_val:.1f}m")
+
+        annotation_points = np.array(annotation_points)
+
+        # Render points (with caching for efficiency)
+        if self.arc_annotation_points_render is None:
+            self.arc_annotation_points_render = e.render_points(annotation_points, color=point_color, size=point_size)
+        else:
+            # PyQt renderer supports updating via setData
+            if hasattr(self.arc_annotation_points_render, "setData"):
+                self.arc_annotation_points_render.setData(annotation_points[:, 0], annotation_points[:, 1])
+            else:
+                # Pygame requires re-rendering
+                self.arc_annotation_points_render = e.render_points(
+                    annotation_points, color=point_color, size=point_size
+                )
+
+        # Render text labels
+        # For Pygame: re-render each frame (simple approach)
+        # For PyQt: cache TextItem objects if they don't exist yet
+        for i, (point, label) in enumerate(zip(annotation_points, annotation_labels)):
+            # Offset text slightly to the right and up to avoid overlapping point
+            text_pos = (point[0] + 0.3, point[1] + 0.2)
+
+            # For first frame or if not enough cached items, create new text renders
+            if len(self.arc_annotation_text_renders) <= i:
+                text_render = e.render_text(label, text_pos, color=text_color, font_size=font_size, anchor="left")
+                self.arc_annotation_text_renders.append(text_render)
+            else:
+                # For PyQt, update existing TextItem
+                if hasattr(self.arc_annotation_text_renders[i], "setText"):
+                    self.arc_annotation_text_renders[i].setText(label)
+                    self.arc_annotation_text_renders[i].setPos(text_pos[0], text_pos[1])
+                else:
+                    # For Pygame, re-render text each frame
+                    e.render_text(label, text_pos, color=text_color, font_size=font_size, anchor="left")
 
     def render_frenet_projection(
         self,
