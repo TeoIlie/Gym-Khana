@@ -8,6 +8,7 @@ from train.training_utils import get_output_dirs, print_header
 
 MODEL_PATH = "/outputs/downloads/ol035sw5/model.zip"
 CONFIG = get_drift_test_config()
+CONFIG["render_arc_length_annotations"] = True
 
 # Beta-R trajectory filtering parameters
 START_S = 0.0  # Start arc length [meters]
