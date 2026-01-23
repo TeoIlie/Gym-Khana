@@ -9,11 +9,16 @@ from train.training_utils import get_output_dirs, print_header
 MODEL_PATH = "/outputs/downloads/ol035sw5/model.zip"
 CONFIG = get_drift_test_config()
 CONFIG["render_arc_length_annotations"] = True
+CONFIG["max_episode_steps"] = 20000
 
 # Beta-R trajectory filtering parameters
 START_S = 0.0  # Start arc length [meters]
 END_S = None  # End arc length [meters] - None means full track
-MAX_STEPS = 5000  # Number of steps to run
+
+# Lap-based data collection parameters
+WARMUP_LAPS = 2  # Number of warm-up laps before recording
+COLLECTION_LAPS = 2  # Number of laps to record data
+AGENT_IDX = 0  # Ego agent index (always 0 for single-agent)
 
 
 def plot_beta_r_phase_plane(beta, r, s, output_filename, start_s, end_s):
@@ -75,7 +80,7 @@ def main():
     eval_env = gym.make(get_env_id(), config=CONFIG, render_mode="human")
 
     # Get track length for filtering
-    track_length = eval_env.track.centerline.spline.s[-1]
+    track_length = eval_env.unwrapped.track.centerline.spline.s[-1]
     end_s = END_S if END_S is not None else track_length
 
     print(f"Track length: {track_length:.2f}m")
@@ -90,27 +95,35 @@ def main():
     obs, info = eval_env.reset()
 
     # Run for MAX_STEPS and collect data
-    for step in range(MAX_STEPS):
+    while True:
         action, _states = model.predict(obs, deterministic=True)
         obs, reward, done, trunc, info = eval_env.step(action)
         eval_env.render()
 
-        # Extract state from environment
-        agent = eval_env.sim.agents[0]
-        std_state = agent.standard_state
+        current_laps = eval_env.unwrapped.lap_counts[AGENT_IDX]
+        print(f"\rLaps: {current_laps}", end="")
 
-        # Get beta and r
-        beta = std_state["slip"]
-        r = std_state["yaw_rate"]
+        if current_laps >= WARMUP_LAPS:
+            # Extract state from environment
+            agent = eval_env.unwrapped.sim.agents[0]
+            std_state = agent.standard_state
 
-        # Get Frenet s-coordinate
-        x, y, theta = std_state["x"], std_state["y"], std_state["yaw"]
-        s, ey, ephi = eval_env.track.cartesian_to_frenet(x, y, theta, use_raceline=False)
+            # Get beta and r
+            beta = std_state["slip"]
+            r = std_state["yaw_rate"]
 
-        # Collect all data (filter later)
-        beta_list.append(beta)
-        r_list.append(r)
-        s_list.append(s)
+            # Get Frenet s-coordinate
+            x, y, theta = std_state["x"], std_state["y"], std_state["yaw"]
+            s, ey, ephi = eval_env.unwrapped.track.cartesian_to_frenet(x, y, theta, use_raceline=False)
+
+            # Collect all data (filter later)
+            beta_list.append(beta)
+            r_list.append(r)
+            s_list.append(s)
+
+        if current_laps >= WARMUP_LAPS + COLLECTION_LAPS:
+            print("\nData collection complete.")
+            break
 
         if done or trunc:
             obs, info = eval_env.reset()
