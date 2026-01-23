@@ -683,5 +683,80 @@ class TestInternalBookkeeping(unittest.TestCase):
         self.assertAlmostEqual(unwrapped.start_thetas[0], yaw, places=5)
 
 
+class TestSkipIntegration(unittest.TestCase):
+    """Tests for skip_integration parameter in step() method."""
+
+    def setUp(self):
+        """Create test environment with STD model."""
+        self.env = gym.make(
+            "f1tenth_gym:f1tenth-v0",
+            config={
+                "map": "Spielberg",
+                "num_agents": 1,
+                "model": "std",
+                "params": F110Env.f1tenth_std_vehicle_params(),
+                "control_input": ["accl", "steering_angle"],
+                "observation_config": {"type": None},
+                "reset_config": {"type": "rl_random_static"},
+            },
+        )
+
+    def tearDown(self):
+        """Clean up environment."""
+        self.env.close()
+
+    def test_step_with_skip_integration_false_modifies_state(self):
+        """Test that step() with skip_integration=False modifies the agent state."""
+        # Initialize with known state (non-zero velocity)
+        initial_state = np.array([[10.0, 5.0, 0.0, 3.0, np.pi / 4, 0.0, 0.0]])
+        self.env.reset(options={"states": initial_state})
+
+        # Capture state after reset (note: reset calls step once with skip_integration=True)
+        state_before = self.env.unwrapped.sim.agents[0].state.copy()
+
+        # Take a step with skip_integration=False (default) and non-zero action
+        action = np.array([[1.0, 0.1]])  # Some acceleration and steering
+        self.env.unwrapped.step(action, skip_integration=False)
+
+        # State should have changed due to integration
+        state_after = self.env.unwrapped.sim.agents[0].state
+
+        # Verify at least position changed (vehicle moved forward)
+        self.assertNotAlmostEqual(
+            state_before[0],
+            state_after[0],
+            places=5,
+            msg="x position should change when skip_integration=False",
+        )
+
+        # Verify state actually evolved (not identical)
+        state_different = not np.allclose(state_before, state_after, atol=1e-5)
+        self.assertTrue(state_different, "State should be modified when skip_integration=False")
+
+    def test_step_with_skip_integration_true_preserves_state(self):
+        """Test that step() with skip_integration=True does NOT modify the agent state."""
+        # Initialize with known state (non-zero velocity)
+        initial_state = np.array([[10.0, 5.0, 0.0, 3.0, np.pi / 4, 0.0, 0.0]])
+        self.env.reset(options={"states": initial_state})
+
+        # Capture state after reset
+        state_before = self.env.unwrapped.sim.agents[0].state.copy()
+
+        # Take a step with skip_integration=True and non-zero action
+        action = np.array([[1.0, 0.1]])  # Some acceleration and steering
+        self.env.unwrapped.step(action, skip_integration=True)
+
+        # State should NOT have changed (no integration occurred)
+        state_after = self.env.unwrapped.sim.agents[0].state
+
+        # Verify state is identical (within numerical precision)
+        np.testing.assert_array_almost_equal(
+            state_before,
+            state_after,
+            decimal=5,
+            err_msg="State should NOT be modified when skip_integration=True",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
