@@ -14,7 +14,7 @@ Arrows show the direction and rate of state evolution:
 
 Usage:
     1. Edit MODEL_PATH constant to point to your trained model
-    2. Run: python examples/phase_plane_analysis.py
+    2. Run: python examples/analysis/phase_plane_analysis.py
     3. View generated plots in phase_plane_vector_field.png
 """
 
