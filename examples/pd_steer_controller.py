@@ -65,7 +65,7 @@ def main():
     # Create controller with tunable gains
     FRENET_N_GAIN = 1.0  # Lateral deviation gain
     FRENET_K_GAIN = 0.5  # Heading error gain
-    TARGET_SPEED = 1.0  # m/s
+    TARGET_SPEED = 2.0  # m/s
 
     # config constants
     LOOKAHEAD_N_POINTS = 10
@@ -74,11 +74,30 @@ def main():
 
     NUM_STEPS = 20_000
 
+    # initial state
+    S = 96
+
     env = gym.make(
         "f1tenth_gym:f1tenth-v0",
         config=get_config(OBS_TYPE, LOOKAHEAD_N_POINTS, LOOKAHEAD_DS),
         render_mode="human",
     )
+    x, y, yaw = env.unwrapped.track.frenet_to_cartesian(S, ey=0, ephi=0)
+
+    init_state = np.array(
+        [
+            [
+                x,  # x position (Cartesian coordinates)
+                y,  # y position (Cartesian coordinates)
+                0.0,  # delta (steering angle)
+                TARGET_SPEED,  # v (velocity)
+                yaw,  # yaw angle (Cartesian orientation)
+                0.0,  # yaw_rate
+                0.0,  # slip_angle
+            ]
+        ]
+    )
+    obs, info = env.reset(options={"states": init_state})
 
     # Set frenet indices based on obs type
     if OBS_TYPE == "drift":
@@ -101,9 +120,6 @@ def main():
     print(f"Observation space: {env.observation_space}")
     print(f"Action space: {env.action_space}")
     print()
-
-    # Reset environment
-    obs, info = env.reset()
 
     # Run simulation
     done = False
