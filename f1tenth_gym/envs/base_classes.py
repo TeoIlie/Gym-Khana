@@ -212,12 +212,15 @@ class RaceCar(object):
         """
         RaceCar.scan_simulator.set_map(map, map_scale)
 
-    def reset(self, pose):
+    def reset(self, pose, state=None):
         """
-        Resets the vehicle to a pose
+        Resets the vehicle to a pose or full state.
 
         Args:
             pose (np.ndarray (3, )): pose to reset the vehicle to
+            state (np.ndarray (7, ), optional): full state for STD model
+                  [x, y, delta, v, yaw, yaw_rate, slip_angle]
+                  If provided, pose is ignored and state is used instead.
 
         Returns:
             None
@@ -239,8 +242,11 @@ class RaceCar(object):
         # clear previous, current average wheel angular velocity
         self.prev_avg_wheel_omega = 0.0
         self.curr_avg_wheel_omega = 0.0
-        # init state from pose
-        self.state = self.model.get_initial_state(pose=pose, params=self.params)
+        # init state from pose OR full state
+        if state is not None:
+            self.state = self.model.get_initial_state(state=state, params=self.params)
+        else:
+            self.state = self.model.get_initial_state(pose=pose, params=self.params)
         # initialize commanded velocity to match initial state velocity
         self.curr_vel_cmd = self.state[3]
 
@@ -310,13 +316,14 @@ class RaceCar(object):
 
         return in_collision
 
-    def update_pose(self, raw_steer, raw_throttle):
+    def update_pose(self, raw_steer, raw_throttle, skip_integration=False):
         """
         Steps the vehicle's physical simulation by one time step
 
         Args:
             raw_steer (float): desired steering angle, or desired steering velocity
             raw_throttle (float): desired longitudinal velocity, or desired longitudinal acceleration
+            skip_integration (bool): if True, skip dynamics integration (used in reset to generate obs)
 
         Returns:
             current_scan
@@ -360,13 +367,15 @@ class RaceCar(object):
 
         u_np = np.array([sv, accl])
 
-        f_dynamics = self.model.f_dynamics
-        self.state = self.integrator.integrate(
-            f=f_dynamics, x=self.state, u=u_np, dt=self.time_step, params=self.params
-        )
+        # Conditionally integrate dynamics (skip during reset to preserve exact state)
+        if not skip_integration:
+            f_dynamics = self.model.f_dynamics
+            self.state = self.integrator.integrate(
+                f=f_dynamics, x=self.state, u=u_np, dt=self.time_step, params=self.params
+            )
 
-        # bound yaw angle
-        self.state[4] %= 2 * np.pi  # TODO: This is a problem waiting to happen
+            # bound yaw angle
+            self.state[4] %= 2 * np.pi  # TODO: This is a problem waiting to happen
 
         # update scan
         current_scan = RaceCar.scan_simulator.scan(np.append(self.state[0:2], self.state[4]), self.scan_rng)
@@ -554,12 +563,13 @@ class Simulator(object):
             )
         self.collisions, self.collision_idx = collision_multiple(all_vertices)
 
-    def step(self, control_inputs):
+    def step(self, control_inputs, skip_integration=False):
         """
         Steps the simulation environment
 
         Args:
             control_inputs (np.ndarray (num_agents, 2)): control inputs of all agents, first column is desired steering angle, second column is desired velocity
+            skip_integration (bool): if True, skip dynamics integration (used in reset to generate obs)
 
         Returns:
             observations (dict): dictionary for observations: poses of agents, current laser scan of each agent, collision indicators, etc.
@@ -568,7 +578,9 @@ class Simulator(object):
         # looping over agents
         for i, agent in enumerate(self.agents):
             # update each agent's pose
-            current_scan = agent.update_pose(control_inputs[i, 0], control_inputs[i, 1])
+            current_scan = agent.update_pose(
+                control_inputs[i, 0], control_inputs[i, 1], skip_integration=skip_integration
+            )
             self.agent_scans[i, :] = current_scan
 
             # update sim's information of agent poses
@@ -590,12 +602,14 @@ class Simulator(object):
             if agent.in_collision:
                 self.collisions[i] = 1.0
 
-    def reset(self, poses):
+    def reset(self, poses, states=None):
         """
-        Resets the simulation environment by given poses
+        Resets the simulation environment by given poses or full states.
 
-        Arges:
+        Args:
             poses (np.ndarray (num_agents, 3)): poses to reset agents to
+            states (np.ndarray (num_agents, 7), optional): full states for STD model
+                   [x, y, delta, v, yaw, yaw_rate, slip_angle] per agent
 
         Returns:
             None
@@ -604,6 +618,10 @@ class Simulator(object):
         if poses.shape[0] != self.num_agents:
             raise ValueError("Number of poses for reset does not match number of agents.")
 
+        if states is not None and states.shape[0] != self.num_agents:
+            raise ValueError("Number of states for reset does not match number of agents.")
+
         # loop over poses to reset
         for i in range(self.num_agents):
-            self.agents[i].reset(poses[i, :])
+            agent_state = states[i, :] if states is not None else None
+            self.agents[i].reset(poses[i, :], state=agent_state)

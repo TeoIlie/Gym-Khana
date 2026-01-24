@@ -17,11 +17,11 @@ def vehicle_dynamics_std(x: np.ndarray, u_init: np.ndarray, params: dict):
 
     Inputs:
         :param x: (numpy.ndarray (9,)): vehicle state vector (x0, x1, x2, x3, x4, x5, x6, x7, x8)
-                x[0]: x position in global coordinates
-                x[1]: y position in global coordinates
+                x[0]: x position in Cartesian global coordinates
+                x[1]: y position in Cartesian global coordinates
                 x[2]: steering angle of front wheels
                 x[3]: velocity in x direction
-                x[4]:yaw angle
+                x[4]: yaw angle in Cartesian global coordinates
                 x[5]: yaw rate
                 x[6]: slip angle at vehicle center
                 x[7]: angular speed of the front wheel

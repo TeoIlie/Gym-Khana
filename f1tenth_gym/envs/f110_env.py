@@ -977,12 +977,13 @@ class F110Env(gym.Env):
 
         return reward
 
-    def step(self, action):
+    def step(self, action, skip_integration=False):
         """
         Step function for the gym env
 
         Args:
             action (np.ndarray(num_agents, 2))
+            skip_integration (bool): if True, skip dynamics integration (used in reset to generate obs)
 
         Returns:
             obs (dict): observation of the current step
@@ -992,7 +993,7 @@ class F110Env(gym.Env):
         """
 
         # call simulation step
-        self.sim.step(action)
+        self.sim.step(action, skip_integration=skip_integration)
 
         # observation
         obs = self.observation_type.observe()
@@ -1035,11 +1036,15 @@ class F110Env(gym.Env):
 
     def reset(self, seed=None, options=None):
         """
-        Reset the gym environment by given poses
+        Reset the gym environment by given poses or full states.
 
         Args:
             seed: random seed for the reset
-            options: dictionary of options for the reset containing initial poses of the agents
+            options: dictionary of options for the reset:
+                - "poses": np.ndarray (num_agents, 3) - [x, y, yaw] per agent
+                - "states": np.ndarray (num_agents, 7) - full state per agent (STD model only)
+                            [x, y, delta, v, yaw, yaw_rate, slip_angle]
+                Note: Cannot specify both "poses" and "states".
 
         Returns:
             obs (dict): observation of the current step
@@ -1061,10 +1066,41 @@ class F110Env(gym.Env):
         self.toggle_list = np.zeros((self.num_agents,))
         self.current_step = 0
 
-        # states after reset
-        if options is not None and "poses" in options:
-            poses = options["poses"]
-        else:
+        # Parse options for poses and states
+        poses = None
+        states = None
+
+        if options is not None:
+            has_poses = "poses" in options
+            has_states = "states" in options
+
+            # Mutual exclusion check
+            if has_poses and has_states:
+                raise ValueError("Cannot provide both 'poses' and 'states' in reset options.")
+
+            if has_states:
+                # Validate STD model requirement
+                if self.model != DynamicModel.STD:
+                    raise ValueError(
+                        f"Full state initialization only supported for STD model. "
+                        f"Current model: {self.model}. Optionally use 'poses' instead."
+                    )
+
+                states = options["states"]
+                assert isinstance(states, np.ndarray) and states.shape == (
+                    self.num_agents,
+                    7,
+                ), f"States must be a numpy array of shape (num_agents, 7), got {states.shape}"
+
+                # Save poses for downstream use
+                # State indices: [x, y, delta, v, yaw, yaw_rate, slip_angle]
+                poses = np.column_stack([states[:, 0], states[:, 1], states[:, 4]])
+
+            elif has_poses:
+                poses = options["poses"]
+
+        # If no poses derived yet, sample from reset function
+        if poses is None:
             poses = self.reset_fn.sample()
 
         assert isinstance(poses, np.ndarray) and poses.shape == (
@@ -1088,8 +1124,8 @@ class F110Env(gym.Env):
             ]
         )
 
-        # call reset to simulator
-        self.sim.reset(poses)
+        # call reset to simulator (pass states if provided)
+        self.sim.reset(poses, states=states)
 
         # Initialize last_s to actual starting arc lengths for accurate first-step reward
         self.last_s = []
@@ -1097,9 +1133,9 @@ class F110Env(gym.Env):
             s, _, _ = self.track.cartesian_to_frenet(poses[i, 0], poses[i, 1], poses[i, 2], use_raceline=False)
             self.last_s.append(s)
 
-        # get no input observations
+        # get no input observations without integrating dynamics, so that RaceCar states are not changed
         action = np.zeros((self.num_agents, 2))
-        obs, _, _, _, info = self.step(action)
+        obs, _, _, _, info = self.step(action, skip_integration=True)
 
         return obs, info
 

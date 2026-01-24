@@ -100,6 +100,34 @@ Default configurations are stored in `/train/config/env_config.py`, with paramet
     3. `negative_vel_penalty`: penalty for driving backward
     4. `max_episode_steps`: the maximum number of episode steps
 
+`env.reset()` configurations:
+
+1. **Poses** and **States** can be used to initialize vehicles at specific configurations. Note:
+   - Only one of `poses` or `states` can be used per reset call (not both)
+   - All **[x, y, yaw]** values are in Cartesian coordinates
+   - To use Frenet coordinates, convert first using `frenet_to_cartesian()` in `f1tenth_gym/envs/track/track.py`
+
+2. **Poses**: Reset agents at a specific pose
+   ```python
+   # Single agent
+   poses = np.array([[x, y, yaw]])
+   env.reset(options={"poses": poses})
+
+   # Multiple agents
+   poses = np.array([[x1, y1, yaw1],
+                     [x2, y2, yaw2]])
+   env.reset(options={"poses": poses})
+   ```
+
+3. **States**: Reset agents to a full 7-d state (only for `model='std'`)
+   ```python
+   # Single agent: [x, y, delta, v, yaw, yaw_rate, slip_angle]
+   states = np.array([[x, y, delta, v, yaw, yaw_rate, slip_angle]])
+   env.reset(options={"states": states})
+
+   # Front & rear angular wheel velocities are automatically initialized to form the full 9-d state for STD model type
+   ```
+
 ## Wanbd
 
 The wandb models are available here: <https://wandb.ai/teo-altum-quinque-queen-s-university/projects>

@@ -36,38 +36,65 @@ class DynamicModel(Enum):
         else:
             raise ValueError(f"Unknown model type {model}")
 
-    def get_initial_state(self, pose=None, params: Optional[dict] = None):
-        # Assert that if self is MB, params is not None
+    def get_initial_state(self, pose=None, state=None, params: Optional[dict] = None):
+        """
+        Get the initial state for the vehicle model.
+
+        Args:
+            pose: (3,) array [x, y, yaw] - legacy pose-only initialization
+            state: (7,) array for STD model [x, y, delta, v, yaw, yaw_rate, slip_angle]
+                   omega_f and omega_r are calculated automatically
+            params: Vehicle parameters dictionary (required for MB and STD models)
+
+        Returns:
+            Full state vector for the model
+
+        Note:
+            Cannot specify both pose and state - use one or the other.
+        """
+        # Validation: pose and state are mutually exclusive
+        if pose is not None and state is not None:
+            raise ValueError("Cannot provide both 'pose' and 'state'. Use one or the other.")
+
+        # Assert that if self is MB or STD, params is not None
         if (self == DynamicModel.MB or self == DynamicModel.STD) and params is None:
             raise ValueError("MultiBody and SingleTrackDrift models require parameters to be provided.")
+
         # initialize zero state
         if self == DynamicModel.KS:
             # state is [x, y, steer_angle, vel, yaw_angle]
-            state = np.zeros(5)
+            init_state = np.zeros(5)
         elif self == DynamicModel.ST:
             # state is [x, y, steer_angle, vel, yaw_angle, yaw_rate, slip_angle]
-            state = np.zeros(7)
+            init_state = np.zeros(7)
         elif self == DynamicModel.MB:
             # state is a 29D vector
-            state = np.zeros(29)
+            init_state = np.zeros(29)
         elif self == DynamicModel.STD:
             # state is [x, y, steer_angle, vel, yaw_angle, yaw_rate, slip_angle, omega_f, omega_r]
-            state = np.zeros(9)
+            init_state = np.zeros(9)
         else:
             raise ValueError(f"Unknown model type {self}")
 
+        # If full state provided, copy first 7 elements (STD model only)
+        if state is not None:
+            if self != DynamicModel.STD:
+                raise ValueError(f"Full state initialization only supported for STD model, not {self}")
+            if len(state) != 7:
+                raise ValueError(f"STD model requires 7-element state, got {len(state)}")
+            init_state[:7] = state
         # set initial pose if provided
-        if pose is not None:
-            state[0:2] = pose[0:2]
-            state[4] = pose[2]
+        elif pose is not None:
+            init_state[0:2] = pose[0:2]
+            init_state[4] = pose[2]
 
         # If state is MultiBody, we must inflate the state to 29D
         if self == DynamicModel.MB:
-            state = init_mb(state, params)
-        # If state is SingleTrackDrift, we must inflate to 9D
+            init_state = init_mb(init_state, params)
+        # If state is SingleTrackDrift, we must inflate to 9D (calculates omega_f, omega_r)
         elif self == DynamicModel.STD:
-            state = init_std(state, params)
-        return state
+            init_state = init_std(init_state, params)
+        return init_state
 
     @property
     def f_dynamics(self):

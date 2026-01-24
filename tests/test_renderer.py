@@ -96,12 +96,14 @@ class TestRenderer(unittest.TestCase):
         env.reset()
 
         # Verify the feature is disabled by default
-        self.assertFalse(env.render_arc_length_annotations, "Arc length annotations should be disabled by default")
+        self.assertFalse(
+            env.unwrapped.render_arc_length_annotations, "Arc length annotations should be disabled by default"
+        )
 
         # Verify no callback was registered for arc length annotations
         # The track's arc annotation cache should remain None when disabled
         self.assertIsNone(
-            env.track.arc_annotation_points_render,
+            env.unwrapped.track.arc_annotation_points_render,
             "Arc annotation render cache should be None when feature is disabled",
         )
 
@@ -126,8 +128,8 @@ class TestRenderer(unittest.TestCase):
         env.reset()
 
         # Verify the feature is enabled
-        self.assertTrue(env.render_arc_length_annotations, "Arc length annotations should be enabled")
-        self.assertEqual(env.arc_length_annotation_interval, 10.0, "Interval should be 10.0 meters")
+        self.assertTrue(env.unwrapped.render_arc_length_annotations, "Arc length annotations should be enabled")
+        self.assertEqual(env.unwrapped.arc_length_annotation_interval, 10.0, "Interval should be 10.0 meters")
 
         # Render multiple frames to ensure annotations work
         for _ in range(50):
@@ -140,7 +142,7 @@ class TestRenderer(unittest.TestCase):
 
         # Verify that annotation points were rendered (cache should be populated)
         self.assertIsNotNone(
-            env.track.arc_annotation_points_render,
+            env.unwrapped.track.arc_annotation_points_render,
             "Arc annotation render cache should be populated after rendering",
         )
 
@@ -163,7 +165,7 @@ class TestRenderer(unittest.TestCase):
 
                 # Verify interval is set correctly
                 self.assertEqual(
-                    env.arc_length_annotation_interval,
+                    env.unwrapped.arc_length_annotation_interval,
                     interval,
                     f"Interval should be {interval} meters",
                 )
@@ -190,8 +192,8 @@ class TestRenderer(unittest.TestCase):
         env.reset()
 
         # Verify both features are enabled
-        self.assertTrue(env.render_track_lines, "Track lines should be enabled")
-        self.assertTrue(env.render_arc_length_annotations, "Arc length annotations should be enabled")
+        self.assertTrue(env.unwrapped.render_track_lines, "Track lines should be enabled")
+        self.assertTrue(env.unwrapped.render_arc_length_annotations, "Arc length annotations should be enabled")
 
         # Render multiple frames with both features
         for _ in range(50):
@@ -203,9 +205,9 @@ class TestRenderer(unittest.TestCase):
             self.assertIsInstance(frame, np.ndarray, "Frame should be a numpy array")
 
         # Verify both rendering caches are populated
-        self.assertIsNotNone(env.track.centerline.waypoint_render, "Centerline should be rendered")
+        self.assertIsNotNone(env.unwrapped.track.centerline.waypoint_render, "Centerline should be rendered")
         self.assertIsNotNone(
-            env.track.arc_annotation_points_render,
+            env.unwrapped.track.arc_annotation_points_render,
             "Arc annotations should be rendered",
         )
 
