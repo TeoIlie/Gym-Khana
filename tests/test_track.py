@@ -425,3 +425,105 @@ class TestTrack(unittest.TestCase):
             self.assertIsNotNone(raceline.ys)
         finally:
             filepath.unlink()
+
+    def test_track_creates_reversed_versions_on_init(self):
+        """Test that Track.__init__ creates both regular and reversed versions of centerline/raceline."""
+        track_name = "Spielberg"
+        track = Track.from_track_name(track_name)
+
+        # Check regular versions exist
+        self.assertIsNotNone(track.centerline_regular)
+        self.assertIsNotNone(track.raceline_regular)
+
+        # Check reversed versions exist
+        self.assertIsNotNone(track.centerline_reversed)
+        self.assertIsNotNone(track.raceline_reversed)
+
+        # Check reversed versions are different objects
+        self.assertIsNot(track.centerline_reversed, track.centerline_regular)
+        self.assertIsNot(track.raceline_reversed, track.raceline_regular)
+
+        # Check active references default to regular
+        self.assertIs(track.centerline, track.centerline_regular)
+        self.assertIs(track.raceline, track.raceline_regular)
+
+    def test_track_set_direction_reversed_true(self):
+        """Test that set_direction(reversed=True) activates reversed references."""
+        track_name = "Spielberg"
+        track = Track.from_track_name(track_name)
+
+        # Set to reversed direction
+        track.set_direction(reversed=True)
+
+        # Check active references point to reversed versions
+        self.assertIs(track.centerline, track.centerline_reversed)
+        self.assertIs(track.raceline, track.raceline_reversed)
+
+    def test_track_set_direction_reversed_false(self):
+        """Test that set_direction(reversed=False) activates regular references."""
+        track_name = "Spielberg"
+        track = Track.from_track_name(track_name)
+
+        # First set to reversed
+        track.set_direction(reversed=True)
+        self.assertIs(track.centerline, track.centerline_reversed)
+
+        # Now set back to regular
+        track.set_direction(reversed=False)
+
+        # Check active references point to regular versions
+        self.assertIs(track.centerline, track.centerline_regular)
+        self.assertIs(track.raceline, track.raceline_regular)
+
+    def test_track_raceline_defaults_to_centerline(self):
+        """
+        Test that when raceline is not provided, both regular and reversed raceline
+        reference the centerline.
+        """
+        # Create track with centerline only (no raceline)
+        centerline = Raceline(
+            xs=np.array([0.0, 1.0, 2.0], dtype=np.float32),
+            ys=np.array([0.0, 1.0, 0.0], dtype=np.float32),
+            velxs=np.array([1.0, 1.0, 1.0], dtype=np.float32),
+            w_lefts=np.array([1.0, 1.0, 1.0], dtype=np.float32),
+            w_rights=np.array([1.0, 1.0, 1.0], dtype=np.float32),
+        )
+
+        track = Track(
+            spec=None,
+            occupancy_map=np.zeros((10, 10)),
+            centerline=centerline,
+            raceline=None,  # No raceline provided
+        )
+
+        # Check raceline_regular defaults to centerline_regular
+        self.assertIs(track.raceline_regular, track.centerline_regular)
+
+        # Check raceline_reversed references centerline_reversed
+        self.assertIs(track.raceline_reversed, track.centerline_reversed)
+
+    def test_track_raceline_reversed_shares_reference_when_defaulted(self):
+        """
+        Test that when raceline defaults to centerline, the reversed versions
+        share the same reversed object reference.
+        """
+        # Create track with centerline only
+        centerline = Raceline(
+            xs=np.array([0.0, 1.0, 2.0], dtype=np.float32),
+            ys=np.array([0.0, 1.0, 0.0], dtype=np.float32),
+            velxs=np.array([1.0, 1.0, 1.0], dtype=np.float32),
+            w_lefts=np.array([1.0, 1.0, 1.0], dtype=np.float32),
+            w_rights=np.array([1.0, 1.0, 1.0], dtype=np.float32),
+        )
+
+        track = Track(
+            spec=None,
+            occupancy_map=np.zeros((10, 10)),
+            centerline=centerline,
+            raceline=None,
+        )
+
+        # Check that raceline_reversed and centerline_reversed are the same object
+        self.assertIs(track.raceline_reversed, track.centerline_reversed)
+
+        # This avoids unnecessary duplication when raceline defaults to centerline

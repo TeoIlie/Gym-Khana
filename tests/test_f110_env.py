@@ -274,3 +274,119 @@ class TestEnvInterface(unittest.TestCase):
             all(all_dones_twice),
             f"All envs should be done twice, got {all_dones_twice}",
         )
+
+    def test_track_direction_config_valid_values(self):
+        """Test that valid track_direction values ('normal', 'reverse', 'random') are accepted."""
+        # Test 'normal'
+        env_normal = self._make_env(config={"track_direction": "normal"})
+        self.assertEqual(env_normal.unwrapped.track_direction_config, "normal")
+        self.assertFalse(env_normal.unwrapped.direction_reversed)
+        env_normal.close()
+
+        # Test 'reverse'
+        env_reverse = self._make_env(config={"track_direction": "reverse"})
+        self.assertEqual(env_reverse.unwrapped.track_direction_config, "reverse")
+        self.assertTrue(env_reverse.unwrapped.direction_reversed)
+        env_reverse.close()
+
+        # Test 'random' (just check it's accepted, not the random value)
+        env_random = self._make_env(config={"track_direction": "random"})
+        self.assertEqual(env_random.unwrapped.track_direction_config, "random")
+        self.assertIsInstance(env_random.unwrapped.direction_reversed, bool)
+        env_random.close()
+
+    def test_track_direction_config_invalid_value(self):
+        """Test that invalid track_direction value raises ValueError."""
+        with self.assertRaises(ValueError) as context:
+            self._make_env(config={"track_direction": "invalid_mode"})
+
+        error_msg = str(context.exception)
+        self.assertIn("Invalid track_direction", error_msg)
+        self.assertIn("invalid_mode", error_msg)
+        self.assertIn("normal", error_msg)
+        self.assertIn("reverse", error_msg)
+        self.assertIn("random", error_msg)
+
+    def test_resolve_direction_method(self):
+        """
+        Test that _resolve_direction() correctly sets direction_reversed based on
+        track_direction_config for 'normal', 'reverse', and 'random' modes.
+        """
+        # Test 'normal' mode
+        env_normal = self._make_env(config={"track_direction": "normal"})
+        env_normal.unwrapped._resolve_direction()
+        self.assertFalse(env_normal.unwrapped.direction_reversed)
+        env_normal.close()
+
+        # Test 'reverse' mode
+        env_reverse = self._make_env(config={"track_direction": "reverse"})
+        env_reverse.unwrapped._resolve_direction()
+        self.assertTrue(env_reverse.unwrapped.direction_reversed)
+        env_reverse.close()
+
+        # Test 'random' mode (run multiple times to verify randomness)
+        env_random = self._make_env(config={"track_direction": "random"})
+        results = []
+        for _ in range(20):
+            env_random.unwrapped._resolve_direction()
+            results.append(env_random.unwrapped.direction_reversed)
+
+        # Check that we get both True and False values (probabilistic test)
+        # With 20 trials and 50% probability, getting all same is ~0.0001% chance
+        self.assertTrue(any(results), "Random mode should produce at least one True")
+        self.assertFalse(all(results), "Random mode should produce at least one False")
+        env_random.close()
+
+    def test_reset_maintains_direction_for_normal_and_reverse(self):
+        """
+        Test that reset() maintains consistent direction for 'normal' and 'reverse' modes.
+        """
+        # Test 'normal' mode stays normal across resets
+        env_normal = self._make_env(config={"track_direction": "normal"})
+        for _ in range(5):
+            env_normal.reset()
+            self.assertFalse(env_normal.unwrapped.direction_reversed)
+        env_normal.close()
+
+        # Test 'reverse' mode stays reversed across resets
+        env_reverse = self._make_env(config={"track_direction": "reverse"})
+        for _ in range(5):
+            env_reverse.reset()
+            self.assertTrue(env_reverse.unwrapped.direction_reversed)
+        env_reverse.close()
+
+    def test_reset_rerandomizes_direction_for_random_mode(self):
+        """
+        Test that reset() re-randomizes direction for 'random' mode.
+        """
+        env_random = self._make_env(config={"track_direction": "random"})
+
+        # Collect direction_reversed values across multiple resets
+        directions = []
+        for _ in range(20):
+            env_random.reset()
+            directions.append(env_random.unwrapped.direction_reversed)
+
+        # Verify we get both True and False (probabilistic test)
+        self.assertTrue(any(directions), "Random mode should produce at least one True across resets")
+        self.assertFalse(all(directions), "Random mode should produce at least one False across resets")
+
+        env_random.close()
+
+    def test_track_set_direction_called_on_reset(self):
+        """
+        Test that reset() calls track.set_direction() with the resolved direction.
+        """
+        # Test with 'normal' mode
+        env = self._make_env(config={"track_direction": "normal"})
+        env.reset()
+
+        # After reset, track's active references should match direction_reversed
+        if env.unwrapped.direction_reversed:
+            self.assertIs(env.unwrapped.track.centerline, env.unwrapped.track.centerline_reversed)
+            self.assertIs(env.unwrapped.track.raceline, env.unwrapped.track.raceline_reversed)
+        else:
+            self.assertIs(env.unwrapped.track.centerline, env.unwrapped.track.centerline_regular)
+            self.assertIs(env.unwrapped.track.raceline, env.unwrapped.track.raceline_regular)
+
+        env.close()
