@@ -92,13 +92,17 @@ Default configurations are stored in `/train/config/env_config.py`, with paramet
     2. `lookahead_ds` - Spacing between points in meters (default: 0.3m)
 5. Set `normalize_obs` to `True/False` for normalizing the observation space. Only specific observation types can be normalized
 6. Set `normalize_act` to `True/False` for normalizing the action space. Supported for all action types
-6. Set `predictive_collision` to `True` to use TTC collision checking and `False` for Frenet-based collision checking. Note that this also modifies the reward function.
-7. Set `wall_deflection` to `False` to treat track edges as boundaries, and `True` to treat them as walls that cause a collision and halt the vehicle
-8. Reward configuration options:
+7. Set `predictive_collision` to `True` to use TTC collision checking and `False` for Frenet-based collision checking. Note that this also modifies the reward function.
+8. Set `wall_deflection` to `False` to treat track edges as boundaries, and `True` to treat them as walls that cause a collision and halt the vehicle
+9. Reward configuration options:
     1. `progress_gain`: set amount of gain by which to multiply forward progress reward. Must be >= 1
     2. `out_of_bounds_penalty`: penalty for driving off the track boundary
     3. `negative_vel_penalty`: penalty for driving backward
     4. `max_episode_steps`: the maximum number of episode steps
+10. Set `track_direction` to define in which direction to drive around the track:
+    1. `normal` (default): drive around the track in the direction of the waypoints stored in the centerline and raceline files (Note this may be CW or CCW depending on the track map)
+    2. `reverse`: drive around in the opposite direction (For ex, CW instead of CCW)
+    3. `random`: randomly drive in the 'regular' or 'reverse' direction at each reset with a 50% chance, to learn left and right cornering equally when training a policy with RL
 
 `env.reset()` configurations:
 

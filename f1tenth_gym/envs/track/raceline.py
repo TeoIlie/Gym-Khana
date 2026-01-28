@@ -222,6 +222,63 @@ class Raceline:
             accxs=waypoints[:, 6],
         )
 
+    def reversed(self) -> "Raceline":
+        """
+        Create reversed copy for reverse-direction driving.
+
+        Works for both centerline (has w_lefts/w_rights) and raceline (w_lefts/w_rights are None).
+
+        Returns
+        -------
+        Raceline
+            A new Raceline object with reversed direction.
+        """
+        # Reverse coordinate arrays
+        xs_rev = self.xs[::-1].copy()
+        ys_rev = self.ys[::-1].copy()
+
+        # Compute reversed arc lengths: re-parameterize from new starting point
+        # Original: ss = [0, s1, s2, ..., L]
+        # Reversed: ss_rev = [0, L-s_{n-1}, L-s_{n-2}, ..., L]
+        ss_rev = None
+        if self.ss is not None:
+            total_length = self.ss[-1]
+            ss_rev = (total_length - self.ss[::-1]).copy()
+
+        # Create new spline from reversed coordinates
+        spline_rev = CubicSpline2D(x=xs_rev, y=ys_rev)
+
+        # Flip yaw by pi, wrap to [-pi, pi]
+        yaws_rev = None
+        if self.yaws is not None:
+            yaws_rev = (self.yaws[::-1] + np.pi).copy()
+            yaws_rev = np.arctan2(np.sin(yaws_rev), np.cos(yaws_rev))
+
+        # Negate curvatures (left turns become right turns)
+        ks_rev = -self.ks[::-1].copy() if self.ks is not None else None
+
+        # Swap track widths (left boundary becomes right) - handles None for raceline files
+        w_lefts_rev = self.w_rights[::-1].copy() if self.w_rights is not None else None
+        w_rights_rev = self.w_lefts[::-1].copy() if self.w_lefts is not None else None
+
+        # Reverse velocities/accelerations (keep magnitudes)
+        # vxs is required, so provide default if None (should not happen in practice)
+        vxs_rev = self.vxs[::-1].copy() if self.vxs is not None else np.ones(self.n, dtype=np.float32)
+        axs_rev = self.axs[::-1].copy() if self.axs is not None else None
+
+        return Raceline(
+            ss=ss_rev,
+            xs=xs_rev,
+            ys=ys_rev,
+            velxs=vxs_rev,
+            psis=yaws_rev,
+            kappas=ks_rev,
+            accxs=axs_rev,
+            spline=spline_rev,
+            w_lefts=w_lefts_rev,
+            w_rights=w_rights_rev,
+        )
+
     def render_waypoints(self, e: EnvRenderer, color: tuple[int, int, int] = (0, 128, 0)) -> None:
         """
         Callback to render waypoints.

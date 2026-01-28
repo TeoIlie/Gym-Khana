@@ -125,6 +125,19 @@ class F110Env(gym.Env):
         # wall deflection behavior
         self.wall_deflection = self.config["wall_deflection"]
 
+        # track direction configuration
+        self.track_direction_config = self.config["track_direction"]
+
+        # Validate track direction config
+        if self.track_direction_config not in ["normal", "reverse", "random"]:
+            raise ValueError(
+                f"Invalid track_direction: '{self.track_direction_config}'. "
+                f"Must be one of: 'normal', 'reverse', 'random'"
+            )
+
+        # Set initial direction
+        self._resolve_direction()
+
         assert self.progress_gain >= 1.0, "Progress gain must be >= 1."
 
         # radius to consider done
@@ -177,6 +190,9 @@ class F110Env(gym.Env):
                 self.map,
                 track_scale=self.config["scale"],
             )  # load track in gym env for convenience
+
+        # Set initial track direction
+        self.track.set_direction(self.direction_reversed)
 
         # observations
         self.agent_ids = [f"agent_{i}" for i in range(self.num_agents)]
@@ -675,6 +691,7 @@ class F110Env(gym.Env):
             "predictive_collision": False,  # default Frenet-based boundary check
             "record_obs_min_max": False,
             "wall_deflection": False,  # default to no wall deflections
+            "track_direction": "normal",  # "normal", "reverse", or "random"
             "out_of_bounds_penalty": -50,
             "progress_gain": 5.0,
             "negative_vel_penalty": -1,
@@ -696,6 +713,22 @@ class F110Env(gym.Env):
                     self.config["control_input"], params=self.params, normalize=self.normalize_act
                 )
                 self.action_space = from_single_to_multi_action_space(self.action_type.space, self.num_agents)
+
+    def _resolve_direction(self) -> None:
+        """
+        Resolve track direction based on configuration.
+
+        Sets self.direction_reversed based on self.track_direction_config:
+        - "normal": False (drive forward)
+        - "reverse": True (drive backward)
+        - "random": randomly choose 50/50
+        """
+        if self.track_direction_config == "normal":
+            self.direction_reversed = False
+        elif self.track_direction_config == "reverse":
+            self.direction_reversed = True
+        else:  # "random"
+            self.direction_reversed = np.random.random() < 0.5
 
     def _check_done(self):
         """
@@ -1055,6 +1088,13 @@ class F110Env(gym.Env):
         if seed is not None:
             np.random.seed(seed=seed)
         super().reset(seed=seed)
+
+        # Re-randomize direction for random
+        if self.track_direction_config == "random":
+            self._resolve_direction()
+
+        # Swap Track's active centerline/raceline references
+        self.track.set_direction(self.direction_reversed)
 
         # reset counters and data members
         self.current_time = 0.0

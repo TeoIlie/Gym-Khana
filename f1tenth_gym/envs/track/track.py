@@ -66,8 +66,23 @@ class Track:
         self.filepath = filepath
         self.ext = ext
         self.occupancy_map = occupancy_map
-        self.centerline = centerline
-        self.raceline = raceline
+
+        # Store regular versions (raceline defaults to centerline if not provided)
+        self.centerline_regular = centerline
+        self.raceline_regular = raceline if raceline is not None else centerline
+
+        # Compute reversed versions once
+        self.centerline_reversed = centerline.reversed() if centerline else None
+        if self.raceline_regular is self.centerline_regular:
+            # if raceline is a copy of centerline, the reversed should reference the same reversed object
+            self.raceline_reversed = self.centerline_reversed
+        else:
+            # else, if raceline is different from centerline, it should be calculated from scratch
+            self.raceline_reversed = self.raceline_regular.reversed() if self.raceline_regular else None
+
+        # Active references (default to regular direction)
+        self.centerline = self.centerline_regular
+        self.raceline = self.raceline_regular
 
         # Render handle for lookahead curvature visualization
         self.lookahead_render = None
@@ -82,6 +97,20 @@ class Track:
         self.debug_render_projected = None
         self.debug_render_vehicle = None
         self.debug_render_line = None
+
+    def set_direction(self, reversed: bool) -> None:
+        """
+        Set track direction by swapping active centerline/raceline references.
+
+        Args:
+            reversed: If True, use reversed versions. If False, use regular versions.
+        """
+        if reversed:
+            self.centerline = self.centerline_reversed
+            self.raceline = self.raceline_reversed
+        else:
+            self.centerline = self.centerline_regular
+            self.raceline = self.raceline_regular
 
     @staticmethod
     def load_spec(track: str, filespec: str) -> TrackSpec:
@@ -154,14 +183,14 @@ class Track:
             else:
                 centerline = None
 
-            # if exists, load raceline
+            # if exists, load raceline (otherwise None, __init__ will use centerline as fallback)
             if (track_dir / f"{track}_raceline.csv").exists():
                 raceline = Raceline.from_raceline_file(
                     track_dir / f"{track}_raceline.csv",
                     track_scale=track_scale,
                 )
             else:
-                raceline = centerline
+                raceline = None
 
             return Track(
                 spec=track_spec,
@@ -221,11 +250,11 @@ class Track:
             else:
                 centerline = None
 
-            # if exists, load raceline
+            # if exists, load raceline (otherwise None, __init__ will use centerline as fallback)
             if (path / f"{path.stem}_raceline.csv").exists():
                 raceline = Raceline.from_raceline_file(path / f"{path.stem}_raceline.csv")
             else:
-                raceline = centerline
+                raceline = None
 
             return Track(
                 spec=track_spec,
