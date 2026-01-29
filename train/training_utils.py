@@ -187,6 +187,8 @@ def extract_rl_config(model: object, total_timesteps: int, n_envs: int) -> dict:
         "seed": model.seed,
         "total_timesteps": total_timesteps,
         "n_envs": n_envs,
+        "ckpt_save_freq": CKPT_SAVE_FREQ,
+        "n_eval_episodes": N_EVAL_EPISODES,
     }
 
     # Handle learning rate schedule (callable) vs constant (float)
