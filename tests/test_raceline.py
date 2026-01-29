@@ -28,9 +28,7 @@ class TestRacelineReversed(unittest.TestCase):
         w_rights = np.array([1.5, 1.7, 1.9, 1.7, 1.5], dtype=np.float32)
 
         centerline = Raceline(
-            xs=xs, ys=ys, velxs=vxs,
-            psis=psis, kappas=ks, accxs=axs, ss=ss,
-            w_lefts=w_lefts, w_rights=w_rights
+            xs=xs, ys=ys, velxs=vxs, psis=psis, kappas=ks, accxs=axs, ss=ss, w_lefts=w_lefts, w_rights=w_rights
         )
 
         # Reverse it
@@ -59,7 +57,7 @@ class TestRacelineReversed(unittest.TestCase):
 
         # Check arc lengths are re-parameterized
         total_length = ss[-1]
-        expected_ss = (total_length - ss[::-1])
+        expected_ss = total_length - ss[::-1]
         np.testing.assert_array_almost_equal(reversed_line.ss, expected_ss, decimal=5)
 
         # Check spline is recreated
@@ -83,9 +81,7 @@ class TestRacelineReversed(unittest.TestCase):
         ss = np.array([0.0, 2.5, 5.0, 7.5], dtype=np.float32)
 
         raceline = Raceline(
-            xs=xs, ys=ys, velxs=vxs,
-            psis=psis, kappas=ks, accxs=axs, ss=ss,
-            w_lefts=None, w_rights=None
+            xs=xs, ys=ys, velxs=vxs, psis=psis, kappas=ks, accxs=axs, ss=ss, w_lefts=None, w_rights=None
         )
 
         # Reverse it
@@ -107,7 +103,7 @@ class TestRacelineReversed(unittest.TestCase):
         self.assertIsNone(reversed_line.w_rights)
 
         # Check yaws are flipped by pi
-        expected_yaws = (psis[::-1] + np.pi)
+        expected_yaws = psis[::-1] + np.pi
         expected_yaws = np.arctan2(np.sin(expected_yaws), np.cos(expected_yaws))
         np.testing.assert_array_almost_equal(reversed_line.yaws, expected_yaws, decimal=5)
 
@@ -166,16 +162,18 @@ class TestRacelineReversed(unittest.TestCase):
         """
         # Create temporary centerline file
         # Format: [x, y, w_right, w_left]
-        waypoints = np.array([
-            [0.0, 0.0, 2.0, 2.0],
-            [1.0, 0.0, 2.0, 2.0],
-            [2.0, 1.0, 2.0, 2.0],
-            [2.0, 2.0, 2.0, 2.0],
-            [1.0, 2.0, 2.0, 2.0],
-        ])
+        waypoints = np.array(
+            [
+                [0.0, 0.0, 2.0, 2.0],
+                [1.0, 0.0, 2.0, 2.0],
+                [2.0, 1.0, 2.0, 2.0],
+                [2.0, 2.0, 2.0, 2.0],
+                [1.0, 2.0, 2.0, 2.0],
+            ]
+        )
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
-            np.savetxt(f, waypoints, delimiter=',')
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+            np.savetxt(f, waypoints, delimiter=",")
             filepath = pathlib.Path(f.name)
 
         try:
@@ -200,5 +198,5 @@ class TestRacelineReversed(unittest.TestCase):
             filepath.unlink()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

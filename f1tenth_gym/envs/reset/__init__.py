@@ -32,7 +32,7 @@ def make_reset_fn(type: str | None, track: Track, num_agents: int, **kwargs) -> 
             return reset_fn(track=track, num_agents=num_agents, shuffle=shuffle, **kwargs)
 
         # "cl" or "rl"
-        refline = {"cl": track.centerline, "rl": track.raceline}[refline_token]
+        line_type = {"cl": "centerline", "rl": "raceline"}[refline_token]
         reset_fn = {"grid": GridResetFn, "random": AllTrackResetFn}[reset_token]
         shuffle = {"static": False, "random": True}[shuffle_token]
         options = {"cl": {"move_laterally": True}, "rl": {"move_laterally": False}}[refline_token]
@@ -40,4 +40,4 @@ def make_reset_fn(type: str | None, track: Track, num_agents: int, **kwargs) -> 
     except Exception as ex:
         raise ValueError(f"Invalid reset function type: {type}. Expected format: <refline>_<resetfn>_<shuffle>") from ex
 
-    return reset_fn(reference_line=refline, num_agents=num_agents, shuffle=shuffle, **options, **kwargs)
+    return reset_fn(track=track, line_type=line_type, num_agents=num_agents, shuffle=shuffle, **options, **kwargs)

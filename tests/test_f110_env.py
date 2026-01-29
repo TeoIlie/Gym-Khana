@@ -390,3 +390,47 @@ class TestEnvInterface(unittest.TestCase):
             self.assertIs(env.unwrapped.track.raceline, env.unwrapped.track.raceline_regular)
 
         env.close()
+
+    def test_random_direction_yaw_alignment(self):
+        """
+        Test that with track_direction='random', the vehicle yaw aligns with
+        the track direction after reset, regardless of direction changes.
+
+        This test verifies the fix for the bug where reset functions cached
+        references to centerline/raceline at initialization, causing yaw
+        misalignment when track_direction='random' changed directions.
+        """
+        from unittest.mock import patch
+
+        env = self._make_env(config={"track_direction": "random", "reset_config": {"type": "cl_random_static"}})
+
+        # Test both directions explicitly by mocking _resolve_direction
+        for direction_reversed in [False, True]:
+            direction_name = "reverse" if direction_reversed else "normal"
+
+            # Mock _resolve_direction to force specific direction
+            # We need to capture the current value in the closure
+            def mock_resolve_fn(reversed_val=direction_reversed):
+                env.unwrapped.direction_reversed = reversed_val
+
+            with patch.object(env.unwrapped, "_resolve_direction", side_effect=mock_resolve_fn):
+                obs, info = env.reset()
+
+                # Get vehicle pose
+                pose_x = env.unwrapped.start_xs[0]
+                pose_y = env.unwrapped.start_ys[0]
+                pose_theta = env.unwrapped.start_thetas[0]
+
+                # Find nearest waypoint and get Frenet coordinates
+                s, ey, ephi = env.unwrapped.track.cartesian_to_frenet(pose_x, pose_y, pose_theta, use_raceline=False)
+
+                # Vehicle heading should align with track tangent (ephi ~= 0)
+                # Allow some tolerance for lateral offset sampling
+                self.assertLess(
+                    abs(ephi),
+                    0.5,  # ~30 degrees tolerance
+                    f"Vehicle yaw misaligned with track direction in {direction_name} mode "
+                    f"(ephi={ephi:.3f} rad, ~{np.rad2deg(ephi):.1f} deg) at reset",
+                )
+
+        env.close()

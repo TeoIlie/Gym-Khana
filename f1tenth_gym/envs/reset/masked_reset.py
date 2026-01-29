@@ -14,19 +14,28 @@ class MaskedResetFn(ResetFn):
 
     def __init__(
         self,
-        reference_line: Raceline,
+        track: Track,
+        line_type: str,
         num_agents: int,
         move_laterally: bool,
         min_dist: float,
         max_dist: float,
     ):
-        self.reference_line = reference_line
+        if line_type not in ["centerline", "raceline"]:
+            raise ValueError(f"Invalid line_type: '{line_type}'. Must be 'centerline' or 'raceline'.")
+
+        self.track = track
+        self.line_type = line_type
         self.n_agents = num_agents
         self.min_dist = min_dist
         self.max_dist = max_dist
         self.move_laterally = move_laterally
         self.mask = self.get_mask()
-        self.reference_line = reference_line
+
+    @property
+    def reference_line(self) -> Raceline:
+        """Dynamically access the current active reference line from track."""
+        return getattr(self.track, self.line_type)
 
     def sample(self) -> np.ndarray:
         waypoint_id = np.random.choice(np.where(self.mask)[0])
@@ -44,7 +53,8 @@ class MaskedResetFn(ResetFn):
 class GridResetFn(MaskedResetFn):
     def __init__(
         self,
-        reference_line: Raceline,
+        track: Track,
+        line_type: str,
         num_agents: int,
         move_laterally: bool = True,
         use_centerline: bool = True,
@@ -57,7 +67,8 @@ class GridResetFn(MaskedResetFn):
         self.shuffle = shuffle
 
         super().__init__(
-            reference_line=reference_line,
+            track=track,
+            line_type=line_type,
             num_agents=num_agents,
             move_laterally=move_laterally,
             min_dist=min_dist,
@@ -85,7 +96,8 @@ class GridResetFn(MaskedResetFn):
 class AllTrackResetFn(MaskedResetFn):
     def __init__(
         self,
-        reference_line: Raceline,
+        track: Track,
+        line_type: str,
         num_agents: int,
         move_laterally: bool = True,
         shuffle: bool = True,
@@ -93,7 +105,8 @@ class AllTrackResetFn(MaskedResetFn):
         max_dist: float = 2.5,
     ):
         super().__init__(
-            reference_line=reference_line,
+            track=track,
+            line_type=line_type,
             num_agents=num_agents,
             move_laterally=move_laterally,
             min_dist=min_dist,
