@@ -43,6 +43,7 @@ INTEGRATOR = _config["integrator"]
 ACTION_INPUT = _config["action_input"]
 OBS_TYPE = _config["obs_type"]
 RESET_CONFIG = _config["reset_config"]
+TRACK_DIRECTION = _config["track_direction"]
 LOOKAHEAD_N_POINTS = _config["lookahead_n_points"]
 LOOKAHEAD_DS = _config["lookahead_ds"]
 NORM_OBS = _config["normalize_obs"]
@@ -88,6 +89,7 @@ def get_drift_test_config():
         "control_input": ACTION_INPUT,
         "observation_config": {"type": OBS_TYPE},
         "reset_config": {"type": RESET_CONFIG},
+        "track_direction": TRACK_DIRECTION,
         "render_lookahead_curvatures": TEST_DEBUG_RENDER,  # Enable lookahead curvature visualization
         "lookahead_n_points": LOOKAHEAD_N_POINTS,
         "lookahead_ds": LOOKAHEAD_DS,
@@ -116,6 +118,7 @@ def get_drift_train_config():
         "control_input": ACTION_INPUT,
         "observation_config": {"type": OBS_TYPE},
         "reset_config": {"type": RESET_CONFIG},
+        "track_direction": TRACK_DIRECTION,
         "render_lookahead_curvatures": TRAIN_DEBUG_RENDER,  # Enable lookahead curvature visualization
         "lookahead_n_points": LOOKAHEAD_N_POINTS,
         "lookahead_ds": LOOKAHEAD_DS,

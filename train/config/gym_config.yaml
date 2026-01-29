@@ -25,6 +25,7 @@ lookahead_ds: 0.5  # Distance between lookahead points
 
 # Reset configuration
 reset_config: "cl_random_static"
+track_direction: "random"
 
 # Rendering/Debug settings
 test_debug_render: true
