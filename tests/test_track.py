@@ -246,36 +246,84 @@ class TestTrack(unittest.TestCase):
         self.assertIn("width data not available", str(context.exception).lower())
 
     def test_get_min_max_curvature(self):
-        """Test extraction of min and max curvature from centerline."""
-        # Create mock track with known curvature values
-        # Include positive, negative, and zero curvatures
-        kappas = np.array([-2.5, 0.0, 3.0, -1.5, 4.2], dtype=np.float32)
-        # Expected min = -2.5, max = 4.2
+        """Test extraction of min and max curvature with symmetric bounds based on max absolute value."""
+        # Test case 1: Asymmetric curvatures with max positive value larger
+        # kappas = [-1.0, 4.0] → max_abs = 4.0 → bounds should be (-4.0, 4.0)
+        kappas_1 = np.array([-1.0, 4.0], dtype=np.float32)
 
-        centerline = Raceline(
-            xs=np.array([0.0, 1.0, 2.0, 3.0, 4.0], dtype=np.float32),
-            ys=np.array([0.0, 1.0, 2.0, 3.0, 4.0], dtype=np.float32),
-            velxs=np.array([1.0, 1.0, 1.0, 1.0, 1.0], dtype=np.float32),
-            kappas=kappas,
+        centerline_1 = Raceline(
+            xs=np.array([0.0, 1.0], dtype=np.float32),
+            ys=np.array([0.0, 1.0], dtype=np.float32),
+            velxs=np.array([1.0, 1.0], dtype=np.float32),
+            kappas=kappas_1,
         )
 
-        track = Track(
+        track_1 = Track(
             spec=None,
             occupancy_map=np.zeros((10, 10)),
-            centerline=centerline,
+            centerline=centerline_1,
             raceline=None,
         )
 
-        # Call the function
-        min_curv, max_curv = get_min_max_curvature(track)
+        min_curv_1, max_curv_1 = get_min_max_curvature(track_1)
 
-        # Verify values (use assertAlmostEqual for float32 precision)
-        self.assertAlmostEqual(min_curv, -2.5, places=5, msg="min curvature should be -2.5")
-        self.assertAlmostEqual(max_curv, 4.2, places=5, msg="max curvature should be 4.2")
+        # Verify symmetric bounds based on max absolute value (4.0)
+        self.assertAlmostEqual(min_curv_1, -4.0, places=5, msg="min curvature should be -4.0 (symmetric)")
+        self.assertAlmostEqual(max_curv_1, 4.0, places=5, msg="max curvature should be 4.0")
+        self.assertIsInstance(min_curv_1, float)
+        self.assertIsInstance(max_curv_1, float)
 
-        # Verify return types
-        self.assertIsInstance(min_curv, float)
-        self.assertIsInstance(max_curv, float)
+        # Test case 2: Asymmetric curvatures with max negative value larger in magnitude
+        # kappas = [-4.0, 1.0] → max_abs = 4.0 → bounds should be (-4.0, 4.0)
+        kappas_2 = np.array([-4.0, 1.0], dtype=np.float32)
+
+        centerline_2 = Raceline(
+            xs=np.array([0.0, 1.0], dtype=np.float32),
+            ys=np.array([0.0, 1.0], dtype=np.float32),
+            velxs=np.array([1.0, 1.0], dtype=np.float32),
+            kappas=kappas_2,
+        )
+
+        track_2 = Track(
+            spec=None,
+            occupancy_map=np.zeros((10, 10)),
+            centerline=centerline_2,
+            raceline=None,
+        )
+
+        min_curv_2, max_curv_2 = get_min_max_curvature(track_2)
+
+        # Verify symmetric bounds based on max absolute value (4.0)
+        self.assertAlmostEqual(min_curv_2, -4.0, places=5, msg="min curvature should be -4.0")
+        self.assertAlmostEqual(max_curv_2, 4.0, places=5, msg="max curvature should be 4.0 (symmetric)")
+        self.assertIsInstance(min_curv_2, float)
+        self.assertIsInstance(max_curv_2, float)
+
+        # Test case 3: Already symmetric curvatures
+        # kappas = [-3.5, 0.0, 3.5] → max_abs = 3.5 → bounds should be (-3.5, 3.5)
+        kappas_3 = np.array([-3.5, 0.0, 3.5], dtype=np.float32)
+
+        centerline_3 = Raceline(
+            xs=np.array([0.0, 1.0, 2.0], dtype=np.float32),
+            ys=np.array([0.0, 1.0, 2.0], dtype=np.float32),
+            velxs=np.array([1.0, 1.0, 1.0], dtype=np.float32),
+            kappas=kappas_3,
+        )
+
+        track_3 = Track(
+            spec=None,
+            occupancy_map=np.zeros((10, 10)),
+            centerline=centerline_3,
+            raceline=None,
+        )
+
+        min_curv_3, max_curv_3 = get_min_max_curvature(track_3)
+
+        # Verify symmetric bounds
+        self.assertAlmostEqual(min_curv_3, -3.5, places=5, msg="min curvature should be -3.5")
+        self.assertAlmostEqual(max_curv_3, 3.5, places=5, msg="max curvature should be 3.5")
+        self.assertIsInstance(min_curv_3, float)
+        self.assertIsInstance(max_curv_3, float)
 
     def test_get_min_max_curvature_error_cases(self):
         """Test error handling for get_min_max_curvature."""

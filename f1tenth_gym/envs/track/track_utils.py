@@ -84,27 +84,35 @@ def get_min_max_track_width(track) -> tuple[float, float]:
 
 def get_min_max_curvature(track) -> tuple[float, float]:
     """
-    Extract min and max curvature from centerline data.
+    Extract min and max curvature from centerline data, using symmetric bounds
+    based on the max absolute curvature from the regular (non-reversed) centerline.
+    This ensures direction-invariant normalization when track_direction="random"
+    changes direction between init and reset.
 
     Returns
     -------
     tuple[float, float]
-        (min_curvature, max_curvature) in 1/m
+        (min_curvature, max_curvature) in 1/m, symmetric about zero
 
     Raises
     ------
     ValueError
         If track centerline or curvature data is not available
     """
-    if track.centerline is None:
+    # Use centerline_regular to ensure direction-invariant bounds
+    # (reversed curvatures are just negated, so symmetric bounds work for both)
+    centerline = getattr(track, "centerline_regular", track.centerline)
+
+    if centerline is None:
         raise ValueError("Track centerline not available")
 
-    if track.centerline.ks is None:
+    if centerline.ks is None:
         raise ValueError("Track curvature data (ks) not available in centerline")
 
-    # Get min & max curvature
-    min_curv = float(np.min(track.centerline.ks))
-    max_curv = float(np.max(track.centerline.ks))
+    # Use symmetric bounds based on max absolute curvature for direction-invariance
+    max_abs_curv = float(np.max(np.abs(centerline.ks)))
+    min_curv = -max_abs_curv
+    max_curv = max_abs_curv
 
     return min_curv, max_curv
 
