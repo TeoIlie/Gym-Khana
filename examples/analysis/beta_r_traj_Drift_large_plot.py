@@ -25,7 +25,7 @@ MODEL_PATH = "/outputs/downloads/flt3rzle/model.zip"
 CONFIG = get_drift_test_config()
 CONFIG["render_arc_length_annotations"] = True
 CONFIG["max_episode_steps"] = 20000
-CONFIG["track_direction"] = "reverse" # Set to "reverse" to see the graph in reverse
+CONFIG["track_direction"] = "reverse"  # Set to "reverse" to see the graph in reverse
 
 # Beta-R trajectory filtering parameters
 START_S = 0.0  # Start arc length [meters]
