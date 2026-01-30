@@ -96,6 +96,7 @@ def get_drift_test_config():
         "debug_frenet_projection": TEST_DEBUG_RENDER,  # Enable Frenet projection debug visualization
         "params": PARAMS,
         "render_track_lines": TEST_DEBUG_RENDER,  # View track lines
+        "render_arc_length_annotations": TEST_DEBUG_RENDER,
         "normalize_obs": NORM_OBS,
         "record_obs_min_max": RECORD_OBS_MIN_MAX,
         "predictive_collision": PREDICTIVE_COLLISION,
@@ -125,6 +126,7 @@ def get_drift_train_config():
         "debug_frenet_projection": TRAIN_DEBUG_RENDER,  # Enable Frenet projection debug visualization
         "params": PARAMS,
         "render_track_lines": TRAIN_DEBUG_RENDER,  # View track lines
+        "render_arc_length_annotations": TRAIN_DEBUG_RENDER,
         "normalize_obs": NORM_OBS,
         "record_obs_min_max": RECORD_OBS_MIN_MAX,
         "predictive_collision": PREDICTIVE_COLLISION,
