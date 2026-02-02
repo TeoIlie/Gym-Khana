@@ -8,6 +8,22 @@ from f1tenth_gym.envs.track.track_utils import get_min_max_curvature, get_min_ma
 KeyType = TypeVar("KeyType")
 
 
+def _get_track_width_bounds(env, track) -> tuple[float, float]:
+    """Get track width bounds from global config or compute from track."""
+    if env.track_min_width is not None and env.track_max_width is not None:
+        return (env.track_min_width, env.track_max_width)
+    else:
+        return get_min_max_track_width(track)
+
+
+def _get_track_curvature_bounds(env, track) -> tuple[float, float]:
+    """Get track curvature bounds from global config or compute from track."""
+    if env.track_max_curv is not None:
+        return (-env.track_max_curv, env.track_max_curv)
+    else:
+        return get_min_max_curvature(track)
+
+
 def deep_update(mapping: Dict[KeyType, Any], *updating_mappings: Dict[KeyType, Any]) -> Dict[KeyType, Any]:
     """
     Dictionary deep update for nested dictionaries from pydantic:
@@ -186,7 +202,7 @@ def calculate_norm_bounds(env, features: list[str]):
 
         # Frenet lateral distance and track widths
         if "frenet_n" in features_set or "lookahead_widths" in features_set:
-            min_width, max_width = get_min_max_track_width(track)
+            min_width, max_width = _get_track_width_bounds(env, track)
 
             if "frenet_n" in features_set:
                 half_max_width = 0.5 * max_width
@@ -197,7 +213,7 @@ def calculate_norm_bounds(env, features: list[str]):
 
         # Lookahead curvatures
         if "lookahead_curvatures" in features_set:
-            min_curv, max_curv = get_min_max_curvature(track)
+            min_curv, max_curv = _get_track_curvature_bounds(env, track)
             bounds["lookahead_curvatures"] = (min_curv, max_curv)
 
     # ===========================

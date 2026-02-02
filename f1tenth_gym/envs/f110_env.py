@@ -138,6 +138,11 @@ class F110Env(gym.Env):
         # Set initial direction
         self._resolve_direction()
 
+        # Multi-map training global normalization bounds (optional)
+        self.track_max_curv = self.config["track_max_curv"]
+        self.track_min_width = self.config["track_min_width"]
+        self.track_max_width = self.config["track_max_width"]
+
         assert self.progress_gain >= 1.0, "Progress gain must be >= 1."
 
         # radius to consider done
@@ -193,6 +198,27 @@ class F110Env(gym.Env):
 
         # Set initial track direction
         self.track.set_direction(self.direction_reversed)
+
+        # Validate global normalization bounds (multi-map training)
+        # If any bound is provided, all three must be provided for consistency
+        required_bounds = [self.track_max_curv, self.track_min_width, self.track_max_width]
+        num_provided = sum(x is not None for x in required_bounds)
+
+        # Must be all-or-none: 0 (no multi-map) or 3 (multi-map mode)
+        if num_provided not in (0, 3):
+            raise ValueError(
+                f"Incomplete global track bounds configuration. "
+                f"When using multi-map training, all three of track_max_curv, track_min_width, track_max_width bounds must be provided. "
+                f"Provided: {self.track_max_curv}, {self.track_min_width}, {self.track_max_width}"
+            )
+
+        # Log if using global normalization bounds
+        elif num_provided == 3:
+            warnings.warn(
+                f"[Global bounds] curvature=+/-{self.track_max_curv:.4f}, "
+                f"width=[{self.track_min_width:.4f}, {self.track_max_width:.4f}]",
+                UserWarning,
+            )
 
         # observations
         self.agent_ids = [f"agent_{i}" for i in range(self.num_agents)]
@@ -692,6 +718,10 @@ class F110Env(gym.Env):
             "record_obs_min_max": False,
             "wall_deflection": False,  # default to no wall deflections
             "track_direction": "normal",  # "normal", "reverse", or "random"
+            # Multi-map training bounds (optional, None means compute per-track)
+            "track_max_curv": None,
+            "track_min_width": None,
+            "track_max_width": None,
             "out_of_bounds_penalty": -50,
             "progress_gain": 5.0,
             "negative_vel_penalty": -1,

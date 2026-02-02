@@ -579,7 +579,7 @@ track_pool:
 
 ## Implementation Tasks (Step-by-Step Validation)
 
-### [ ] Task 1: Add Configuration Support
+### [X] Task 1: Add Configuration Support
 **Files**: `train/config/gym_config.yaml`, `train/config/env_config.py`
 
 **Changes**:
@@ -594,7 +594,7 @@ print(TRACK_POOL)  # Should print ["Drift", "Drift2", "Drift_large"] or None
 
 ---
 
-### [ ] Task 2: Add Global Bounds Computation Helper
+### [X] Task 2: Add Global Bounds Computation Helper
 **Files**: `train/training_utils.py`
 
 **Changes**:
@@ -609,7 +609,7 @@ print(bounds)  # Should show track_max_curv, track_min_width, track_max_width
 
 ---
 
-### [ ] Task 3: Add Global Bounds Usage in Environment
+### [X] Task 3: Add Global Bounds Usage in Environment
 **Files**: `f1tenth_gym/envs/utils.py`, `f1tenth_gym/envs/f110_env.py`
 
 **Changes**:
@@ -668,6 +668,10 @@ env.close()
 - Verify training starts without errors
 
 ---
+### [ ] Task 6: Add documentation in `README.md`
+- Document new feature config use
+
+---
 
 ### Validation Order
 1. **Task 1** → Config loads correctly
@@ -675,3 +679,4 @@ env.close()
 3. **Task 3** → Single env respects injected global bounds
 4. **Task 4** → Multi-env creation distributes maps correctly
 5. **Task 5** → Full integration works end-to-end
+6. **Task 6** → Documentation

@@ -7,6 +7,8 @@ import wandb
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
+from f1tenth_gym.envs.track import Track
+from f1tenth_gym.envs.track.track_utils import get_min_max_curvature, get_min_max_track_width
 
 from train.config.env_config import (
     ACT_FUNC_NEG_SLOPE,
@@ -35,6 +37,41 @@ def make_subprocvecenv(seed: int, config: dict, n_envs: int):
     print(f"✅ Successfully created {n_envs} parallel environments as SubProcVecEnv with seed {seed}")
 
     return env
+
+
+def compute_global_track_bounds(track_pool: list[str], track_scale: float = 1.0) -> dict:
+    """
+    Compute global normalization bounds across all tracks in a pool.
+    Args:
+        track_pool: List of track names to compute bounds across
+        track_scale: Scale factor for track loading (no scaling by default)
+    Returns:
+        Dictionary with keys: track_max_curv, track_min_width, track_max_width
+    """
+
+    max_curvatures = []
+    min_widths = []
+    max_widths = []
+
+    for track_name in track_pool:
+        try:
+            track = Track.from_track_name(track_name, track_scale=track_scale)
+        except FileNotFoundError as e:
+            raise ValueError(f"Invalid track name '{track_name}' in track_pool. ") from e
+
+        # get_min_max_curvature returns symmetric bounds (-max, +max)
+        _, max_curv = get_min_max_curvature(track)
+        max_curvatures.append(max_curv)
+
+        min_width, max_width = get_min_max_track_width(track)
+        min_widths.append(min_width)
+        max_widths.append(max_width)
+
+    return {
+        "track_max_curv": max(max_curvatures),
+        "track_min_width": min(min_widths),
+        "track_max_width": max(max_widths),
+    }
 
 
 def make_env(seed: int, rank: int, config: dict):
