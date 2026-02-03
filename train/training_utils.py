@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from collections import Counter
 import gymnasium as gym
 import torch.nn as nn
 import yaml
@@ -20,23 +21,48 @@ from train.config.env_config import (
 )
 
 
-def make_subprocvecenv(seed: int, config: dict, n_envs: int):
+def make_subprocvecenv(seed: int, config: dict, n_envs: int, track_pool: list[str] | None = None) -> SubprocVecEnv:
     """
     Create a SubprocVecEnv parallelized environment.
     Args:
         seed: Seed for reproducibility
         config: Gym env config
         n_envs: How many parallel envs to create
+        track_pool: Optional list of maps to distribute across envs.
+                   If provided, envs will cycle through these maps.
+                   Example: ["Drift", "Drift2", "Drift_large"]
     Returns:
-        SubprocVecEnc parallelized gym env
+        SubprocVecEnv parallelized gym env distributed across track pool (if provided)
     """
-    print(f"Creating {n_envs} parallel environments...")
+    if track_pool is not None:
+        # Multi-map
 
-    env = SubprocVecEnv([make_env(seed=seed, rank=i, config=config) for i in range(n_envs)])
+        # Validate track pool
+        if not isinstance(track_pool, list) or len(track_pool) == 0:
+            raise ValueError("track_pool must be a non-empty list")
 
-    print(f"✅ Successfully created {n_envs} parallel environments as SubProcVecEnv with seed {seed}")
+        # Create environments with different maps
+        env_fns = []
+        for i in range(n_envs):
+            # Cycle through track pool
+            map_name = track_pool[i % len(track_pool)]
+            env_config = config.copy()
+            env_config["map"] = map_name
+            env_fns.append(make_env(seed=seed, rank=i, config=env_config))
 
-    return env
+        env = SubprocVecEnv(env_fns)
+
+        print(f"✅ Successfully created {n_envs} parallel multi-map environments as SubProcVecEnv with seed {seed}")
+
+        distribution = Counter(track_pool[i % len(track_pool)] for i in range(n_envs))
+        print(f"Multi-map Track distribution: {dict(distribution)}")
+
+        return env
+    else:
+        # Single-map
+        env = SubprocVecEnv([make_env(seed=seed, rank=i, config=config) for i in range(n_envs)])
+        print(f"✅ Successfully created {n_envs} parallel single-map environments as SubProcVecEnv with seed {seed}")
+        return env
 
 
 def compute_global_track_bounds(track_pool: list[str], track_scale: float = 1.0) -> dict:

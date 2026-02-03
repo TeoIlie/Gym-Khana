@@ -16,6 +16,7 @@ map: "Drift_large"
 # See /train/training_utils.py make_subprocvecenv
 track_pool:
   - "Drift_large"
+  - "Drift_large"
   - "Austin"
   - "Monza"
 # For single-map training, set to null or comment out:

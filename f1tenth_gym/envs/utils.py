@@ -7,6 +7,8 @@ from f1tenth_gym.envs.track.track_utils import get_min_max_curvature, get_min_ma
 
 KeyType = TypeVar("KeyType")
 
+# Global track bounds for normalization, computed across all available tracks
+# Update these values when creating a new custom track
 GLOBAL_MAX_CURVATURE = 1.95
 GLOBAL_MIN_WIDTH = 1.2
 GLOBAL_MAX_WIDTH = 2.2
@@ -188,9 +190,9 @@ def calculate_norm_bounds(env, features: list[str]):
 
         track = env.track
 
-        # Frenet lateral distance and track widths
+        # Frenet lateral distance and track widths (use global bounds for cross-track consistency)
         if "frenet_n" in features_set or "lookahead_widths" in features_set:
-            min_width, max_width = get_min_max_track_width(track)
+            min_width, max_width = GLOBAL_MIN_WIDTH, GLOBAL_MAX_WIDTH
 
             if "frenet_n" in features_set:
                 half_max_width = 0.5 * max_width
@@ -199,10 +201,9 @@ def calculate_norm_bounds(env, features: list[str]):
             if "lookahead_widths" in features_set:
                 bounds["lookahead_widths"] = (min_width, max_width)
 
-        # Lookahead curvatures
+        # Lookahead curvatures (use global bounds for cross-track consistency)
         if "lookahead_curvatures" in features_set:
-            min_curv, max_curv = get_min_max_curvature(track)
-            bounds["lookahead_curvatures"] = (min_curv, max_curv)
+            bounds["lookahead_curvatures"] = (-GLOBAL_MAX_CURVATURE, GLOBAL_MAX_CURVATURE)
 
     # ===========================
     # 6. VALIDATION

@@ -671,7 +671,7 @@ print(bounds)  # Should show track_max_curv, track_min_width, track_max_width
 
 ---
 
-### [ ] Task 3: Add Hard-Coded Global Bounds Constants (REVISED)
+### [X] Task 3: Add Hard-Coded Global Bounds Constants (REVISED)
 **Files**: `f1tenth_gym/envs/utils.py`
 
 **Changes**:
@@ -697,7 +697,7 @@ env2.close()
 
 ---
 
-### [ ] Task 4: Update `make_subprocvecenv()` for Multi-Map (SIMPLIFIED)
+### [X] Task 4: Update `make_subprocvecenv()` for Multi-Map (SIMPLIFIED)
 **Files**: `train/training_utils.py`
 
 **Changes**:
@@ -717,7 +717,7 @@ env.close()
 
 ---
 
-### [ ] Task 5: Update Training Script
+### [X] Task 5: Update Training Script
 **Files**: `train/ppo_race.py`
 
 **Changes**:
@@ -732,7 +732,7 @@ env.close()
 
 ---
 
-### [ ] Task 6: Add helper script and documentation
+### [X] Task 6: Add helper script and documentation
 **Files**: `maps/extract_global_track_norm_bounds.py` (new), `maps/README.md` (update)
 
 **Changes**:
