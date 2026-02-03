@@ -13,6 +13,7 @@ wall_deflection: false
 map: "Drift_large"
 # Multi-map training (optional)
 # If specified, parallel environments will train on different maps from this list
+# See /train/training_utils.py make_subprocvecenv
 track_pool:
   - "Drift_large"
   - "Austin"

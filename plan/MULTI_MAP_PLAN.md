@@ -73,7 +73,7 @@ Enable the F1TENTH Gym to train reinforcement learning agents across multiple tr
 - Arbitrary phase lengths (hyperparameter tuning needed)
 - More complex implementation (requires callback system)
 
-**Verdict**: NOT RECOMMENDED due to rigis schedule, and poor adaption
+**Verdict**: NOT RECOMMENDED due to rigid schedule, and poor adaptation
 
 ---
 
@@ -99,17 +99,44 @@ For example, with 32 parallel envs and 3 drift tracks, each track gets ~10-11 en
 - Track B (max_curv=1.0): Tight turn → normalized to 1.0
 - Policy learns "1.0" has different real-world meanings, hurting generalization
 
-**Solution**: Use **global normalization bounds** computed across ALL tracks in the pool:
-- Track A tight turn (κ=0.5) → normalized to 0.5
-- Track B tight turn (κ=1.0) → normalized to 1.0
+**Solution**: Use **hard-coded global normalization bounds** pre-computed across ALL available tracks:
+- Track A tight turn (κ=0.5) → normalized to ~0.2 (relative to global max 2.45)
+- Track B tight turn (κ=1.0) → normalized to ~0.4 (relative to global max 2.45)
 - Observation value 1.0 consistently means "sharpest possible turn across any track"
 - Policy learns consistent meaning, improving transfer between tracks
 
-**Implementation**:
-1. In `make_subprocvecenv()`: Compute `track_max_curv`, `track_min_width` and `track_max_width` once across all tracks
-2. Pass these as config parameters to each environment
-3. In `calculate_norm_bounds()`: Use provided bounds if available, else compute from track
-4. Ensure the global bounds are also used in the evalutation env
+**Pre-computed Global Bounds** (across all 10 tracks):
+| Track           | Max Curv | Min Width | Max Width |
+|-----------------|----------|-----------|-----------|
+| Austin          | 1.4406   | 2.2000    | 2.2000    |
+| Catalunya       | 1.1740   | 2.2000    | 2.2000    |
+| Drift           | 2.4450   | 0.8000    | 1.0000    |
+| Drift2          | 1.4424   | 1.8000    | 2.0000    |
+| Drift_large     | 1.6023   | 1.2000    | 1.4000    |
+| IMS             | 0.0750   | 2.2000    | 2.2000    |
+| Monza           | 1.4637   | 2.2000    | 2.2000    |
+| MoscowRaceway   | 1.3523   | 2.2000    | 2.2000    |
+| Spielberg       | 1.9523   | 2.2000    | 2.2000    |
+| Spielberg_blank | 1.9523   | 2.2000    | 2.2000    |
+| **GLOBAL**      | **2.45** | **0.80**  | **2.20**  |
+
+**Implementation** (simplified from original plan):
+1. Add hard-coded constants `GLOBAL_MAX_CURVATURE`, `GLOBAL_MIN_WIDTH`, `GLOBAL_MAX_WIDTH` in `utils.py`
+2. Use these constants as defaults in `calculate_norm_bounds()` instead of per-track computation
+3. Keep `compute_global_track_bounds()` utility in `training_utils.py` for regenerating values when new tracks are added
+
+**Why hard-coded constants are better than dynamic computation**:
+- **Simplicity**: No need to compute bounds at runtime or pass them through config chains
+- **Consistency**: Every `gym.make()` call gets same normalization - training, eval, standalone
+- **Testability**: Fixed values are easy to verify and reason about
+- **Robustness**: No risk of bounds mismatch between training and evaluation
+- **Performance**: No track loading overhead at environment creation
+
+**Adding new custom tracks**:
+If you add a new track with geometry outside existing bounds (e.g., tighter curvature than 2.45), you must:
+1. Run `python maps/extract_global_track_norm_bounds.py` to recalculate bounds across all tracks
+2. Update the hard-coded constants in `f1tenth_gym/envs/utils.py` with the printed GLOBAL values
+3. Retrain any existing models (observation meanings have changed)
 
 **Which features need global bounds?**
 - **Lookahead curvatures**: YES - curvature varies significantly between tracks (drift tracks have tighter turns than racing circuits)
@@ -121,17 +148,26 @@ For example, with 32 parallel envs and 3 drift tracks, each track gets ~10-11 en
 #### File 1: `train/training_utils.py`
 **Location**: Lines 21-37 (function `make_subprocvecenv`)
 
-**Change**: Add `track_pool` parameter, compute global bounds using helper function, and distribute maps across environments.
+**Change**: Add `track_pool` parameter to distribute maps across environments. Keep `compute_global_track_bounds()` as a utility for regenerating hard-coded constants when new tracks are added.
 
-**Add helper function** (before `make_subprocvecenv`):
+**Keep existing helper function** (modified to print table):
 ```python
-def compute_global_track_bounds(track_pool: list[str], track_scale: float) -> dict:
+def compute_global_track_bounds(track_pool: list[str], track_scale: float = 1.0) -> dict:
     """
     Compute global normalization bounds across all tracks in a pool.
 
+    This is a UTILITY for regenerating hard-coded constants in utils.py
+    when new tracks are added. It is NOT called at runtime.
+
+    Usage:
+        python maps/extract_global_track_norm_bounds.py
+        # Or directly:
+        from train.training_utils import compute_global_track_bounds
+        bounds = compute_global_track_bounds(["Drift", "Drift2", "Austin", ...])
+
     Args:
         track_pool: List of track names to compute bounds across
-        track_scale: Scale factor for track loading
+        track_scale: Scale factor for track loading (default 1.0)
 
     Returns:
         Dictionary with keys: track_max_curv, track_min_width, track_max_width
@@ -142,6 +178,12 @@ def compute_global_track_bounds(track_pool: list[str], track_scale: float) -> di
     max_curvatures = []
     min_widths = []
     max_widths = []
+
+    # Print table header
+    print("\nTrack bounds analysis:")
+    print("=" * 70)
+    print(f"{'Track':<20} {'Max Curv':>12} {'Min Width':>12} {'Max Width':>12}")
+    print("-" * 70)
 
     for track_name in track_pool:
         try:
@@ -160,15 +202,32 @@ def compute_global_track_bounds(track_pool: list[str], track_scale: float) -> di
         min_widths.append(min_width)
         max_widths.append(max_width)
 
+        # Print per-track values
+        print(f"{track_name:<20} {max_curv:>12.4f} {min_width:>12.4f} {max_width:>12.4f}")
+
+    # Compute global bounds
+    global_max_curv = max(max_curvatures)
+    global_min_width = min(min_widths)
+    global_max_width = max(max_widths)
+
+    # Print global bounds
+    print("=" * 70)
+    print(f"{'GLOBAL':<20} {global_max_curv:>12.4f} {global_min_width:>12.4f} {global_max_width:>12.4f}")
+    print()
+    print("Update these values in f1tenth_gym/envs/utils.py:")
+    print(f"  GLOBAL_MAX_CURVATURE = {global_max_curv:.4f}")
+    print(f"  GLOBAL_MIN_WIDTH = {global_min_width:.4f}")
+    print(f"  GLOBAL_MAX_WIDTH = {global_max_width:.4f}")
+    print()
+
     return {
-        "track_max_curv": max(max_curvatures),
-        "track_min_width": min(min_widths),
-        "track_max_width": max(max_widths),
-        "_per_track_curvatures": dict(zip(track_pool, max_curvatures)),  # For logging only
+        "track_max_curv": global_max_curv,
+        "track_min_width": global_min_width,
+        "track_max_width": global_max_width,
     }
 ```
 
-**Modify `make_subprocvecenv`**:
+**Modify `make_subprocvecenv`** (simplified - no bounds computation/return):
 ```python
 def make_subprocvecenv(
     seed: int, config: dict, n_envs: int, track_pool: list[str] | None = None
@@ -181,7 +240,7 @@ def make_subprocvecenv(
         config: Base gym configuration dict
         n_envs: Number of parallel environments
         track_pool: Optional list of maps to distribute across envs.
-                   If provided, envs will cycle through these maps and use global normalization.
+                   If provided, envs will cycle through these maps.
                    Example: ["Drift", "Drift2", "Drift_large"]
 
     Returns:
@@ -192,27 +251,14 @@ def make_subprocvecenv(
         if not isinstance(track_pool, list) or len(track_pool) == 0:
             raise ValueError("track_pool must be a non-empty list")
 
-        print(f"[Multi-map] Computing global normalization bounds across {len(track_pool)} tracks...")
-
-        # Compute global normalization bounds across all tracks in pool
-        track_scale = config.get("scale", 1.0)
-        global_bounds = compute_global_track_bounds(track_pool, track_scale)
-
-        print(f"[Multi-map] Global bounds: curvature=+/-{global_bounds['track_max_curv']:.4f}, "
-              f"width=[{global_bounds['track_min_width']:.4f}, {global_bounds['track_max_width']:.4f}]")
-        print(f"[Multi-map] Per-track curvatures: {global_bounds['_per_track_curvatures']}")
-
-        # Create environments with different maps but shared global bounds
+        # Create environments with different maps
+        # Global normalization bounds are hard-coded in utils.py
         env_fns = []
         for i in range(n_envs):
             # Cycle through track pool
             map_name = track_pool[i % len(track_pool)]
-            # Create per-env config with specific map and global bounds
             env_config = config.copy()
             env_config["map"] = map_name
-            env_config["track_max_curv"] = global_bounds["track_max_curv"]
-            env_config["track_min_width"] = global_bounds["track_min_width"]
-            env_config["track_max_width"] = global_bounds["track_max_width"]
             env_fns.append(make_env(seed=seed, rank=i, config=env_config))
 
         env = SubprocVecEnv(env_fns)
@@ -222,36 +268,19 @@ def make_subprocvecenv(
         distribution = Counter(track_pool[i % len(track_pool)] for i in range(n_envs))
         print(f"[Multi-map] Track distribution: {dict(distribution)}")
 
-        return env, global_bounds  # Return bounds for eval env
+        return env
     else:
         # Original single-map behavior
         env = SubprocVecEnv([make_env(seed=seed, rank=i, config=config) for i in range(n_envs)])
         print(f"Successfully created {n_envs} parallel environments as SubProcVecEnv with seed {seed}")
-        return env, None  # No global bounds for single-map
+        return env
 ```
 
-**Why**:
-- Helper function `compute_global_track_bounds` is testable in isolation
-- Fixed missing `min_widths = []` initialization
-- Removed emojis for terminal compatibility
-- Returns `global_bounds` dict so eval env can use the same normalization
-- Added return type hint
-- Computes global bounds ONCE (not 32x per environment)
-- Uses `track_scale` from config for consistent track scaling
-- Validates track names early with helpful error messages
-
-**Breaking change note**:
-The return type changes from `SubprocVecEnv` to `tuple[SubprocVecEnv, dict | None]`.
-Existing callers must update:
-```python
-# Before:
-env = make_subprocvecenv(seed, config, n_envs)
-
-# After:
-env, _ = make_subprocvecenv(seed, config, n_envs)
-# Or with track_pool:
-env, global_bounds = make_subprocvecenv(seed, config, n_envs, track_pool=track_pool)
-```
+**Why simplified**:
+- No bounds computation at runtime - uses hard-coded constants
+- No tuple return - just returns the environment
+- No breaking change to callers
+- `compute_global_track_bounds()` kept as offline utility only
 
 ---
 
@@ -307,7 +336,7 @@ def get_drift_train_config() -> dict:
 #### File 4: `train/ppo_race.py`
 **Location**: Line ~73 (where `make_subprocvecenv` is called)
 
-**Change**: Pass `TRACK_POOL` constant to environment creation and pass global bounds to eval env.
+**Change**: Pass `TRACK_POOL` constant to environment creation.
 
 ```python
 from train.config.env_config import (
@@ -319,88 +348,48 @@ def train_ppo_race():
     TRAIN_CONFIG = get_drift_train_config()
 
     # Create vectorized environment with optional multi-map support
-    # Returns global_bounds dict when track_pool is used, None otherwise
-    env, global_bounds = make_subprocvecenv(SEED, TRAIN_CONFIG, N_ENVS, track_pool=TRACK_POOL)
+    env = make_subprocvecenv(SEED, TRAIN_CONFIG, N_ENVS, track_pool=TRACK_POOL)
 
-    # Create eval env with same normalization bounds as training envs
-    eval_env = make_eval_env(EVAL_SEED, TRAIN_CONFIG, global_bounds=global_bounds)
+    # Create eval env (uses same hard-coded global bounds automatically)
+    eval_env = make_eval_env(EVAL_SEED, TRAIN_CONFIG)
 
     # ... rest of training code unchanged ...
 ```
 
 **Why**:
-- Captures `global_bounds` returned by `make_subprocvecenv`
-- Passes bounds to eval env to ensure consistent observation normalization
-- When `track_pool=None`, `global_bounds=None` preserves original single-map behavior
+- Simply passes track_pool for map distribution
+- No bounds capture needed - hard-coded constants handle normalization
+- Eval env automatically uses same constants as training envs
 
 ---
 
-#### File 4b: `train/training_utils.py` - Update `make_eval_env`
-**Location**: Lines 145-152 (function `make_eval_env`)
+#### File 4b: `train/training_utils.py` - `make_eval_env` (NO CHANGES NEEDED)
 
-**Change**: Add `global_bounds` parameter to apply same normalization as training.
-
-```python
-def make_eval_env(seed: int, config: dict, global_bounds: dict | None = None):
-    """
-    Create a single evaluation environment for EvalCallback.
-
-    Args:
-        seed: Random seed for evaluation
-        config: Gym env config
-        global_bounds: Optional global normalization bounds from multi-map training.
-                      If provided, these bounds are injected into config for consistent
-                      normalization between training and evaluation.
-    """
-    eval_config = config.copy()
-
-    # Apply global bounds if provided (multi-map training)
-    if global_bounds is not None:
-        eval_config["track_max_curv"] = global_bounds["track_max_curv"]
-        eval_config["track_min_width"] = global_bounds["track_min_width"]
-        eval_config["track_max_width"] = global_bounds["track_max_width"]
-        print(f"[Eval env] Using global normalization bounds from multi-map training")
-
-    env = gym.make(get_env_id(), config=eval_config)
-    env = Monitor(env)
-    env.reset(seed=seed)
-    return env
-```
-
-**Why**:
-- Ensures eval env uses identical normalization bounds as training envs
-- Without this, observations would have different meanings during eval vs training
-- Backward compatible: `global_bounds=None` preserves original behavior
+The existing `make_eval_env` function requires no changes. Both training and eval environments automatically use the same hard-coded global bounds from `utils.py`.
 
 ---
 
 #### File 5: `f1tenth_gym/envs/utils.py`
-**Location**: Before `calculate_norm_bounds` function
+**Location**: Near top of file, after imports
 
-**Change**: Add helper function to get track bounds from config or compute from track.
+**Change**: Add hard-coded global track bounds constants.
 
-**Add helper function**:
+**Add constants**:
 ```python
-def _get_track_width_bounds(env, track) -> tuple[float, float]:
-    """Get track width bounds from global config or compute from track."""
-    global_min = env.config.get("track_min_width")
-    global_max = env.config.get("track_max_width")
-    if global_min is not None and global_max is not None:
-        return (global_min, global_max)
-    return get_min_max_track_width(track)
-
-
-def _get_track_curvature_bounds(env, track) -> tuple[float, float]:
-    """Get track curvature bounds from global config or compute from track."""
-    global_max = env.config.get("track_max_curv")
-    if global_max is not None:
-        return (-global_max, global_max)
-    return get_min_max_curvature(track)
+# Global track bounds for observation normalization
+# Pre-computed across all available tracks (Austin, Catalunya, Drift, Drift2,
+# Drift_large, IMS, Monza, MoscowRaceway, Spielberg, Spielberg_blank)
+#
+# IMPORTANT: If you add a new track with geometry outside these bounds,
+# run compute_global_track_bounds() from train/training_utils.py and update these values.
+GLOBAL_MAX_CURVATURE = 2.45  # max abs curvature across all tracks (from Drift)
+GLOBAL_MIN_WIDTH = 0.80  # min track width across all tracks (from Drift)
+GLOBAL_MAX_WIDTH = 2.20  # max track width across all tracks (most racing tracks)
 ```
 
 **Location**: Lines 188-201 (track-dependent bounds calculation)
 
-**Change**: Use helper functions for cleaner code.
+**Change**: Use hard-coded constants instead of per-track computation.
 
 **Find these lines**:
 ```python
@@ -423,9 +412,9 @@ if "lookahead_curvatures" in features_set:
 
 **Replace with**:
 ```python
-# Frenet lateral distance and track widths
+# Frenet lateral distance and track widths (use global bounds for cross-track consistency)
 if "frenet_n" in features_set or "lookahead_widths" in features_set:
-    min_width, max_width = _get_track_width_bounds(env, track)
+    min_width, max_width = GLOBAL_MIN_WIDTH, GLOBAL_MAX_WIDTH
 
     if "frenet_n" in features_set:
         half_max_width = 0.5 * max_width
@@ -434,71 +423,136 @@ if "frenet_n" in features_set or "lookahead_widths" in features_set:
     if "lookahead_widths" in features_set:
         bounds["lookahead_widths"] = (min_width, max_width)
 
-# Lookahead curvatures
+# Lookahead curvatures (use global bounds for cross-track consistency)
 if "lookahead_curvatures" in features_set:
-    min_curv, max_curv = _get_track_curvature_bounds(env, track)
-    bounds["lookahead_curvatures"] = (min_curv, max_curv)
+    bounds["lookahead_curvatures"] = (-GLOBAL_MAX_CURVATURE, GLOBAL_MAX_CURVATURE)
 ```
 
 **Why**:
-- Helper functions encapsulate the "global or local bounds" logic
-- Main function stays clean and readable
-- Logic change is minimal (just swap function calls)
-- Backward compatible: Falls back to track-computed bounds if config not provided
+- Hard-coded constants are simple and consistent
+- No helper functions or config lookups needed
+- All environments automatically use same normalization
+- Easy to update if new tracks are added
 
 ---
 
-#### File 6: `f1tenth_gym/envs/f110_env.py`
-**Location**: In `__init__` method, after track loading (around line 189-200)
+#### File 6: `f1tenth_gym/envs/f110_env.py` (NO CHANGES NEEDED)
 
-**Change**: Add validation that all three global bounds must be provided together, then log when using global bounds.
+With hard-coded constants in `utils.py`, no validation or logging is needed in `f110_env.py`. All environments automatically use the same global bounds.
 
-**Add these lines after track is loaded**:
+---
+
+#### File 7: `maps/extract_global_track_norm_bounds.py` (NEW FILE)
+**Location**: Create new file in `maps/` directory
+
+**Change**: Add helper script to extract bounds from all available tracks.
+
 ```python
-# Validate global normalization bounds (multi-map training)
-# If any bound is provided, all three must be provided for consistency
-track_bound_keys = ["track_max_curv", "track_min_width", "track_max_width"]
-provided_bounds = [key for key in track_bound_keys if self.config.get(key) is not None]
+#!/usr/bin/env python3
+"""
+Extract global track normalization bounds across all available maps.
 
-if provided_bounds and len(provided_bounds) != 3:
-    missing_bounds = set(track_bound_keys) - set(provided_bounds)
-    raise ValueError(
-        f"Incomplete global track bounds configuration. "
-        f"When using multi-map training, all three bounds must be provided. "
-        f"Provided: {provided_bounds}, Missing: {list(missing_bounds)}"
-    )
+This script scans the maps/ directory for all track folders and computes
+global normalization bounds for observation normalization.
 
-# Log if using global normalization bounds
-if len(provided_bounds) == 3:
-    print(f"[Global bounds] curvature=+/-{self.config['track_max_curv']:.4f}, "
-          f"width=[{self.config['track_min_width']:.4f}, {self.config['track_max_width']:.4f}]")
+Usage:
+    python maps/extract_global_track_norm_bounds.py
+
+After running, update the constants in f1tenth_gym/envs/utils.py:
+    GLOBAL_MAX_CURVATURE
+    GLOBAL_MIN_WIDTH
+    GLOBAL_MAX_WIDTH
+"""
+
+import sys
+from pathlib import Path
+
+# Add parent directory to path to import training_utils
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from train.training_utils import compute_global_track_bounds
+
+
+def get_all_track_names() -> list[str]:
+    """Extract all track names from subdirectories in maps/ folder."""
+    maps_dir = Path(__file__).parent
+    track_names = []
+
+    for subdir in maps_dir.iterdir():
+        if subdir.is_dir() and not subdir.name.startswith('.'):
+            track_names.append(subdir.name)
+
+    return sorted(track_names)
+
+
+if __name__ == "__main__":
+    print("Scanning maps/ directory for available tracks...")
+    track_names = get_all_track_names()
+    print(f"Found {len(track_names)} tracks: {', '.join(track_names)}\n")
+
+    # Compute global bounds across all tracks
+    bounds = compute_global_track_bounds(track_names, track_scale=1.0)
+
+    print("\nDone! Copy the values above to f1tenth_gym/envs/utils.py")
 ```
 
 **Why**:
-- Validates all-or-none constraint: prevents partial configuration that would cause inconsistent normalization
-- Fails fast with clear error message if misconfigured
-- Removed emojis for terminal compatibility
-- Logs configuration for debugging
+- Automates discovery of all available tracks
+- Makes it easy to regenerate bounds when adding new custom maps
+- Provides clear instructions on where to update constants
+
+---
+
+#### File 8: `maps/README.md` (UPDATE)
+**Location**: Existing file in `maps/` directory
+
+**Change**: Add section documenting the bounds regeneration process.
+
+Add this section to the README:
+
+```markdown
+## Adding Custom Maps
+
+When adding a new custom map to this directory:
+
+1. Create a new subdirectory with your map name (e.g., `maps/MyCustomTrack/`)
+2. Add required map files (see existing maps for structure)
+3. **If your track has extreme geometry** (very tight turns or unusual width):
+   - Run: `python maps/extract_global_track_norm_bounds.py`
+   - Update the constants in `f1tenth_gym/envs/utils.py`:
+     - `GLOBAL_MAX_CURVATURE`
+     - `GLOBAL_MIN_WIDTH`
+     - `GLOBAL_MAX_WIDTH`
+   - Note: This will change observation normalization, requiring model retraining
+
+The normalization bounds ensure consistent observation meanings across all tracks
+for multi-map training and policy generalization.
+```
+
+**Why**:
+- Documents the workflow for adding custom maps
+- Warns about when bounds regeneration is necessary
+- Explains the impact on trained models
 
 ---
 
 ### Summary of Changes
-- **6 files modified**:
-  1. `train/training_utils.py` - Add `compute_global_track_bounds()` helper, modify `make_subprocvecenv()` to return bounds, update `make_eval_env()` to accept bounds
-  2. `train/config/gym_config.yaml` - Add track_pool config parameter
-  3. `train/config/env_config.py` - Load and export track_pool constant
-  4. `train/ppo_race.py` - Capture global_bounds and pass to eval env
-  5. `f1tenth_gym/envs/utils.py` - Use global bounds (`track_max_curv`, `track_min_width`, `track_max_width`) when provided
-  6. `f1tenth_gym/envs/f110_env.py` - Validate all-or-none bounds constraint, log when using global bounds
-- **~85 lines of code added** (including helper function, validation, bounds computation, and comments)
-- **Key improvements**:
-  - Helper function `compute_global_track_bounds()` is testable in isolation
-  - Eval env uses same normalization as training (critical for correct evaluation)
-  - All-or-none validation prevents partial/invalid configuration
-  - No emojis in logs for terminal compatibility
-- **Key efficiency**: Global bounds computed once (not 32× per environment)
-- **Respects track_scale**: Uses config's `scale` parameter when loading tracks
-- **Backward compatible**: Setting `track_pool: null` preserves original single-map behavior with per-track normalization
+- **5 files modified, 2 files created** (simplified from original 6 modified):
+  1. `train/training_utils.py` - Modify `make_subprocvecenv()` to accept `track_pool` and distribute maps. Modify `compute_global_track_bounds()` to print table.
+  2. `train/config/gym_config.yaml` - Add `track_pool` config parameter
+  3. `train/config/env_config.py` - Load and export `TRACK_POOL` constant
+  4. `train/ppo_race.py` - Pass `TRACK_POOL` to `make_subprocvecenv()`
+  5. `f1tenth_gym/envs/utils.py` - Add hard-coded global bounds constants, use them in `calculate_norm_bounds()`
+  6. `maps/extract_global_track_norm_bounds.py` - NEW: Helper script to regenerate bounds
+  7. `maps/README.md` - UPDATE: Document bounds regeneration workflow
+- **~60 lines of code added** (including helper script and documentation)
+- **Key simplifications**:
+  - No runtime bounds computation - hard-coded constants work for all tracks
+  - No tuple return from `make_subprocvecenv()` - no breaking change
+  - No `global_bounds` parameter in `make_eval_env()` - not needed
+  - No validation logic in `f110_env.py` - constants are always consistent
+- **Developer experience**: Helper script automates bounds regeneration when adding custom tracks
+- **Backward compatible**: Setting `track_pool: null` preserves original single-map behavior (now with global normalization)
 
 ---
 
@@ -560,14 +614,20 @@ track_pool:
 
 ### Files Modified
 - `train/training_utils.py`:
-  - Add `compute_global_track_bounds()` helper function
-  - Modify `make_subprocvecenv()` to return `(env, global_bounds)` tuple
-  - Modify `make_eval_env()` to accept `global_bounds` parameter
-- `train/config/gym_config.yaml` - Add track_pool parameter
-- `train/config/env_config.py` (lines ~38, ~113) - Load and export TRACK_POOL constant
-- `train/ppo_race.py` (line ~73) - Capture global_bounds and pass to eval env
-- `f1tenth_gym/envs/utils.py` (lines ~188-201) - Use `track_max_curv`, `track_min_width`, `track_max_width` when provided
-- `f1tenth_gym/envs/f110_env.py` (line ~189-200) - Validate all-or-none bounds, log global bounds usage
+  - Modify `compute_global_track_bounds()` to print formatted table
+  - Modify `make_subprocvecenv()` to accept `track_pool` parameter
+- `train/config/gym_config.yaml` - Add `track_pool` parameter
+- `train/config/env_config.py` - Load and export `TRACK_POOL` constant
+- `train/ppo_race.py` - Pass `TRACK_POOL` to `make_subprocvecenv()`
+- `f1tenth_gym/envs/utils.py` - Add hard-coded global bounds constants
+- `maps/README.md` - Document bounds regeneration workflow
+
+### Files Created
+- `maps/extract_global_track_norm_bounds.py` - Helper script to regenerate bounds from all tracks
+
+### Files NOT Modified (simplified from original plan)
+- `f1tenth_gym/envs/f110_env.py` - No changes needed with hard-coded constants
+- `train/training_utils.py` (`make_eval_env`) - No changes needed
 
 ### Files Referenced (Context)
 - `f1tenth_gym/envs/track/track.py` (lines 138-205) - `Track.from_track_name()`
@@ -594,11 +654,13 @@ print(TRACK_POOL)  # Should print ["Drift", "Drift2", "Drift_large"] or None
 
 ---
 
-### [X] Task 2: Add Global Bounds Computation Helper
+### [X] Task 2: Add Global Bounds Computation Helper (UTILITY ONLY)
 **Files**: `train/training_utils.py`
 
 **Changes**:
-- Add `compute_global_track_bounds(track_pool, track_scale)` function
+- Add `compute_global_track_bounds(track_pool, track_scale)` function as offline utility
+
+**Note**: This is kept for regenerating hard-coded constants when new tracks are added, NOT called at runtime.
 
 **Validation**:
 ```python
@@ -609,37 +671,38 @@ print(bounds)  # Should show track_max_curv, track_min_width, track_max_width
 
 ---
 
-### [X] Task 3: Add Global Bounds Usage in Environment
-**Files**: `f1tenth_gym/envs/utils.py`, `f1tenth_gym/envs/f110_env.py`
+### [ ] Task 3: Add Hard-Coded Global Bounds Constants (REVISED)
+**Files**: `f1tenth_gym/envs/utils.py`
 
 **Changes**:
-- Add `_get_track_width_bounds()` and `_get_track_curvature_bounds()` helpers in `utils.py`
-- Update `calculate_norm_bounds()` to use helpers
-- Add bounds validation and logging in `f110_env.py`
+- Add hard-coded constants: `GLOBAL_MAX_CURVATURE`, `GLOBAL_MIN_WIDTH`, `GLOBAL_MAX_WIDTH`
+- Update `calculate_norm_bounds()` to use these constants instead of per-track computation
+- Remove any helper functions that were added for config-based bounds lookup
 
 **Validation**:
 ```python
 import gymnasium as gym
-config = {
-    "map": "Drift",
-    "track_max_curv": 1.5,
-    "track_min_width": 2.0,
-    "track_max_width": 4.0,
-    # ... other required config ...
-}
+from train.config.env_config import get_drift_train_config
+config = get_drift_train_config()
+config["map"] = "Drift"
 env = gym.make("f1tenth_gym:f1tenth-v0", config=config)
-# Should log: "[Global bounds] curvature=+/-1.5000, width=[2.0000, 4.0000]"
+# Normalization should use global bounds (no special config needed)
+env.close()
+
+# Test on different track - should use same bounds
+config["map"] = "Austin"
+env2 = gym.make("f1tenth_gym:f1tenth-v0", config=config)
+env2.close()
 ```
 
 ---
 
-### [ ] Task 4: Update `make_subprocvecenv()` for Multi-Map
+### [ ] Task 4: Update `make_subprocvecenv()` for Multi-Map (SIMPLIFIED)
 **Files**: `train/training_utils.py`
 
 **Changes**:
 - Modify `make_subprocvecenv()` to accept `track_pool` parameter
-- Return `(env, global_bounds)` tuple instead of just `env`
-- Compute global bounds and distribute maps across envs
+- Distribute maps across environments (NO bounds computation or tuple return)
 
 **Validation**:
 ```python
@@ -647,36 +710,47 @@ from train.training_utils import make_subprocvecenv
 from train.config.env_config import get_drift_train_config
 
 config = get_drift_train_config()
-env, global_bounds = make_subprocvecenv(seed=42, config=config, n_envs=6, track_pool=["Drift", "Drift2"])
-print(f"Global bounds: {global_bounds}")
+env = make_subprocvecenv(seed=42, config=config, n_envs=6, track_pool=["Drift", "Drift2"])
 # Should show track distribution: {"Drift": 3, "Drift2": 3}
 env.close()
 ```
 
 ---
 
-### [ ] Task 5: Update `make_eval_env()` and Training Script
-**Files**: `train/training_utils.py`, `train/ppo_race.py`
+### [ ] Task 5: Update Training Script
+**Files**: `train/ppo_race.py`
 
 **Changes**:
-- Add `global_bounds` parameter to `make_eval_env()`
-- Update `ppo_race.py` to capture bounds and pass to eval env
+- Import `TRACK_POOL` from config
+- Pass `track_pool=TRACK_POOL` to `make_subprocvecenv()`
+- No changes to `make_eval_env()` - uses same hard-coded bounds automatically
 
 **Validation**:
 - Run `python train/ppo_race.py` with `track_pool` configured
-- Verify logs show multi-map distribution and eval env using global bounds
+- Verify logs show multi-map distribution
 - Verify training starts without errors
 
 ---
-### [ ] Task 6: Add documentation in `README.md`
-- Document new feature config use
+
+### [ ] Task 6: Add helper script and documentation
+**Files**: `maps/extract_global_track_norm_bounds.py` (new), `maps/README.md` (update)
+
+**Changes**:
+- Create `extract_global_track_norm_bounds.py` script to automate bounds extraction
+- Update `maps/README.md` to document bounds regeneration workflow
+
+**Validation**:
+```bash
+python maps/extract_global_track_norm_bounds.py
+# Should print table of all track bounds and suggested constants
+```
 
 ---
 
 ### Validation Order
-1. **Task 1** → Config loads correctly
-2. **Task 2** → Bounds computation works in isolation
-3. **Task 3** → Single env respects injected global bounds
+1. **Task 1** → Config loads correctly (DONE)
+2. **Task 2** → Bounds computation utility works (DONE)
+3. **Task 3** → Hard-coded constants in utils.py work for all tracks
 4. **Task 4** → Multi-env creation distributes maps correctly
 5. **Task 5** → Full integration works end-to-end
 6. **Task 6** → Documentation

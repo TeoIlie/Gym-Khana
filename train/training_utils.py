@@ -42,9 +42,20 @@ def make_subprocvecenv(seed: int, config: dict, n_envs: int):
 def compute_global_track_bounds(track_pool: list[str], track_scale: float = 1.0) -> dict:
     """
     Compute global normalization bounds across all tracks in a pool.
+
+    This is a utility for generating hard-coded constants in utils.py
+    when new tracks are added. It is not called at runtime.
+
+    Usage:
+        python maps/extract_global_track_norm_bounds.py
+        # Or directly:
+        from train.training_utils import compute_global_track_bounds
+        bounds = compute_global_track_bounds(["Drift", "Drift2", "Austin", ...])
+
     Args:
         track_pool: List of track names to compute bounds across
-        track_scale: Scale factor for track loading (no scaling by default)
+        track_scale: Scale factor for track loading (default 1.0)
+
     Returns:
         Dictionary with keys: track_max_curv, track_min_width, track_max_width
     """
@@ -52,6 +63,10 @@ def compute_global_track_bounds(track_pool: list[str], track_scale: float = 1.0)
     max_curvatures = []
     min_widths = []
     max_widths = []
+
+    print_header("Track bounds")
+    print(f"{'Track':<20} {'Max Curv':>12} {'Min Width':>12} {'Max Width':>12}")
+    print("-" * 70)
 
     for track_name in track_pool:
         try:
@@ -67,10 +82,28 @@ def compute_global_track_bounds(track_pool: list[str], track_scale: float = 1.0)
         min_widths.append(min_width)
         max_widths.append(max_width)
 
+        # Print per-track values
+        print(f"{track_name:<20} {max_curv:>12.4f} {min_width:>12.4f} {max_width:>12.4f}")
+
+    # Compute global bounds
+    global_max_curv = max(max_curvatures)
+    global_min_width = min(min_widths)
+    global_max_width = max(max_widths)
+
+    # Print global bounds
+    print("=" * 70)
+    print(f"{'GLOBAL':<20} {global_max_curv:>12.4f} {global_min_width:>12.4f} {global_max_width:>12.4f}")
+    print()
+    print("Update these values in f1tenth_gym/envs/utils.py:")
+    print(f"  GLOBAL_MAX_CURVATURE = {global_max_curv:.4f}")
+    print(f"  GLOBAL_MIN_WIDTH = {global_min_width:.4f}")
+    print(f"  GLOBAL_MAX_WIDTH = {global_max_width:.4f}")
+    print()
+
     return {
-        "track_max_curv": max(max_curvatures),
-        "track_min_width": min(min_widths),
-        "track_max_width": max(max_widths),
+        "track_max_curv": global_max_curv,
+        "track_min_width": global_min_width,
+        "track_max_width": global_max_width,
     }
 
 
