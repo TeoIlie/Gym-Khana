@@ -16,7 +16,13 @@ import pytest
 
 from f1tenth_gym.envs.action import AcclAction, SpeedAction, SteeringAngleAction, SteeringSpeedAction
 from f1tenth_gym.envs.f110_env import F110Env
-from f1tenth_gym.envs.utils import calculate_norm_bounds, normalize_feature
+from f1tenth_gym.envs.utils import (
+    calculate_norm_bounds,
+    normalize_feature,
+    GLOBAL_MAX_CURVATURE,
+    GLOBAL_MIN_WIDTH,
+    GLOBAL_MAX_WIDTH,
+)
 
 
 class TestNormalizationBounds:
@@ -444,10 +450,27 @@ class TestNormalizedObservation:
 
         env.close()
 
-    def test_track_dependent_bounds_vary(self):
-        """Ensure lookahead bounds adapt to different track geometries."""
-        # Create environment with first track (Spielberg)
-        env1 = gym.make(
+    def test_global_normalization_bounds_consistent_across_tracks(self):
+        """Test that global normalization bounds are identical across different tracks.
+
+        This test verifies the multi-map training feature where track-dependent features
+        (lookahead_curvatures, lookahead_widths, frenet_n) use hard-coded global bounds
+        instead of per-track computation for consistent observation meanings.
+        """
+        # Create environments with different tracks
+        env_drift = gym.make(
+            "f1tenth_gym:f1tenth-v0",
+            config={
+                "map": "Drift",
+                "num_agents": 1,
+                "model": "std",
+                "observation_config": {"type": "drift"},
+                "params": F110Env.f1tenth_std_vehicle_params(),
+                "normalize_obs": True,
+            },
+        )
+
+        env_spielberg = gym.make(
             "f1tenth_gym:f1tenth-v0",
             config={
                 "map": "Spielberg",
@@ -459,11 +482,10 @@ class TestNormalizedObservation:
             },
         )
 
-        # Create environment with second track (Catalunya - different layout)
-        env2 = gym.make(
+        env_austin = gym.make(
             "f1tenth_gym:f1tenth-v0",
             config={
-                "map": "Catalunya",  # Different track with different geometry
+                "map": "Austin",
                 "num_agents": 1,
                 "model": "std",
                 "observation_config": {"type": "drift"},
@@ -472,37 +494,97 @@ class TestNormalizedObservation:
             },
         )
 
-        features = ["lookahead_curvatures", "lookahead_widths", "linear_vel_x", "delta", "prev_accl_cmd"]
+        features = ["lookahead_curvatures", "lookahead_widths", "frenet_n", "linear_vel_x", "delta"]
 
-        # Get bounds from both environments
-        bounds1 = calculate_norm_bounds(env1.unwrapped, features)
-        bounds2 = calculate_norm_bounds(env2.unwrapped, features)
+        # Get bounds from all three environments
+        bounds_drift = calculate_norm_bounds(env_drift.unwrapped, features)
+        bounds_spielberg = calculate_norm_bounds(env_spielberg.unwrapped, features)
+        bounds_austin = calculate_norm_bounds(env_austin.unwrapped, features)
 
-        # Track-dependent bounds should differ (curvatures or widths)
-        # Use tuple comparison to handle numpy arrays in bounds
-        curvature_bounds_differ = (
-            bounds1["lookahead_curvatures"][0] != bounds2["lookahead_curvatures"][0]
-            or bounds1["lookahead_curvatures"][1] != bounds2["lookahead_curvatures"][1]
-        )
-        width_bounds_differ = (
-            bounds1["lookahead_widths"][0] != bounds2["lookahead_widths"][0]
-            or bounds1["lookahead_widths"][1] != bounds2["lookahead_widths"][1]
+        # Track-dependent bounds should now be IDENTICAL (using global constants)
+        assert bounds_drift["lookahead_curvatures"] == bounds_spielberg["lookahead_curvatures"], (
+            "Lookahead curvature bounds should be identical across tracks "
+            f"(Drift: {bounds_drift['lookahead_curvatures']}, "
+            f"Spielberg: {bounds_spielberg['lookahead_curvatures']})"
         )
 
-        # At least one of these should differ for different tracks
-        assert curvature_bounds_differ or width_bounds_differ, (
-            "Track-dependent bounds should vary across different tracks. "
-            f"Curvatures: {bounds1['lookahead_curvatures']} vs {bounds2['lookahead_curvatures']}, "
-            f"Widths: {bounds1['lookahead_widths']} vs {bounds2['lookahead_widths']}"
+        assert bounds_drift["lookahead_curvatures"] == bounds_austin["lookahead_curvatures"], (
+            "Lookahead curvature bounds should be identical across tracks "
+            f"(Drift: {bounds_drift['lookahead_curvatures']}, "
+            f"Austin: {bounds_austin['lookahead_curvatures']})"
         )
 
-        # Vehicle-dependent bounds should be identical (same vehicle params)
-        assert bounds1["linear_vel_x"] == bounds2["linear_vel_x"], "Vehicle velocity bounds should be identical"
-        assert bounds1["delta"] == bounds2["delta"], "Steering angle bounds should be identical"
-        assert bounds1["prev_accl_cmd"] == bounds2["prev_accl_cmd"], "Acceleration bounds should be identical"
+        assert bounds_drift["lookahead_widths"] == bounds_spielberg["lookahead_widths"], (
+            "Lookahead width bounds should be identical across tracks "
+            f"(Drift: {bounds_drift['lookahead_widths']}, "
+            f"Spielberg: {bounds_spielberg['lookahead_widths']})"
+        )
 
-        env1.close()
-        env2.close()
+        assert bounds_drift["lookahead_widths"] == bounds_austin["lookahead_widths"], (
+            "Lookahead width bounds should be identical across tracks "
+            f"(Drift: {bounds_drift['lookahead_widths']}, "
+            f"Austin: {bounds_austin['lookahead_widths']})"
+        )
+
+        assert bounds_drift["frenet_n"] == bounds_spielberg["frenet_n"], (
+            "Frenet lateral offset bounds should be identical across tracks "
+            f"(Drift: {bounds_drift['frenet_n']}, "
+            f"Spielberg: {bounds_spielberg['frenet_n']})"
+        )
+
+        # Vehicle-dependent bounds should also be identical (same vehicle params)
+        assert (
+            bounds_drift["linear_vel_x"] == bounds_spielberg["linear_vel_x"]
+        ), "Vehicle velocity bounds should be identical"
+        assert bounds_drift["delta"] == bounds_spielberg["delta"], "Steering angle bounds should be identical"
+
+        env_drift.close()
+        env_spielberg.close()
+        env_austin.close()
+
+    def test_global_constants_used_for_track_features(self):
+        """Test that GLOBAL_* constants are actually being used for normalization.
+
+        Verifies that lookahead_curvatures and lookahead_widths use the hard-coded
+        global constants GLOBAL_MAX_CURVATURE, GLOBAL_MIN_WIDTH, GLOBAL_MAX_WIDTH
+        instead of per-track computation.
+        """
+
+        # Create environment with any track
+        env = gym.make(
+            "f1tenth_gym:f1tenth-v0",
+            config={
+                "map": "Drift",
+                "num_agents": 1,
+                "model": "std",
+                "observation_config": {"type": "drift"},
+                "params": F110Env.f1tenth_std_vehicle_params(),
+                "normalize_obs": True,
+            },
+        )
+
+        features = ["lookahead_curvatures", "lookahead_widths", "frenet_n"]
+        bounds = calculate_norm_bounds(env.unwrapped, features)
+
+        # Verify lookahead_curvatures uses global bounds
+        expected_curv_bounds = (-GLOBAL_MAX_CURVATURE, GLOBAL_MAX_CURVATURE)
+        assert bounds["lookahead_curvatures"] == expected_curv_bounds, (
+            f"Expected lookahead_curvatures bounds {expected_curv_bounds}, " f"got {bounds['lookahead_curvatures']}"
+        )
+
+        # Verify lookahead_widths uses global bounds
+        expected_width_bounds = (GLOBAL_MIN_WIDTH, GLOBAL_MAX_WIDTH)
+        assert bounds["lookahead_widths"] == expected_width_bounds, (
+            f"Expected lookahead_widths bounds {expected_width_bounds}, " f"got {bounds['lookahead_widths']}"
+        )
+
+        # Verify frenet_n uses global bounds (half of max width)
+        expected_frenet_n_bounds = (-0.5 * GLOBAL_MAX_WIDTH, 0.5 * GLOBAL_MAX_WIDTH)
+        assert bounds["frenet_n"] == expected_frenet_n_bounds, (
+            f"Expected frenet_n bounds {expected_frenet_n_bounds}, " f"got {bounds['frenet_n']}"
+        )
+
+        env.close()
 
     def test_normalized_observation_preserves_relative_ordering(self):
         """Verify normalization preserves relative relationships between features."""

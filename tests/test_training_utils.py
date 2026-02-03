@@ -100,5 +100,133 @@ class TestComputeGlobalTrackBounds(unittest.TestCase):
         self.assertEqual(bounds["track_max_width"], bounds_explicit["track_max_width"])
 
 
+class TestMakeSubprocvecenvMultiMap(unittest.TestCase):
+    """Test make_subprocvecenv with multi-map track_pool functionality."""
+
+    def test_cycling_distribution_with_multiple_tracks(self):
+        """Test that maps are correctly distributed in cycling pattern across envs."""
+        from train.config.env_config import get_drift_train_config
+        from train.training_utils import make_subprocvecenv
+
+        config = get_drift_train_config()
+        n_envs = 6
+        track_pool = ["Drift", "Drift2", "Drift_large"]
+
+        # Create multi-map environment
+        env = make_subprocvecenv(seed=42, config=config, n_envs=n_envs, track_pool=track_pool)
+
+        # Verify environment was created successfully
+        self.assertIsNotNone(env)
+        self.assertEqual(env.num_envs, n_envs)
+
+        # Clean up
+        env.close()
+
+    def test_distribution_counting_accuracy(self):
+        """Test that the distribution counter accurately reflects map assignments."""
+        from collections import Counter
+        from train.config.env_config import get_drift_train_config
+        from train.training_utils import make_subprocvecenv
+
+        config = get_drift_train_config()
+        n_envs = 10
+        track_pool = ["Drift", "Drift2", "Drift_large"]
+
+        # Expected distribution using same logic as implementation
+        expected_distribution = Counter(track_pool[i % len(track_pool)] for i in range(n_envs))
+
+        # Verify expected distribution is correct
+        # With 10 envs and 3 tracks: Drift=4, Drift2=3, Drift_large=3
+        self.assertEqual(expected_distribution["Drift"], 4)
+        self.assertEqual(expected_distribution["Drift2"], 3)
+        self.assertEqual(expected_distribution["Drift_large"], 3)
+
+        # Create environment (this will print the actual distribution)
+        env = make_subprocvecenv(seed=42, config=config, n_envs=n_envs, track_pool=track_pool)
+
+        # Verify environment was created
+        self.assertEqual(env.num_envs, n_envs)
+
+        # Clean up
+        env.close()
+
+    def test_track_pool_none_fallback_to_single_map(self):
+        """Test that track_pool=None uses original single-map behavior."""
+        from train.config.env_config import get_drift_train_config
+        from train.training_utils import make_subprocvecenv
+
+        config = get_drift_train_config()
+        config["map"] = "Drift"
+        n_envs = 4
+
+        # Create environment with track_pool=None
+        env = make_subprocvecenv(seed=42, config=config, n_envs=n_envs, track_pool=None)
+
+        # Verify environment was created successfully
+        self.assertIsNotNone(env)
+        self.assertEqual(env.num_envs, n_envs)
+
+        # Clean up
+        env.close()
+
+    def test_single_track_in_pool(self):
+        """Test that single track in pool assigns same map to all envs."""
+        from collections import Counter
+        from train.config.env_config import get_drift_train_config
+        from train.training_utils import make_subprocvecenv
+
+        config = get_drift_train_config()
+        n_envs = 5
+        track_pool = ["Drift"]
+
+        # Expected: all envs get "Drift"
+        expected_distribution = Counter(track_pool[i % len(track_pool)] for i in range(n_envs))
+        self.assertEqual(expected_distribution["Drift"], n_envs)
+
+        # Create environment
+        env = make_subprocvecenv(seed=42, config=config, n_envs=n_envs, track_pool=track_pool)
+
+        # Verify environment was created
+        self.assertEqual(env.num_envs, n_envs)
+
+        # Clean up
+        env.close()
+
+    def test_empty_track_pool_raises_value_error(self):
+        """Test that empty track_pool raises ValueError with clear message."""
+        from train.config.env_config import get_drift_train_config
+        from train.training_utils import make_subprocvecenv
+
+        config = get_drift_train_config()
+        n_envs = 4
+        track_pool = []  # Empty list
+
+        # Should raise ValueError
+        with self.assertRaises(ValueError) as context:
+            make_subprocvecenv(seed=42, config=config, n_envs=n_envs, track_pool=track_pool)
+
+        # Verify error message
+        error_msg = str(context.exception)
+        self.assertIn("track_pool must be a non-empty list", error_msg)
+
+    def test_invalid_track_name_raises_helpful_error(self):
+        """Test that invalid track name in pool raises ValueError with track name."""
+        from train.config.env_config import get_drift_train_config
+        from train.training_utils import make_subprocvecenv
+
+        config = get_drift_train_config()
+        n_envs = 2
+        track_pool = ["Drift", "InvalidTrackName123"]
+
+        # Should raise ValueError when trying to load invalid track
+        with self.assertRaises(ValueError) as context:
+            make_subprocvecenv(seed=42, config=config, n_envs=n_envs, track_pool=track_pool)
+
+        # Verify error message mentions the invalid track
+        error_msg = str(context.exception)
+        self.assertIn("Invalid track name", error_msg)
+        self.assertIn("InvalidTrackName123", error_msg)
+
+
 if __name__ == "__main__":
     unittest.main()

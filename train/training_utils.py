@@ -41,6 +41,17 @@ def make_subprocvecenv(seed: int, config: dict, n_envs: int, track_pool: list[st
         if not isinstance(track_pool, list) or len(track_pool) == 0:
             raise ValueError("track_pool must be a non-empty list")
 
+        # Validate all track names exist before creating subprocesses
+        # This provides better error messages than subprocess failures
+        for track_name in track_pool:
+            try:
+                Track.from_track_name(track_name)
+            except FileNotFoundError as e:
+                raise ValueError(
+                    f"Invalid track name '{track_name}' in track_pool. "
+                    f"Please check available tracks in the 'maps/' directory."
+                ) from e
+
         # Create environments with different maps
         env_fns = []
         for i in range(n_envs):
