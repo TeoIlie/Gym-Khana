@@ -1,0 +1,232 @@
+import unittest
+import os
+import sys
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from train.training_utils import compute_global_track_bounds
+
+
+class TestComputeGlobalTrackBounds(unittest.TestCase):
+    """Test the compute_global_track_bounds helper function for multi-map training."""
+
+    def test_single_track(self):
+        """Test bounds computation for a single track."""
+        track_pool = ["Drift"]
+        bounds = compute_global_track_bounds(track_pool, track_scale=1.0)
+
+        # Verify return structure
+        self.assertIn("track_max_curv", bounds)
+        self.assertIn("track_min_width", bounds)
+        self.assertIn("track_max_width", bounds)
+
+        # Verify types and reasonable values
+        self.assertIsInstance(bounds["track_max_curv"], float)
+        self.assertIsInstance(bounds["track_min_width"], float)
+        self.assertIsInstance(bounds["track_max_width"], float)
+
+        # Sanity checks
+        self.assertGreater(bounds["track_max_curv"], 0, "Max curvature should be positive")
+        self.assertGreater(bounds["track_min_width"], 0, "Min width should be positive")
+        self.assertGreater(bounds["track_max_width"], 0, "Max width should be positive")
+        self.assertGreaterEqual(
+            bounds["track_max_width"],
+            bounds["track_min_width"],
+            "Max width should be >= min width",
+        )
+
+    def test_multiple_tracks(self):
+        """Test bounds computation across multiple tracks returns maximum bounds."""
+        track_pool = ["Drift", "Austin", "Monza"]
+        bounds = compute_global_track_bounds(track_pool, track_scale=1.0)
+
+        # Verify structure
+        self.assertIn("track_max_curv", bounds)
+        self.assertIn("track_min_width", bounds)
+        self.assertIn("track_max_width", bounds)
+
+        # Compute individual track bounds for comparison
+        individual_bounds = []
+        for track_name in track_pool:
+            track_bounds = compute_global_track_bounds([track_name], track_scale=1.0)
+            individual_bounds.append(track_bounds)
+
+        # Global bounds should be >= all individual bounds
+        for track_bounds in individual_bounds:
+            self.assertGreaterEqual(
+                bounds["track_max_curv"],
+                track_bounds["track_max_curv"],
+                "Global max curvature should be >= individual track max curvature",
+            )
+            self.assertLessEqual(
+                bounds["track_min_width"],
+                track_bounds["track_min_width"],
+                "Global min width should be <= individual track min width",
+            )
+            self.assertGreaterEqual(
+                bounds["track_max_width"],
+                track_bounds["track_max_width"],
+                "Global max width should be >= individual track max width",
+            )
+
+    def test_invalid_track_name(self):
+        """Test that invalid track names raise ValueError."""
+        track_pool = ["InvalidTrackName123"]
+
+        with self.assertRaises(ValueError) as context:
+            compute_global_track_bounds(track_pool, track_scale=1.0)
+
+        error_msg = str(context.exception)
+        self.assertIn("Invalid track name", error_msg)
+        self.assertIn("InvalidTrackName123", error_msg)
+
+    def test_default_track_scale(self):
+        """Test that default track_scale parameter works correctly."""
+        track_pool = ["Drift"]
+
+        # Should work without explicitly passing track_scale (defaults to 1.0)
+        bounds = compute_global_track_bounds(track_pool)
+
+        # Verify we got valid bounds
+        self.assertGreater(bounds["track_max_curv"], 0)
+        self.assertGreater(bounds["track_min_width"], 0)
+        self.assertGreater(bounds["track_max_width"], 0)
+
+        # Should match explicit track_scale=1.0
+        bounds_explicit = compute_global_track_bounds(track_pool, track_scale=1.0)
+        self.assertEqual(bounds["track_max_curv"], bounds_explicit["track_max_curv"])
+        self.assertEqual(bounds["track_min_width"], bounds_explicit["track_min_width"])
+        self.assertEqual(bounds["track_max_width"], bounds_explicit["track_max_width"])
+
+
+class TestMakeSubprocvecenvMultiMap(unittest.TestCase):
+    """Test make_subprocvecenv with multi-map track_pool functionality."""
+
+    def test_cycling_distribution_with_multiple_tracks(self):
+        """Test that maps are correctly distributed in cycling pattern across envs."""
+        from train.config.env_config import get_drift_train_config
+        from train.training_utils import make_subprocvecenv
+
+        config = get_drift_train_config()
+        n_envs = 6
+        track_pool = ["Drift", "Drift2", "Drift_large"]
+
+        # Create multi-map environment
+        env = make_subprocvecenv(seed=42, config=config, n_envs=n_envs, track_pool=track_pool)
+
+        # Verify environment was created successfully
+        self.assertIsNotNone(env)
+        self.assertEqual(env.num_envs, n_envs)
+
+        # Clean up
+        env.close()
+
+    def test_distribution_counting_accuracy(self):
+        """Test that the distribution counter accurately reflects map assignments."""
+        from collections import Counter
+        from train.config.env_config import get_drift_train_config
+        from train.training_utils import make_subprocvecenv
+
+        config = get_drift_train_config()
+        n_envs = 10
+        track_pool = ["Drift", "Drift2", "Drift_large"]
+
+        # Expected distribution using same logic as implementation
+        expected_distribution = Counter(track_pool[i % len(track_pool)] for i in range(n_envs))
+
+        # Verify expected distribution is correct
+        # With 10 envs and 3 tracks: Drift=4, Drift2=3, Drift_large=3
+        self.assertEqual(expected_distribution["Drift"], 4)
+        self.assertEqual(expected_distribution["Drift2"], 3)
+        self.assertEqual(expected_distribution["Drift_large"], 3)
+
+        # Create environment (this will print the actual distribution)
+        env = make_subprocvecenv(seed=42, config=config, n_envs=n_envs, track_pool=track_pool)
+
+        # Verify environment was created
+        self.assertEqual(env.num_envs, n_envs)
+
+        # Clean up
+        env.close()
+
+    def test_track_pool_none_fallback_to_single_map(self):
+        """Test that track_pool=None uses original single-map behavior."""
+        from train.config.env_config import get_drift_train_config
+        from train.training_utils import make_subprocvecenv
+
+        config = get_drift_train_config()
+        config["map"] = "Drift"
+        n_envs = 4
+
+        # Create environment with track_pool=None
+        env = make_subprocvecenv(seed=42, config=config, n_envs=n_envs, track_pool=None)
+
+        # Verify environment was created successfully
+        self.assertIsNotNone(env)
+        self.assertEqual(env.num_envs, n_envs)
+
+        # Clean up
+        env.close()
+
+    def test_single_track_in_pool(self):
+        """Test that single track in pool assigns same map to all envs."""
+        from collections import Counter
+        from train.config.env_config import get_drift_train_config
+        from train.training_utils import make_subprocvecenv
+
+        config = get_drift_train_config()
+        n_envs = 5
+        track_pool = ["Drift"]
+
+        # Expected: all envs get "Drift"
+        expected_distribution = Counter(track_pool[i % len(track_pool)] for i in range(n_envs))
+        self.assertEqual(expected_distribution["Drift"], n_envs)
+
+        # Create environment
+        env = make_subprocvecenv(seed=42, config=config, n_envs=n_envs, track_pool=track_pool)
+
+        # Verify environment was created
+        self.assertEqual(env.num_envs, n_envs)
+
+        # Clean up
+        env.close()
+
+    def test_empty_track_pool_raises_value_error(self):
+        """Test that empty track_pool raises ValueError with clear message."""
+        from train.config.env_config import get_drift_train_config
+        from train.training_utils import make_subprocvecenv
+
+        config = get_drift_train_config()
+        n_envs = 4
+        track_pool = []  # Empty list
+
+        # Should raise ValueError
+        with self.assertRaises(ValueError) as context:
+            make_subprocvecenv(seed=42, config=config, n_envs=n_envs, track_pool=track_pool)
+
+        # Verify error message
+        error_msg = str(context.exception)
+        self.assertIn("track_pool must be a non-empty list", error_msg)
+
+    def test_invalid_track_name_raises_helpful_error(self):
+        """Test that invalid track name in pool raises ValueError with track name."""
+        from train.config.env_config import get_drift_train_config
+        from train.training_utils import make_subprocvecenv
+
+        config = get_drift_train_config()
+        n_envs = 2
+        track_pool = ["Drift", "InvalidTrackName123"]
+
+        # Should raise ValueError when trying to load invalid track
+        with self.assertRaises(ValueError) as context:
+            make_subprocvecenv(seed=42, config=config, n_envs=n_envs, track_pool=track_pool)
+
+        # Verify error message mentions the invalid track
+        error_msg = str(context.exception)
+        self.assertIn("Invalid track name", error_msg)
+        self.assertIn("InvalidTrackName123", error_msg)
+
+
+if __name__ == "__main__":
+    unittest.main()

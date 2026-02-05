@@ -2,13 +2,25 @@
 
 # Environment
 project_name: "f1tenth-ppo-drift"
-map: "Drift_large"
 model: "std"  # Vehicle dynamics model: "std" or "mb" (multi-body)
 timestep: 0.01  # Simulation timestep in seconds
 num_agents: 1
 integrator: "rk4"  # Integration method: "rk4" or "euler"
 predictive_collision: false
 wall_deflection: false
+
+# Map
+map: "Drift_large"
+# Multi-map training (optional)
+# If specified, parallel environments will train on different maps from this list
+# See /train/training_utils.py make_subprocvecenv
+track_pool:
+  - "Drift_large"
+  - "Drift_large"
+  - "Austin"
+  - "Monza"
+# For single-map training, set to null or comment out:
+# track_pool: null
 
 # Action
 action_input:

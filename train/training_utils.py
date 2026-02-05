@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from collections import Counter
 import gymnasium as gym
 import torch.nn as nn
 import yaml
@@ -7,6 +8,8 @@ import wandb
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
+from f1tenth_gym.envs.track import Track
+from f1tenth_gym.envs.track.track_utils import get_min_max_curvature, get_min_max_track_width
 
 from train.config.env_config import (
     ACT_FUNC_NEG_SLOPE,
@@ -18,23 +21,127 @@ from train.config.env_config import (
 )
 
 
-def make_subprocvecenv(seed: int, config: dict, n_envs: int):
+def make_subprocvecenv(seed: int, config: dict, n_envs: int, track_pool: list[str] | None = None) -> SubprocVecEnv:
     """
     Create a SubprocVecEnv parallelized environment.
     Args:
         seed: Seed for reproducibility
         config: Gym env config
         n_envs: How many parallel envs to create
+        track_pool: Optional list of maps to distribute across envs.
+                   If provided, envs will cycle through these maps.
+                   Example: ["Drift", "Drift2", "Drift_large"]
     Returns:
-        SubprocVecEnc parallelized gym env
+        SubprocVecEnv parallelized gym env distributed across track pool (if provided)
     """
-    print(f"Creating {n_envs} parallel environments...")
+    if track_pool is not None:
+        # Multi-map
 
-    env = SubprocVecEnv([make_env(seed=seed, rank=i, config=config) for i in range(n_envs)])
+        # Validate track pool
+        if not isinstance(track_pool, list) or len(track_pool) == 0:
+            raise ValueError("track_pool must be a non-empty list")
 
-    print(f"✅ Successfully created {n_envs} parallel environments as SubProcVecEnv with seed {seed}")
+        # Validate all track names exist before creating subprocesses
+        # This provides better error messages than subprocess failures
+        for track_name in track_pool:
+            try:
+                Track.from_track_name(track_name)
+            except FileNotFoundError as e:
+                raise ValueError(
+                    f"Invalid track name '{track_name}' in track_pool. "
+                    f"Please check available tracks in the 'maps/' directory."
+                ) from e
 
-    return env
+        # Create environments with different maps
+        env_fns = []
+        for i in range(n_envs):
+            # Cycle through track pool
+            map_name = track_pool[i % len(track_pool)]
+            env_config = config.copy()
+            env_config["map"] = map_name
+            env_fns.append(make_env(seed=seed, rank=i, config=env_config))
+
+        env = SubprocVecEnv(env_fns)
+
+        print(f"✅ Successfully created {n_envs} parallel multi-map environments as SubProcVecEnv with seed {seed}")
+
+        distribution = Counter(track_pool[i % len(track_pool)] for i in range(n_envs))
+        print(f"Multi-map Track distribution: {dict(distribution)}")
+
+        return env
+    else:
+        # Single-map
+        env = SubprocVecEnv([make_env(seed=seed, rank=i, config=config) for i in range(n_envs)])
+        print(f"✅ Successfully created {n_envs} parallel single-map environments as SubProcVecEnv with seed {seed}")
+        return env
+
+
+def compute_global_track_bounds(track_pool: list[str], track_scale: float = 1.0) -> dict:
+    """
+    Compute global normalization bounds across all tracks in a pool.
+
+    This is a utility for generating hard-coded constants in utils.py
+    when new tracks are added. It is not called at runtime.
+
+    Usage:
+        python maps/extract_global_track_norm_bounds.py
+        # Or directly:
+        from train.training_utils import compute_global_track_bounds
+        bounds = compute_global_track_bounds(["Drift", "Drift2", "Austin", ...])
+
+    Args:
+        track_pool: List of track names to compute bounds across
+        track_scale: Scale factor for track loading (default 1.0)
+
+    Returns:
+        Dictionary with keys: track_max_curv, track_min_width, track_max_width
+    """
+
+    max_curvatures = []
+    min_widths = []
+    max_widths = []
+
+    print_header("Track bounds")
+    print(f"{'Track':<20} {'Max Curv':>12} {'Min Width':>12} {'Max Width':>12}")
+    print("-" * 70)
+
+    for track_name in track_pool:
+        try:
+            track = Track.from_track_name(track_name, track_scale=track_scale)
+        except FileNotFoundError as e:
+            raise ValueError(f"Invalid track name '{track_name}' in track_pool. ") from e
+
+        # get_min_max_curvature returns symmetric bounds (-max, +max)
+        _, max_curv = get_min_max_curvature(track)
+        max_curvatures.append(max_curv)
+
+        min_width, max_width = get_min_max_track_width(track)
+        min_widths.append(min_width)
+        max_widths.append(max_width)
+
+        # Print per-track values
+        print(f"{track_name:<20} {max_curv:>12.4f} {min_width:>12.4f} {max_width:>12.4f}")
+
+    # Compute global bounds
+    global_max_curv = max(max_curvatures)
+    global_min_width = min(min_widths)
+    global_max_width = max(max_widths)
+
+    # Print global bounds
+    print("=" * 70)
+    print(f"{'GLOBAL':<20} {global_max_curv:>12.4f} {global_min_width:>12.4f} {global_max_width:>12.4f}")
+    print()
+    print("Update these values in f1tenth_gym/envs/utils.py:")
+    print(f"  GLOBAL_MAX_CURVATURE = {global_max_curv:.4f}")
+    print(f"  GLOBAL_MIN_WIDTH = {global_min_width:.4f}")
+    print(f"  GLOBAL_MAX_WIDTH = {global_max_width:.4f}")
+    print()
+
+    return {
+        "track_max_curv": global_max_curv,
+        "track_min_width": global_min_width,
+        "track_max_width": global_max_width,
+    }
 
 
 def make_env(seed: int, rank: int, config: dict):

@@ -36,6 +36,7 @@ with open(_config_path, "r") as f:
 # Gym shared parameters
 PROJECT_NAME = _config["project_name"]
 MAP = _config["map"]
+TRACK_POOL = _config["track_pool"]
 MODEL = _config["model"]
 TIMESTEP = _config["timestep"]
 NUM_AGENTS = _config["num_agents"]
@@ -81,6 +82,7 @@ def get_drift_test_config():
     """
     return {
         "map": MAP,
+        "track_pool": TRACK_POOL,
         "num_agents": NUM_AGENTS,
         "timestep": TIMESTEP,
         "integrator": INTEGRATOR,
@@ -111,6 +113,7 @@ def get_drift_train_config():
     """
     return {
         "map": MAP,
+        "track_pool": TRACK_POOL,
         "num_agents": NUM_AGENTS,
         "timestep": TIMESTEP,
         "integrator": INTEGRATOR,

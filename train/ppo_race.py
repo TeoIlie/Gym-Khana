@@ -34,6 +34,7 @@ from train.config.env_config import (
     SEED,
     START_LEARNING_RATE,
     TOTAL_TIMESTEPS,
+    TRACK_POOL,
     get_drift_test_config,
     get_drift_train_config,
     get_env_id,
@@ -70,7 +71,7 @@ def train_ppo_race():
     tensorboard_dir, models_dir, config_dir = make_output_dirs(run.id, output_root)
     save_config(TRAIN_CONFIG, config_dir, "gym_config.yaml")
 
-    env = make_subprocvecenv(SEED, TRAIN_CONFIG, N_ENVS)
+    env = make_subprocvecenv(SEED, TRAIN_CONFIG, N_ENVS, TRACK_POOL)
     eval_env = make_eval_env(EVAL_SEED, TRAIN_CONFIG)
 
     learning_rate = linear_schedule(START_LEARNING_RATE, END_LEARNING_RATE)

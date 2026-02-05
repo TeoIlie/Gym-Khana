@@ -434,3 +434,94 @@ class TestEnvInterface(unittest.TestCase):
                 )
 
         env.close()
+
+
+class TestMultiMapTraining(unittest.TestCase):
+    """Integration tests for multi-map training feature."""
+
+    def test_multi_map_environment_creation_and_execution(self):
+        """
+        End-to-end integration test for multi-map training.
+
+        Verifies that:
+        1. Environments can be created with track_pool
+        2. Different envs are assigned different maps correctly
+        3. Observation spaces are identical despite different tracks (global normalization)
+        4. Environments can be reset successfully
+        """
+        from train.training_utils import make_subprocvecenv
+        from train.config.env_config import get_drift_train_config
+
+        # Create base config
+        config = get_drift_train_config()
+        config["normalize_obs"] = True
+        config["normalize_act"] = True
+
+        # Use minimal envs for speed (just need to test multi-map distribution)
+        n_envs = 2
+        track_pool = ["Drift", "Drift2"]
+
+        # Create multi-map vectorized environment
+        env = make_subprocvecenv(seed=42, config=config, n_envs=n_envs, track_pool=track_pool)
+
+        try:
+            # 1. Verify environment created successfully
+            self.assertEqual(env.num_envs, n_envs)
+
+            # 2. Verify envs are on different tracks (CORE multi-map test)
+            configs = env.get_attr("config")
+            track_names = [cfg["map"] for cfg in configs]
+            self.assertEqual(
+                set(track_names),
+                set(track_pool),
+                f"Environments should be distributed across track pool. Got: {track_names}",
+            )
+            print(f"✓ Track distribution verified: {dict(zip(range(n_envs), track_names))}")
+
+            # 3. Verify observation spaces are IDENTICAL (CORE global normalization test)
+            obs_spaces = env.get_attr("observation_space")
+            for i in range(1, n_envs):
+                self.assertEqual(
+                    obs_spaces[0].shape,
+                    obs_spaces[i].shape,
+                    f"Observation space shapes should be identical (env 0 vs env {i})",
+                )
+                self.assertTrue(
+                    np.array_equal(obs_spaces[0].low, obs_spaces[i].low),
+                    f"Observation space lower bounds should be identical (env 0 vs env {i})",
+                )
+                self.assertTrue(
+                    np.array_equal(obs_spaces[0].high, obs_spaces[i].high),
+                    f"Observation space upper bounds should be identical (env 0 vs env {i})",
+                )
+            print(f"✓ Observation spaces identical across tracks (global normalization working)")
+
+            # 4. Verify action spaces are identical
+            action_spaces = env.get_attr("action_space")
+            for i in range(1, n_envs):
+                self.assertEqual(
+                    action_spaces[0].shape,
+                    action_spaces[i].shape,
+                    f"Action space shapes should be identical (env 0 vs env {i})",
+                )
+            print(f"✓ Action spaces identical across tracks")
+
+            # 5. Verify reset works and produces valid normalized observations
+            obs = env.reset()
+            self.assertIsNotNone(obs)
+            self.assertIsInstance(obs, np.ndarray, "Drift observations should be numpy arrays")
+            self.assertEqual(obs.shape[0], n_envs)
+
+            # Check normalization bounds
+            self.assertTrue(np.all(obs >= -1.0), f"Normalized observations should be >= -1.0, got min={np.min(obs)}")
+            self.assertTrue(np.all(obs <= 1.0), f"Normalized observations should be <= 1.0, got max={np.max(obs)}")
+            print(f"✓ Reset successful, observations in normalized range [-1, 1]")
+
+        finally:
+            # Clean up
+            env.close()
+
+        print(
+            f"\n✅ Multi-map integration test passed: {n_envs} envs on {len(track_pool)} tracks, "
+            f"identical observation/action spaces, successful reset"
+        )
