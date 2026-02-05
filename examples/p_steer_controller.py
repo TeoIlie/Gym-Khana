@@ -8,44 +8,91 @@ with the correct heading.
     steering_angle = -Kn * frenet_n - Ku * frenet_u
 
 """
-
 import gymnasium as gym
 import numpy as np
 
 from examples.examples_utils import display_drift_obs
-from f1tenth_gym.envs.f110_env import F110Env
 from train.config.env_config import get_drift_test_config
+
+# Path-tracking controller
+FRENET_N_GAIN = 1.0  # Lateral deviation gain
+FRENET_K_GAIN = 0.5  # Heading error gain
+
+# Stability controller gains
+BETA_GAIN = 1.0  # Sideslip angle gain
+R_GAIN = 0.5  # Yaw rate gain
+
+TARGET_SPEED = 2.0  # m/s
+
+# config constants
+LOOKAHEAD_N_POINTS = 10
+LOOKAHEAD_DS = 0.3
+OBS_TYPE = "drift"
+
+NUM_STEPS = 20_000
+
+# initial map arc-length for state
+S = 0
 
 
 class PDSteerController:
-    def __init__(self, Kn: float, Ku: float, target_speed: float, frenet_u_i: int, frenet_n_i: int):
+    """
+    Path tracking controller.
+
+    This controller minimized lateral deviation and heading error to track a path.
+    """
+
+    def __init__(self, Kn: float, Ku: float, target_speed: float):
         self.Kn = Kn
         self.Ku = Ku
         self.target_speed = target_speed
-        self.frenet_u_i = frenet_u_i
-        self.frenet_n_i = frenet_n_i
 
     def compute_steering(self, frenet_n, frenet_u):
         steering_angle = -self.Kn * frenet_n - self.Ku * frenet_u
-
         return steering_angle
 
-    def get_action(self, obs):
-        frenet_u = obs[self.frenet_u_i]  # heading error
-        frenet_n = obs[self.frenet_n_i]  # lateral deviation
-
-        # Compute steering angle
+    def get_action(self, frenet_u: float, frenet_n: float):
         steering_angle = self.compute_steering(frenet_n, frenet_u)
-
-        # Return action: [[speed, steering_angle]] with shape (1, 2)
         action = np.array([[steering_angle, self.target_speed]], dtype=np.float32)
 
         return action
 
 
-def get_config(obs_type, lookahead_n_points, lookahead_ds):
+class PDStabilityController:
+    """
+    Pure Stability Controller for Vehicle Recovery
+
+    This controller directly minimizes beta (sideslip angle) and r (yaw rate)
+    to stabilize the vehicle.
+    """
+
+    def __init__(self, Kbeta: float, Kr: float, target_speed: float):
+        """
+        Initialize the stability controller.
+
+        Args:
+            Kbeta: Gain for sideslip angle correction
+            Kr: Gain for yaw rate correction
+            target_speed: Constant target speed [m/s]
+        """
+        self.Kbeta = Kbeta
+        self.Kr = Kr
+        self.target_speed = target_speed
+
+    def compute_steering(self, beta: float, r: float) -> float:
+        steering_angle = -self.Kbeta * beta - self.Kr * r
+        return steering_angle
+
+    def get_action(self, beta: float, r: float):
+        steering_angle = self.compute_steering(beta, r)
+        action = np.array([[steering_angle, self.target_speed]], dtype=np.float32)
+
+        return action
+
+
+def get_config(obs_type, lookahead_n_points, lookahead_ds, map="Drift_large"):
     config = get_drift_test_config()
-    config["map"] = "Drift_large"
+    config["map"] = map
     config["control_input"] = ["speed", "steering_angle"]
     config["observation_config"] = {"type": obs_type}
     config["normalize_act"] = False
@@ -63,21 +110,6 @@ def get_config(obs_type, lookahead_n_points, lookahead_ds):
 
 
 def main():
-    # Create controller with tunable gains
-    FRENET_N_GAIN = 1.0  # Lateral deviation gain
-    FRENET_K_GAIN = 0.5  # Heading error gain
-    TARGET_SPEED = 2.0  # m/s
-
-    # config constants
-    LOOKAHEAD_N_POINTS = 10
-    LOOKAHEAD_DS = 0.3
-    OBS_TYPE = "drift"
-
-    NUM_STEPS = 20_000
-
-    # initial state
-    S = 0
-
     env = gym.make(
         "f1tenth_gym:f1tenth-v0",
         config=get_config(OBS_TYPE, LOOKAHEAD_N_POINTS, LOOKAHEAD_DS),
@@ -98,21 +130,11 @@ def main():
             ]
         ]
     )
-    obs, info = env.reset(options={"states": init_state})
+    obs, _ = env.reset(options={"states": init_state})
+    frenet_u = obs[2]  # heading error
+    frenet_n = obs[3]  # lateral deviation
 
-    # Set frenet indices based on obs type
-    if OBS_TYPE == "drift":
-        FRENET_U_I = 2
-        FRENET_N_I = 3
-    elif OBS_TYPE == "frenet":
-        FRENET_U_I = 0
-        FRENET_N_I = 1
-    else:
-        raise ValueError("Please specify frenet observation indices.")
-
-    controller = PDSteerController(
-        Kn=FRENET_N_GAIN, Ku=FRENET_K_GAIN, target_speed=TARGET_SPEED, frenet_u_i=FRENET_U_I, frenet_n_i=FRENET_N_I
-    )
+    controller = PDSteerController(Kn=FRENET_N_GAIN, Ku=FRENET_K_GAIN, target_speed=TARGET_SPEED)
 
     print(f"Centerline Tracking Controller")
     print(f"==============================")
@@ -130,13 +152,15 @@ def main():
     total_reward = 0.0
 
     for step in range(NUM_STEPS):
-        action = controller.get_action(obs)
+        # Get action
+        action = controller.get_action(frenet_u=frenet_u, frenet_n=frenet_n)
+
         # Step environment
         obs, reward, done, truncated, info = env.step(action)
 
-        # Track metrics
-        frenet_u = obs[FRENET_U_I]  # heading error
-        frenet_n = obs[FRENET_N_I]  # lateral deviation
+        # Extract obs
+        frenet_u = obs[2]  # heading error
+        frenet_n = obs[3]  # lateral deviation
 
         total_lateral_error += abs(frenet_n)
         total_heading_error += abs(frenet_u)
