@@ -1,7 +1,7 @@
 """
 Beta-R Phase Plane Convergence Analysis
 
-This script tests a learned drift policy's stability by initializing the vehicle
+This script tests a controller's stability by initializing the vehicle
 at extreme beta-r states in all 4 quadrants of the phase plane, then observing
 convergence toward the stable equilibrium at (0, 0).
 
@@ -17,18 +17,22 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from stable_baselines3 import PPO
 
+from examples.p_steer_controller import (
+    PDSteerController,
+    get_config,
+    PDStabilityController,
+    FRENET_U_I,
+    FRENET_N_I
+)
 from train.config.env_config import get_drift_test_config, get_env_id
 from train.training_utils import get_output_dirs, print_header
 
+CONTROLLER_TYPE = "learned"  # "steer", "stable", or "learned"
 MODEL_PATH = "/outputs/downloads/flt3rzle/model.zip"
-
-CONFIG = get_drift_test_config()
-CONFIG["track_direction"] = "normal"
-CONFIG["map"] = "IMS"
 
 # Initial vehicle position on straight section
 S = 96  # Arc length [m]
-TARGET_SPEED = 5  # Initial velocity [m/s]
+TARGET_SPEED = 4  # Initial velocity [m/s]
 
 # Initial beta, r values (permutation of +/- values is used for 4 initial states)
 BETA = 35
@@ -185,13 +189,26 @@ def main():
 
     proj_root, _ = get_output_dirs()
 
-    # Load model
-    model = PPO.load(proj_root + MODEL_PATH, print_system_info=True, device="auto")
+    match CONTROLLER_TYPE:
+        case "learned":
+            # Load model
+            model = PPO.load(proj_root + MODEL_PATH, print_system_info=True, device="auto")
+            config = get_drift_test_config()
+            config["track_direction"] = "normal"
+            config["map"] = "IMS"
+        case "stable":
+            stable_controller = PDStabilityController(target_speed=TARGET_SPEED)
+            config = get_config(map="IMS")
+        case "steer":
+            steer_controller = PDSteerController(target_speed=TARGET_SPEED)
+            config = get_config(map="IMS")
+        case _:
+            raise ValueError("CONTROLLER_TYPE must be one of 'learned', 'stable', 'steer'")
 
     # Create environment with human rendering
     eval_env = gym.make(
         get_env_id(),
-        config=CONFIG,
+        config=config,
         render_mode="human",
     )
 
@@ -212,6 +229,8 @@ def main():
 
         # Reset at specific beta-r state
         obs = reset_at_beta_r(eval_env, init_beta, init_r)
+        frenet_u = obs[FRENET_U_I]  # heading error
+        frenet_n = obs[FRENET_N_I]  # lateral deviation
 
         # Data collection for this trajectory
         traj_beta = []
@@ -221,17 +240,23 @@ def main():
         # Record initial state (timestep 0) before any actions
         agent = eval_env.unwrapped.sim.agents[0]
         std_state = agent.standard_state
-        initial_beta_rad = std_state["slip"]
-        initial_r_rad = std_state["yaw_rate"]
-        traj_beta.append(np.rad2deg(initial_beta_rad))
-        traj_r.append(np.rad2deg(initial_r_rad))
+        beta_rad = std_state["slip"]
+        r_rad = std_state["yaw_rate"]
+        traj_beta.append(np.rad2deg(beta_rad))
+        traj_r.append(np.rad2deg(r_rad))
         traj_time.append(0)
 
         converged = False
         timestep = 0
         for timestep in range(1, MAX_TIMESTEPS):
             # Predict and step
-            action, _states = model.predict(obs, deterministic=True)
+            if CONTROLLER_TYPE == "learned":
+                action, _ = model.predict(obs, deterministic=True)
+            elif CONTROLLER_TYPE == "stable":
+                action = stable_controller.get_action(beta_rad, r_rad)
+            elif CONTROLLER_TYPE == "steer":
+                action = steer_controller.get_action(frenet_u, frenet_n)
+
             obs, reward, done, trunc, info = eval_env.step(action)
             eval_env.render()
 
@@ -242,6 +267,8 @@ def main():
             # Get beta and r (in radians, rad/s)
             beta_rad = std_state["slip"]
             r_rad = std_state["yaw_rate"]
+            frenet_u = obs[FRENET_U_I]  # heading error
+            frenet_n = obs[FRENET_N_I]  # lateral deviation
 
             # Convert to degrees for storage and checking
             beta_deg = np.rad2deg(beta_rad)
@@ -277,7 +304,7 @@ def main():
     eval_env.close()
 
     # Generate plot
-    output_filename = proj_root + "/tests/test_figures/beta_r_convergence.png"
+    output_filename = proj_root + "/tests/test_figures/beta_r_convergence_" + CONTROLLER_TYPE + "_policy.png"
     print("\n\nGenerating convergence plot...")
     plot_beta_r_convergence(trajectories, output_filename, TARGET_SPEED)
 

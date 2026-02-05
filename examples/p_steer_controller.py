@@ -16,7 +16,7 @@ from train.config.env_config import get_drift_test_config
 
 # Path-tracking controller
 FRENET_N_GAIN = 1.0  # Lateral deviation gain
-FRENET_K_GAIN = 0.5  # Heading error gain
+FRENET_U_GAIN = 0.5  # Heading error gain
 
 # Stability controller gains
 BETA_GAIN = 1.0  # Sideslip angle gain
@@ -31,6 +31,9 @@ OBS_TYPE = "drift"
 
 NUM_STEPS = 20_000
 
+FRENET_U_I = 2
+FRENET_N_I = 3
+
 # initial map arc-length for state
 S = 0
 
@@ -42,7 +45,7 @@ class PDSteerController:
     This controller minimized lateral deviation and heading error to track a path.
     """
 
-    def __init__(self, Kn: float, Ku: float, target_speed: float):
+    def __init__(self, Kn: float = FRENET_N_GAIN, Ku: float = FRENET_U_GAIN, target_speed: float = TARGET_SPEED):
         self.Kn = Kn
         self.Ku = Ku
         self.target_speed = target_speed
@@ -66,7 +69,7 @@ class PDStabilityController:
     to stabilize the vehicle.
     """
 
-    def __init__(self, Kbeta: float, Kr: float, target_speed: float):
+    def __init__(self, Kbeta: float = BETA_GAIN, Kr: float = R_GAIN, target_speed: float = TARGET_SPEED):
         """
         Initialize the stability controller.
 
@@ -90,7 +93,7 @@ class PDStabilityController:
         return action
 
 
-def get_config(obs_type, lookahead_n_points, lookahead_ds, map="Drift_large"):
+def get_config(obs_type=OBS_TYPE, lookahead_n_points=LOOKAHEAD_N_POINTS, lookahead_ds=LOOKAHEAD_DS, map="Drift_large"):
     config = get_drift_test_config()
     config["map"] = map
     config["control_input"] = ["speed", "steering_angle"]
@@ -131,14 +134,14 @@ def main():
         ]
     )
     obs, _ = env.reset(options={"states": init_state})
-    frenet_u = obs[2]  # heading error
-    frenet_n = obs[3]  # lateral deviation
+    frenet_u = obs[FRENET_U_I]  # heading error
+    frenet_n = obs[FRENET_N_I]  # lateral deviation
 
-    controller = PDSteerController(Kn=FRENET_N_GAIN, Ku=FRENET_K_GAIN, target_speed=TARGET_SPEED)
+    controller = PDSteerController()
 
     print(f"Centerline Tracking Controller")
     print(f"==============================")
-    print(f"Controller gains: Kn={FRENET_N_GAIN}, Ku={FRENET_K_GAIN}")
+    print(f"Controller gains: Kn={FRENET_N_GAIN}, Ku={FRENET_U_GAIN}")
     print(f"Target speed: {TARGET_SPEED} m/s")
     print(f"Observation space: {env.observation_space}")
     print(f"Action space: {env.action_space}")
