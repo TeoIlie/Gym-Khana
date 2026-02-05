@@ -225,6 +225,7 @@ class TestDriftObservation(unittest.TestCase):
         cls.config = get_drift_train_config()
         # Ensure normalization is off for easier testing
         cls.config["normalize_obs"] = False
+        cls.config["sparse_width_obs"] = False
         cls.lookahead_n_points = cls.config["lookahead_n_points"]
         cls.lookahead_ds = cls.config["lookahead_ds"]
 
