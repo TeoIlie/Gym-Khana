@@ -90,6 +90,7 @@ Default configurations are stored in `/train/config/env_config.py`, with paramet
 4. Lookahead curvature/width observations can be configured with spacing and number parameters, and when `render_lookahead_curvatures": True` these will be reflected
     1. `lookahead_n_points` - Number of lookahead points (default: 10)
     2. `lookahead_ds` - Spacing between points in meters (default: 0.3m)
+    3. `sparse_width_obs` - `False` passes all lookahead point width values as observation, `True` only passes 1st and last. `True` is useful when track width varies very little (default: `False`)
 5. Set `normalize_obs` to `True/False` for normalizing the observation space. Only specific observation types can be normalized
 6. Set `normalize_act` to `True/False` for normalizing the action space. Supported for all action types
 7. Set `predictive_collision` to `True` to use TTC collision checking and `False` for Frenet-based collision checking. Note that this also modifies the reward function.

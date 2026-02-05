@@ -711,7 +711,7 @@ class VectorObservation(Observation):
             "prev_accl_cmd": 1,
             "curr_accl_cmd": 1,
             "lookahead_curvatures": lookahead_points,
-            "lookahead_widths": lookahead_points,
+            "lookahead_widths": 2 if self.env.unwrapped.sparse_width_obs else lookahead_points,
             "curr_avg_wheel_omega": 1,
             "prev_avg_wheel_omega": 1,
             "curr_vel_cmd": 1,
@@ -783,6 +783,10 @@ class VectorObservation(Observation):
 
                 # Sample lookahead widths using configured parameters n, ds
                 lookahead_widths = sample_lookahead_widths_fast(track, s, n_points=n_lookahead, ds=ds_lookahead)
+
+                if self.env.unwrapped.sparse_width_obs:
+                    # only take 1st and last width observations if sparse_width_obs enabled
+                    lookahead_widths = np.array([lookahead_widths[0], lookahead_widths[-1]], dtype=np.float32)
 
             except Exception as e:
                 print(f"Frenet conversion failed: {e}")

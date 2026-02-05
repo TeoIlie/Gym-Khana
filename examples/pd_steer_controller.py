@@ -58,6 +58,7 @@ def get_config(obs_type, lookahead_n_points, lookahead_ds):
     config["lookahead_n_points"] = lookahead_n_points
     config["lookahead_ds"] = lookahead_ds
     config["render_arc_length_annotations"] = True
+    config["track_direction"] = "normal"
     return config
 
 
@@ -75,7 +76,7 @@ def main():
     NUM_STEPS = 20_000
 
     # initial state
-    S = 96
+    S = 0
 
     env = gym.make(
         "f1tenth_gym:f1tenth-v0",

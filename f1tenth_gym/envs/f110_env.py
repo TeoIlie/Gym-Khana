@@ -109,6 +109,7 @@ class F110Env(gym.Env):
         self.render_lookahead_curvatures = self.config["render_lookahead_curvatures"]
         self.lookahead_n_points = self.config["lookahead_n_points"]
         self.lookahead_ds = self.config["lookahead_ds"]
+        self.sparse_width_obs = self.config["sparse_width_obs"]
         self.debug_frenet_projection = self.config["debug_frenet_projection"]
         self.record_obs_min_max = self.config["record_obs_min_max"]
 
@@ -139,6 +140,8 @@ class F110Env(gym.Env):
         self._resolve_direction()
 
         assert self.progress_gain >= 1.0, "Progress gain must be >= 1."
+
+        assert self.lookahead_n_points >= 2, "Minimum of 2 lookahead track observation points required"
 
         # radius to consider done
         self.start_thresh = 0.5  # 10cm
@@ -685,6 +688,7 @@ class F110Env(gym.Env):
             "render_lookahead_curvatures": False,
             "lookahead_n_points": 10,
             "lookahead_ds": 0.3,
+            "sparse_width_obs": False,
             "debug_frenet_projection": False,
             "normalize_obs": None,  # None = auto-set based on observation type
             "normalize_act": True,

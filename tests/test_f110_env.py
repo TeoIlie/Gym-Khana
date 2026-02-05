@@ -435,6 +435,16 @@ class TestEnvInterface(unittest.TestCase):
 
         env.close()
 
+    def test_lookahead_n_points_assertion(self):
+        """
+        Test that an assertion error is raised when lookahead_n_points < 2.
+        """
+        with self.assertRaises(AssertionError) as context:
+            self._make_env(config={"lookahead_n_points": 1})
+
+        error_msg = str(context.exception)
+        self.assertIn("Minimum of 2 lookahead track observation points required", error_msg)
+
 
 class TestMultiMapTraining(unittest.TestCase):
     """Integration tests for multi-map training feature."""

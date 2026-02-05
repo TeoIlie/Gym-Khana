@@ -34,6 +34,7 @@ normalize_obs: true
 record_obs_min_max: true
 lookahead_n_points: 5
 lookahead_ds: 0.5  # Distance between lookahead points
+sparse_width_obs: true
 
 # Reset configuration
 reset_config: "cl_random_static"

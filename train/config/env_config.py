@@ -47,6 +47,7 @@ RESET_CONFIG = _config["reset_config"]
 TRACK_DIRECTION = _config["track_direction"]
 LOOKAHEAD_N_POINTS = _config["lookahead_n_points"]
 LOOKAHEAD_DS = _config["lookahead_ds"]
+SPARSE_WIDTH_OBS = _config["sparse_width_obs"]
 NORM_OBS = _config["normalize_obs"]
 RECORD_OBS_MIN_MAX = _config["record_obs_min_max"]
 PREDICTIVE_COLLISION = _config["predictive_collision"]
@@ -95,6 +96,7 @@ def get_drift_test_config():
         "render_lookahead_curvatures": TEST_DEBUG_RENDER,  # Enable lookahead curvature visualization
         "lookahead_n_points": LOOKAHEAD_N_POINTS,
         "lookahead_ds": LOOKAHEAD_DS,
+        "sparse_width_obs": SPARSE_WIDTH_OBS,
         "debug_frenet_projection": TEST_DEBUG_RENDER,  # Enable Frenet projection debug visualization
         "params": PARAMS,
         "render_track_lines": TEST_DEBUG_RENDER,  # View track lines
@@ -126,6 +128,7 @@ def get_drift_train_config():
         "render_lookahead_curvatures": TRAIN_DEBUG_RENDER,  # Enable lookahead curvature visualization
         "lookahead_n_points": LOOKAHEAD_N_POINTS,
         "lookahead_ds": LOOKAHEAD_DS,
+        "sparse_width_obs": SPARSE_WIDTH_OBS,
         "debug_frenet_projection": TRAIN_DEBUG_RENDER,  # Enable Frenet projection debug visualization
         "params": PARAMS,
         "render_track_lines": TRAIN_DEBUG_RENDER,  # View track lines

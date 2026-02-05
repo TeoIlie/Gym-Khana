@@ -326,6 +326,114 @@ def test_wrap_around_behavior():
     assert width_variance < 1e-6, f"Wrap-around produced varying widths: variance={width_variance:.2e}"
 
 
+def test_sparse_width_obs_observation_filtering():
+    """
+    Test that sparse_width_obs correctly filters width observations and updates observation space shape.
+
+    Validates:
+    1. sparse_width_obs=False includes all n lookahead width values
+    2. sparse_width_obs=True includes only 2 width values (first and last)
+    3. Observation space shape changes correctly between modes
+    """
+    from unittest.mock import Mock
+    from f1tenth_gym.envs.observation import VectorObservation
+
+    # drift observation features
+    drift_features = [
+        "linear_vel_x",
+        "linear_vel_y",
+        "frenet_u",
+        "frenet_n",
+        "ang_vel_z",
+        "delta",
+        "beta",
+        "prev_steering_cmd",
+        "prev_accl_cmd",
+        "prev_avg_wheel_omega",
+        "curr_vel_cmd",
+        "lookahead_curvatures",
+        "lookahead_widths",
+    ]
+
+    # Mock the necessary environment attributes for space() method
+    def create_mock_env(lookahead_n_points, sparse_width_obs, normalize_obs):
+        mock_env = Mock()
+        mock_env.unwrapped.lookahead_n_points = lookahead_n_points
+        mock_env.unwrapped.sparse_width_obs = sparse_width_obs
+        mock_env.unwrapped.normalize_obs = normalize_obs
+        mock_env.unwrapped.agent_ids = ["agent0"]
+
+        # Mock sim structure for space() method
+        mock_agent = Mock()
+        mock_agent.scan_simulator.num_beams = 1080
+        mock_agent.scan_simulator.max_range = 30.0
+        mock_env.unwrapped.sim.agents = [mock_agent]
+
+        return mock_env
+
+    # Test with sparse_width_obs=False (all width values)
+    mock_env_full = create_mock_env(lookahead_n_points=10, sparse_width_obs=False, normalize_obs=False)
+    obs_full = VectorObservation(mock_env_full, features=drift_features)
+    space_full = obs_full.space()
+
+    # drift obs: vx, vy, u, n, r, delta, beta, prev_steer, prev_accl, prev_omega, vel_cmd, 10 curvatures, 10 widths
+    expected_size_full = 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 10 + 10  # 31
+    assert (
+        space_full.shape[0] == expected_size_full
+    ), f"Expected obs space size {expected_size_full} with sparse=False, got {space_full.shape[0]}"
+
+    # Test with sparse_width_obs=True (only first and last width values)
+    mock_env_sparse = create_mock_env(lookahead_n_points=10, sparse_width_obs=True, normalize_obs=False)
+    obs_sparse = VectorObservation(mock_env_sparse, features=drift_features)
+    space_sparse = obs_sparse.space()
+
+    # drift obs: vx, vy, u, n, r, delta, beta, prev_steer, prev_accl, prev_omega, vel_cmd, 10 curvatures, 2 widths
+    expected_size_sparse = 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 10 + 2  # 23
+    assert (
+        space_sparse.shape[0] == expected_size_sparse
+    ), f"Expected obs space size {expected_size_sparse} with sparse=True, got {space_sparse.shape[0]}"
+
+
+def test_sparse_width_obs_extracts_correct_values():
+    """
+    Test that sparse_width_obs extracts exactly the 1st and last width values.
+
+    For n=4 lookahead points with 4 distinct width values, verify that
+    sparse mode correctly selects the first and last values.
+    """
+    # Create test track with varying widths
+    track = create_circular_track_with_varying_widths()
+    track_length = track.centerline.ss[-1]
+
+    # Sample full width array at a test position
+    current_s = track_length * 0.5
+    n_points = 4
+    ds = 0.5
+
+    # Sample all 4 widths
+    full_widths = sample_lookahead_widths_fast(track, current_s, n_points, ds)
+
+    # Simulate sparse filtering (what happens in VectorObservation.observe())
+    sparse_widths = np.array([full_widths[0], full_widths[-1]], dtype=np.float32)
+
+    # Verify shape
+    assert sparse_widths.shape == (2,), f"Expected 2 width values, got shape {sparse_widths.shape}"
+    assert full_widths.shape == (4,), f"Expected 4 full width values, got shape {full_widths.shape}"
+
+    # Verify sparse contains exactly first and last
+    assert np.isclose(
+        sparse_widths[0], full_widths[0], atol=1e-5
+    ), f"First sparse width {sparse_widths[0]} doesn't match first full width {full_widths[0]}"
+
+    assert np.isclose(
+        sparse_widths[1], full_widths[-1], atol=1e-5
+    ), f"Last sparse width {sparse_widths[1]} doesn't match last full width {full_widths[-1]}"
+
+    # Verify we're testing with varying widths (not all identical)
+    width_variance = np.var(full_widths)
+    assert width_variance > 1e-6, f"Test track should have varying widths, got variance {width_variance:.2e}"
+
+
 if __name__ == "__main__":
     # Run tests directly if executed as a script
     import pytest
