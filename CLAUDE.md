@@ -34,7 +34,7 @@ source $(poetry env info -p)/bin/activate
 ```
 
 ### Virtual Environment
-Always activate the virtual environment before running commands:
+This project uses a virtual environment at `rl_env/`. Always activate it before running commands:
 ```bash
 source rl_env/bin/activate
 ```
@@ -60,14 +60,38 @@ The CI runs pytest for Python versions 3.10-3.12.
 ### Running Examples
 ```bash
 cd examples
-python3 waypoint_follow.py
+python3 waypoint_follow.py  # Pure Pursuit path following
+python3 p_steer_controller.py  # Simple P controller for centerline following
+python3 drift_debug.py  # Debug drift behavior with visualization
+```
+
+### Training Models
+Main training script with multiple modes:
+```bash
+# Train a new model
+python train/ppo_race.py --m t
+
+# Evaluate a local model (uses latest wandb run if --path not specified)
+python train/ppo_race.py --m e
+python train/ppo_race.py --m e --path /path/to/model.zip
+
+# Download model from wandb and evaluate
+python train/ppo_race.py --m d --run_id <wandb_run_id>
+
+# Continue training from existing model
+python train/ppo_race.py --m c --path /path/to/model.zip --additional_timesteps 10000000
 ```
 
 ### Formatting/Linting
-Manual formatting (linting also runs automatically via VSCode settings):
+Manual formatting:
 ```bash
 black .
 ```
+
+Linting runs automatically via VSCode settings (`.vscode/settings.json`) on save with:
+- `black` for formatting
+- `isort` for import sorting
+- `flake8` for linting (max line length 120, ignoring E203 and E501)
 
 Configuration:
 - Line length: 120 characters
@@ -122,9 +146,9 @@ docker run --gpus all -it -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix f
   - `get_drift_train_config()`: Configuration for training drift models
 
 **Training Scripts** (`train/`):
-- `train_ppo_example.py`: Example PPO training with wandb integration
-- `train_ppo_drift.py`: PPO training specifically for drift behavior
-- `training_utils.py`: Shared utilities for output directory management
+- `ppo_race.py`: Main training script with train/eval/download/continue modes (see Training Models commands above)
+- `ppo_example.py`: Simpler example PPO training script
+- `training_utils.py`: Shared utilities for output directory management, environment creation, and callbacks
 
 ### Package Structure
 - **f1tenth_gym/**: Main package following gymnasium RL environment interface
