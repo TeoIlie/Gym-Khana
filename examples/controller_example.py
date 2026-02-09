@@ -7,7 +7,7 @@ from examples.controllers import (
     FRENET_U_GAIN,
     TARGET_SPEED,
 )
-from examples.controllers.p_steer_controller import (
+from examples.controllers.steer_controller import (
     LOOKAHEAD_N_POINTS,
 )
 from examples.examples_utils import display_drift_obs
@@ -18,7 +18,7 @@ NUM_STEPS = 20_000
 
 def main():
     # Create controller using factory pattern
-    controller = create_controller("steer", target_speed=TARGET_SPEED, map="Drift_large")
+    controller = create_controller("stanley", target_speed=TARGET_SPEED, map="Drift_large")
 
     env = gym.make(
         get_env_id(),

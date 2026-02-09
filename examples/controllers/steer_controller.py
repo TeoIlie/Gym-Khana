@@ -15,6 +15,11 @@ FRENET_U_GAIN = 0.5  # Heading error gain
 BETA_GAIN = 1.0  # Sideslip angle gain
 R_GAIN = 0.5  # Yaw rate gain
 
+# Stanley controller constants
+K_STANLEY = 0.1  # Cross-track gain
+K_SOFT_STANLEY = 0.1  # Velocity softening constant [m/s]
+K_HEADING_STANLEY = 1.0  # Heading error gain
+
 TARGET_SPEED = 2.0  # m/s
 
 # config constants
@@ -23,6 +28,7 @@ LOOKAHEAD_DS = 0.3
 OBS_TYPE = "drift"
 
 # obs indices for state extraction
+LINEAR_VEL_X_I = 0
 FRENET_U_I = 2
 FRENET_N_I = 3
 R_I = 4
@@ -97,6 +103,72 @@ class PDStabilityController(Controller):
 
     def compute_steering(self, beta: float, r: float) -> float:
         steering_angle = -self.Kbeta * beta - self.Kr * r
+        return steering_angle
+
+
+class StanleyController(Controller):
+    """
+    Stanley path tracking controller with speed-adaptive cross-track error correction.
+
+    Developed at Stanford University, this controller combines heading error
+    with speed-adaptive cross-track error correction, for aggressive low-speed corrections
+    and gentle high-speed corrections:
+        δ = k_heading * θ_e + arctan(k * e / (|v| + k_soft))
+
+    Tuning:
+    - Heading error correction (k_heading): How aggressively to align with path
+    - Cross-track correction (k): How aggressively to correct lateral deviation
+    """
+
+    def __init__(
+        self,
+        k: float = K_STANLEY,
+        k_soft: float = K_SOFT_STANLEY,
+        k_heading: float = K_HEADING_STANLEY,
+        target_speed: float = TARGET_SPEED,
+        map: str = "IMS",
+    ):
+        """
+        Initialize the Stanley controller.
+
+        Args:
+            k: Cross-track gain
+            k_soft: Velocity softening constant [m/s]
+            k_heading: Heading error gain
+            target_speed: Constant target speed [m/s]
+            map: Map name for environment configuration
+        """
+        self.k = k
+        self.k_soft = k_soft
+        self.k_heading = k_heading
+        self.target_speed = target_speed
+        self.map = map
+
+    def get_action(self, obs: np.ndarray) -> np.ndarray:
+        vx = obs[LINEAR_VEL_X_I]
+        heading_error = obs[FRENET_U_I]
+        cross_track_error = obs[FRENET_N_I]
+        steering_angle = self.compute_steering(vx, heading_error, cross_track_error)
+        action = np.array([[steering_angle, self.target_speed]], dtype=np.float32)
+
+        return action
+
+    def get_env_config(self) -> dict[str, Any]:
+        return get_config(map=self.map)
+
+    def compute_steering(self, vx: float, heading_error: float, cross_track_error: float) -> float:
+        """
+        Compute Stanley steering control law
+        """
+        # Independent heading error correction
+        heading_term = self.k_heading * heading_error
+
+        # Speed-adaptive cross-track correction with natural saturation
+        cross_track_term = np.arctan(self.k * cross_track_error / (abs(vx) + self.k_soft))
+
+        # Combine with separate gains
+        steering_angle = -heading_term - cross_track_term
+
         return steering_angle
 
 

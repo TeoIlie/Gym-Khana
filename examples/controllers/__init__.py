@@ -1,9 +1,10 @@
 """Controller abstraction layer for F1TENTH analysis scripts."""
 
 from .base import Controller
-from .p_steer_controller import (
+from .steer_controller import (
     PDSteerController,
     PDStabilityController,
+    StanleyController,
     get_config,
     FRENET_U_I,
     FRENET_N_I,
@@ -11,6 +12,9 @@ from .p_steer_controller import (
     FRENET_U_GAIN,
     BETA_GAIN,
     R_GAIN,
+    K_STANLEY,
+    K_SOFT_STANLEY,
+    K_HEADING_STANLEY,
     TARGET_SPEED,
 )
 from .learned_controller import LearnedController
@@ -26,7 +30,7 @@ def create_controller(
     Factory function to create controllers.
 
     Args:
-        controller_type: One of "learned", "stable", "steer"
+        controller_type: One of "learned", "stable", "steer", "stanley"
         target_speed: Target speed for all controllers
         model_path: Path to PPO model (required for "learned")
         map: Map name for environment configuration (default: "IMS")
@@ -55,6 +59,9 @@ def create_controller(
         case "steer":
             return PDSteerController(target_speed=target_speed, map=map)
 
+        case "stanley":
+            return StanleyController(target_speed=target_speed, map=map)
+
         case _:
             raise ValueError(f"Unknown controller_type: {controller_type}")
 
@@ -65,6 +72,7 @@ __all__ = [
     # Concrete implementations
     "PDSteerController",
     "PDStabilityController",
+    "StanleyController",
     "LearnedController",
     # Factory
     "create_controller",
@@ -77,5 +85,8 @@ __all__ = [
     "FRENET_U_GAIN",
     "BETA_GAIN",
     "R_GAIN",
+    "K_STANLEY",
+    "K_SOFT_STANLEY",
+    "K_HEADING_STANLEY",
     "TARGET_SPEED",
 ]
