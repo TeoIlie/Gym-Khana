@@ -15,20 +15,13 @@ import gymnasium as gym
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
-from stable_baselines3 import PPO
 
-from examples.p_steer_controller import (
-    PDSteerController,
-    get_config,
-    PDStabilityController,
-    FRENET_U_I,
-    FRENET_N_I
-)
-from train.config.env_config import get_drift_test_config, get_env_id
+from examples.controllers import create_controller
+from train.config.env_config import get_env_id
 from train.training_utils import get_output_dirs, print_header
 
 CONTROLLER_TYPE = "learned"  # "steer", "stable", or "learned"
-MODEL_PATH = "/outputs/downloads/flt3rzle/model.zip"
+MODEL_PATH = "/outputs/downloads/178a1a5l/model.zip"
 
 # Initial vehicle position on straight section
 S = 96  # Arc length [m]
@@ -189,23 +182,16 @@ def main():
 
     proj_root, _ = get_output_dirs()
 
-    match CONTROLLER_TYPE:
-        case "learned":
-            # Load model
-            model = PPO.load(proj_root + MODEL_PATH, print_system_info=True, device="auto")
-            config = get_drift_test_config()
-            config["track_direction"] = "normal"
-            config["map"] = "IMS"
-        case "stable":
-            stable_controller = PDStabilityController(target_speed=TARGET_SPEED)
-            config = get_config(map="IMS")
-        case "steer":
-            steer_controller = PDSteerController(target_speed=TARGET_SPEED)
-            config = get_config(map="IMS")
-        case _:
-            raise ValueError("CONTROLLER_TYPE must be one of 'learned', 'stable', 'steer'")
+    # Create controller - single unified approach for all types!
+    controller = create_controller(
+        CONTROLLER_TYPE,
+        target_speed=TARGET_SPEED,
+        model_path=proj_root + MODEL_PATH if CONTROLLER_TYPE == "learned" else None,
+        map="IMS",
+    )
 
-    # Create environment with human rendering
+    # Get controller-specific config and create environment
+    config = controller.get_env_config()
     eval_env = gym.make(
         get_env_id(),
         config=config,
@@ -229,8 +215,6 @@ def main():
 
         # Reset at specific beta-r state
         obs = reset_at_beta_r(eval_env, init_beta, init_r)
-        frenet_u = obs[FRENET_U_I]  # heading error
-        frenet_n = obs[FRENET_N_I]  # lateral deviation
 
         # Data collection for this trajectory
         traj_beta = []
@@ -249,13 +233,8 @@ def main():
         converged = False
         timestep = 0
         for timestep in range(1, MAX_TIMESTEPS):
-            # Predict and step
-            if CONTROLLER_TYPE == "learned":
-                action, _ = model.predict(obs, deterministic=True)
-            elif CONTROLLER_TYPE == "stable":
-                action = stable_controller.get_action(beta_rad, r_rad)
-            elif CONTROLLER_TYPE == "steer":
-                action = steer_controller.get_action(frenet_u, frenet_n)
+            # Get action from controller - unified interface!
+            action = controller.get_action(obs)
 
             obs, reward, done, trunc, info = eval_env.step(action)
             eval_env.render()
@@ -267,8 +246,6 @@ def main():
             # Get beta and r (in radians, rad/s)
             beta_rad = std_state["slip"]
             r_rad = std_state["yaw_rate"]
-            frenet_u = obs[FRENET_U_I]  # heading error
-            frenet_n = obs[FRENET_N_I]  # lateral deviation
 
             # Convert to degrees for storage and checking
             beta_deg = np.rad2deg(beta_rad)
