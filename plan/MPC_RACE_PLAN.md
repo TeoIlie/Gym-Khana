@@ -167,23 +167,23 @@ Use `track.cartesian_to_frenet()` for initial Frenet state (outside the NLP).
 
 ## 6. Implementation Steps
 
-### Step 1: Install CasADi & Validate
+### [X] Step 1: Install CasADi & Validate
 - `pip install casadi` in the virtual environment
 - Write a minimal test: create CasADi variable, solve trivial NLP
 - **Claude writes this**
 
-### Step 2: Kinematic Dynamics in CasADi
+### [X] Step 2: Kinematic Dynamics in CasADi
 - Translate `vehicle_dynamics_ks()` (5 ODEs) to CasADi symbolic function
 - Implement RK4 discretization in CasADi
 - Validate: compare CasADi prediction vs NumPy for same initial state + controls
 - **Claude writes this** (mechanical translation)
 
-### Step 3: Centerline Data Extraction
+### [ ] Step 3: Centerline Data Extraction
 - Write helper to extract local centerline window: waypoints, widths, arc lengths
 - Write CasADi-compatible Frenet projection (piecewise-linear approximation)
 - **Claude writes extraction, guides user through Frenet projection concept**
 
-### Step 4: NLP Construction
+### [X] Step 4: NLP Construction
 - Build CasADi `Opti` problem with:
   - Decision variables: states[0..N], controls[0..N-1]
   - Dynamics constraints (RK4 shooting)
@@ -192,18 +192,18 @@ Use `track.cartesian_to_frenet()` for initial Frenet state (outside the NLP).
   - Cost function (progress + contour + control smoothness)
 - **Claude writes NLP structure, user understands cost weight choices**
 
-### Step 5: Controller Class
+### [ ] Step 5: Controller Class
 - Wrap NLP in `MPCController(Controller)`
 - Handle warm-starting, solve timing, fallback on solver failure
 - **Claude writes this**
 
-### Step 6: Test & Tune
+### [ ] Step 6: Test & Tune
 - Run on a simple track with rendering
 - Tune cost weights: start with `w_progress=1, w_contour=10, w_heading=5, w_steer=0.1, w_accel=0.01`
 - Profile solve times
 - **User drives tuning, Claude helps debug**
 
-### Step 7 (Phase 2): Upgrade to STD Dynamics
+### [ ] Step 7 (Phase 2): Upgrade to STD Dynamics
 - Replace kinematic dynamics with full STD CasADi translation
 - Switch env to `model: "std"`, params to `f1tenth_std_vehicle_params()`
 - Re-tune cost weights
