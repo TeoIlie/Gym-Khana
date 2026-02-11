@@ -183,7 +183,7 @@ Use `track.cartesian_to_frenet()` for initial Frenet state (outside the NLP).
 - Write CasADi-compatible Frenet projection (piecewise-linear approximation)
 - **Claude writes extraction, guides user through Frenet projection concept**
 
-### [X] Step 4: NLP Construction
+### [ ] Step 4: NLP Construction
 - Build CasADi `Opti` problem with:
   - Decision variables: states[0..N], controls[0..N-1]
   - Dynamics constraints (RK4 shooting)
