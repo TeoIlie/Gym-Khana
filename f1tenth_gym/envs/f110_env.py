@@ -774,12 +774,12 @@ class F110Env(gym.Env):
             "recovery_timestep_penalty": 1.0,
             "recovery_success_reward": 100,
             "recovery_collision_penalty": -50,
-            "recovery_delta_thresh": 0.05,
-            "recovery_beta_thresh": 0.05,
-            "recovery_r_thresh": 0.1,
-            "recovery_d_beta_thresh": 0.1,
-            "recovery_d_r_thresh": 0.2,
-            "recovery_frenet_u_thresh": 0.05,
+            "recovery_delta_thresh": 0.175,  # approx 10 degrees steering
+            "recovery_beta_thresh": 0.07,  # approx  4 degrees sideslip
+            "recovery_r_thresh": 0.175,  # approx 10 deg/s yaw rate
+            "recovery_d_beta_thresh": 7.0,  # 1/2 of the range [-0.07, 0.07] traversed in timestep 0.01: 0.07/0.01 = 7 radians/s
+            "recovery_d_r_thresh": 17.5,  # 1/2 of the range [-0.175, 0.175] traversed in timestep 0.01: 0.175/0.01 = 17.5 radians/s^2
+            "recovery_frenet_u_thresh": 0.087,  # approx 5 degrees heading error
             "recovery_max_episode_steps": 2048,
         }
 
@@ -847,7 +847,7 @@ class F110Env(gym.Env):
             # Truncated: arc-length exceeded OR timestep limit
             current_s, _ = self.track.centerline.spline.calc_arclength_inaccurate(self.poses_x[0], self.poses_y[0])
             truncated = current_s > self.recovery_s_max or self.current_step > self.max_episode_steps
-            return bool(terminated), bool(truncated), self.toggle_list >= 4
+            return bool(terminated), bool(truncated), False
 
         # Race mode: lap-based termination logic
         else:
@@ -1095,55 +1095,86 @@ class F110Env(gym.Env):
             and abs(frenet_u) < self.recovery_frenet_u_thresh
         )
 
+    def _get_recovery_reward(self) -> float:
+        """
+        Compute recovery mode reward.
+
+        Returns:
+            float: Total reward for this step
+        """
+        std_state = self.sim.agents[0].standard_state
+        beta = std_state["slip"]
+        r = std_state["yaw_rate"]
+
+        # Euclidean distance from current (beta, r) to (0, 0)
+        r_euclid = -self.recovery_euclid_gain * np.sqrt(beta**2 + r**2)
+
+        # collision penalty
+        r_col = self.recovery_collision_penalty if self.boundary_exceeded[0] else 0.0
+
+        # recovery success reward
+        r_rec = self.recovery_success_reward if self.recovery_succeeded else 0.0
+
+        # constant timestep penalty
+        r_const = self.recovery_timestep_penalty * self.timestep
+
+        return r_euclid + r_col + r_rec - r_const
+
     def _get_reward(self):
         """
         Get the reward for the current step
 
-        Reward structure depends on collision detection mode:
-        - Predictive (TTC): progress - penalties (additive)
-        - Frenet (Drift): -1 OR progress (exclusive)
+        Reward structure depends on training mode:
+        - Recovery (single-agent): recovery reward given by _get_recovery_reward()
+        - Race (1+ agents):
+            - Predictive TTC: progress - penalties (additive)
+            - Frenet-based: -1 OR progress (exclusive)
         """
 
-        reward = 0.0
-        track_length = self.track.centerline.spline.s[-1]
+        if self.training_mode == "recover":
+            return self._get_recovery_reward()
 
-        for i in range(self.num_agents):
-            # current_s calculated as distance along track centerline from start, in meters
-            current_s, _ = self.track.centerline.spline.calc_arclength_inaccurate(self.poses_x[i], self.poses_y[i])
+        else:
+            reward = 0.0
+            track_length = self.track.centerline.spline.s[-1]
 
-            # progress is current - previous arc length
-            prog = current_s - self.last_s[i]
+            for i in range(self.num_agents):
+                # current_s calculated as distance along track centerline from start, in meters
+                current_s, _ = self.track.centerline.spline.calc_arclength_inaccurate(self.poses_x[i], self.poses_y[i])
 
-            # correct forward/backward track wraparound
-            prog = self._correct_wraparound_prog(prog=prog, track_length=track_length)
+                # progress is current - previous arc length
+                prog = current_s - self.last_s[i]
 
-            # reward forward progress, multiplied by progress_gain
-            prog_r = prog * self.progress_gain
+                # correct forward/backward track wraparound
+                prog = self._correct_wraparound_prog(prog=prog, track_length=track_length)
 
-            # penalize negative longitudinal velocity v_x, as agent should not drive backward
-            agent = self.sim.agents[i]
-            vel = agent.standard_state["v_x"]
-            if vel < 0:
-                reward += self.negative_vel_penalty
+                # reward forward progress, multiplied by progress_gain
+                prog_r = prog * self.progress_gain
 
-            # Apply reward based on collision detection strategy
-            if self.predictive_collision:
-                # Predictive TTC mode: additive reward structure
-                # Reward = sum(progress) - sum(collision_penalties)
-                reward += prog_r
-                if self.collisions[i]:
-                    reward += self.out_of_bounds_penalty
-            else:
-                # Frenet boundary mode (drift): exclusive reward structure
-                # Reward = -1 if boundary exceeded, else progress
-                if self.boundary_exceeded[i]:
-                    reward += self.out_of_bounds_penalty  # Exclusive penalty for boundary violation
+                # penalize negative longitudinal velocity v_x, as agent should not drive backward
+                agent = self.sim.agents[i]
+                vel = agent.standard_state["v_x"]
+                if vel < 0:
+                    reward += self.negative_vel_penalty
+
+                # Apply reward based on collision detection strategy
+                if self.predictive_collision:
+                    # Predictive TTC mode: additive reward structure
+                    # Reward = sum(progress) - sum(collision_penalties)
+                    reward += prog_r
+                    if self.collisions[i]:
+                        reward += self.out_of_bounds_penalty
                 else:
-                    reward += prog_r  # Only get progress if within boundaries
+                    # Frenet boundary mode (drift): exclusive reward structure
+                    # Reward = -1 if boundary exceeded, else progress
+                    if self.boundary_exceeded[i]:
+                        reward += self.out_of_bounds_penalty  # Exclusive penalty for boundary violation
+                    else:
+                        reward += prog_r  # Only get progress if within boundaries
 
-            self.last_s[i] = current_s
+                self.last_s[i] = current_s
 
-        return reward
+            return reward
 
     def step(self, action, skip_integration=False):
         """
