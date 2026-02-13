@@ -437,9 +437,9 @@ class TestEnvInterface(unittest.TestCase):
 
     def test_lookahead_n_points_assertion(self):
         """
-        Test that an assertion error is raised when lookahead_n_points < 2.
+        Test that a ValueError is raised when lookahead_n_points < 2.
         """
-        with self.assertRaises(AssertionError) as context:
+        with self.assertRaises(ValueError) as context:
             self._make_env(config={"lookahead_n_points": 1})
 
         error_msg = str(context.exception)

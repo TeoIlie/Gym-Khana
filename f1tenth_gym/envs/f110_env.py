@@ -110,6 +110,13 @@ class F110Env(gym.Env):
                 self.map = self.config["map"]
 
             case "recover":
+                # Recovery mode only supports single agent
+                if self.num_agents != 1:
+                    raise ValueError(
+                        "Recovery mode only supports single agent training. "
+                        f"Got num_agents={self.num_agents}, but recovery mode requires num_agents=1."
+                    )
+
                 # set recovery map
                 self.map = self.config["recovery_map"]
 
@@ -181,9 +188,11 @@ class F110Env(gym.Env):
         # Set initial direction
         self._resolve_direction()
 
-        assert self.progress_gain >= 1.0, "Progress gain must be >= 1."
+        if self.progress_gain < 1.0:
+            raise ValueError("Progress gain must be >= 1.")
 
-        assert self.lookahead_n_points >= 2, "Minimum of 2 lookahead track observation points required"
+        if self.lookahead_n_points < 2:
+            raise ValueError("Minimum of 2 lookahead track observation points required")
 
         # radius to consider done
         self.start_thresh = 0.5  # 10cm
