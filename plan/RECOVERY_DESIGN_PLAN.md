@@ -21,7 +21,7 @@ Currently this gym env is setup for training racing policies using `train/ppo_ra
 
 3. **Reset condition** The vehicle must be reset when either it crashes, it succeeds to recover, or it runs of out time
 
-    1. **Crash**: The vehicle should be reset when it exceeds the track boundaries (conceptually, this is like exceeding its lane on a road). The episode is done
+    1. **Crash**: The vehicle should be reset when it exceeds the track boundaries (conceptually, this is like exceeding its lane on a road). The episode is `done`.
     2. **Success**: Successful recovery is defined as all the following holding true:
         1. `delta` steering angle is less than `DELTA_RECOVERY_THRESHOLD` away from `0`
         2. `beta` is less than `BETA_RECOVERY_THRESHOLD` away from `0`
@@ -42,7 +42,9 @@ Currently this gym env is setup for training racing policies using `train/ppo_ra
         | D_R_RECOVERY | 0.2 rad/s^2 | Yaw acceleration near zero |
         | FRENET_U_RECOVERY | 0.05 rad (~3 deg) | Aligned with track |
 
-    3. **Time exceeded**: If the vehicle reaches arc-length `S=140`, or the total time steps exceeds `2048`, the episode is truncated
+        In this case, the episode is `done`
+
+    3. **Time exceeded**: If the vehicle reaches arc-length `S=140`, or the total time steps exceeds `2048`, the episode is `truncated`
 
 4. **Reward function**. The reward function is composed of several components summed together. $ K_r, K_e, K_c $ represent tunable gains.
 

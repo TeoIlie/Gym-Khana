@@ -108,6 +108,7 @@ class F110Env(gym.Env):
         match self.training_mode:
             case "race":
                 self.map = self.config["map"]
+                self.max_episode_steps = self.config["max_episode_steps"]
 
             case "recover":
                 # Recovery mode only supports single agent
@@ -117,8 +118,15 @@ class F110Env(gym.Env):
                         f"Got num_agents={self.num_agents}, but recovery mode requires num_agents=1."
                     )
 
-                # set recovery map
+                # Recovery mode requires Frenet-based boundary checking
+                if self.config["predictive_collision"]:
+                    raise ValueError(
+                        "Recovery mode requires Frenet-based boundary checking (predictive_collision=False)."
+                    )
+
+                # set recovery map and episode length
                 self.map = self.config["recovery_map"]
+                self.max_episode_steps = self.config["recovery_max_episode_steps"]
 
                 # set initial and final arc-lengths
                 self.recovery_s_init = self.config["recovery_s_init"]
@@ -148,6 +156,9 @@ class F110Env(gym.Env):
                 self.prev_beta = 0.0
                 self.prev_r = 0.0
 
+                # initialize recovery success flag for reward computation
+                self.recovery_succeeded = False
+
             case _:
                 raise ValueError(f"Invalid training_mode: '{self.training_mode}'")
 
@@ -166,7 +177,6 @@ class F110Env(gym.Env):
         self.out_of_bounds_penalty = self.config["out_of_bounds_penalty"]
         self.progress_gain = self.config["progress_gain"]
         self.negative_vel_penalty = self.config["negative_vel_penalty"]
-        self.max_episode_steps = self.config["max_episode_steps"]
         self.current_step = 0
 
         # collision detection strategy
@@ -770,6 +780,7 @@ class F110Env(gym.Env):
             "recovery_d_beta_thresh": 0.1,
             "recovery_d_r_thresh": 0.2,
             "recovery_frenet_u_thresh": 0.05,
+            "recovery_max_episode_steps": 2048,
         }
 
     def configure(self, config: dict) -> None:
@@ -809,9 +820,15 @@ class F110Env(gym.Env):
         Check if the current episode should end. Distinguishes between
         natural termination (collision/boundary) and truncation (time limit).
 
-        Reset behavior depends on collision detection mode:
-        - Predictive (TTC): Reset when ego agent has TTC collision or all agents complete 2 laps
-        - Frenet (Drift): Reset only when ego agent exceeds track boundaries
+        Behavior depends on training mode:
+        - Recovery (single-agent):
+            - Terminated: (Only Frenet-based) boundary exceeded OR recovery success.
+            - Truncated: max recovery episode steps exceeded, OR arc-length > recovery_s_max
+        - Race (1+ agents)
+            - Terminated:
+                - Predictive TTC: ego agent has TTC collision OR all agents complete 2 laps
+                - Frenet-based: ego agent exceeds track boundaries
+            - Truncated: When max episode steps exceeded
 
         Args:
             None
@@ -822,44 +839,56 @@ class F110Env(gym.Env):
             toggle_list (list[int]): each agent's toggle list for crossing the finish zone
         """
 
-        # this is assuming 2 agents
-        # TODO: switch to maybe s-based
-        left_t = 2
-        right_t = 2
+        if self.training_mode == "recover":
+            # Terminated: crash (boundary exceeded) or successful recovery
+            self.recovery_succeeded = self._check_recovery_success()
+            terminated = self.boundary_exceeded[0] or self.recovery_succeeded
 
-        poses_x = np.array(self.poses_x) - self.start_xs
-        poses_y = np.array(self.poses_y) - self.start_ys
-        delta_pt = np.dot(self.start_rot, np.stack((poses_x, poses_y), axis=0))
-        temp_y = delta_pt[1, :]
-        idx1 = temp_y > left_t
-        idx2 = temp_y < -right_t
-        temp_y[idx1] -= left_t
-        temp_y[idx2] = -right_t - temp_y[idx2]
-        temp_y[np.invert(np.logical_or(idx1, idx2))] = 0
+            # Truncated: arc-length exceeded OR timestep limit
+            current_s, _ = self.track.centerline.spline.calc_arclength_inaccurate(self.poses_x[0], self.poses_y[0])
+            truncated = current_s > self.recovery_s_max or self.current_step > self.max_episode_steps
+            return bool(terminated), bool(truncated), self.toggle_list >= 4
 
-        dist2 = delta_pt[0, :] ** 2 + temp_y**2
-        closes = dist2 <= 0.1
-        for i in range(self.num_agents):
-            if closes[i] and not self.near_starts[i]:
-                self.near_starts[i] = True
-                self.toggle_list[i] += 1
-            elif not closes[i] and self.near_starts[i]:
-                self.near_starts[i] = False
-                self.toggle_list[i] += 1
-            self.lap_counts[i] = self.toggle_list[i] // 2
-            if self.toggle_list[i] < 4:
-                self.lap_times[i] = self.current_time
-
-        # Determine natural termination based on collision detection mode
-        if self.predictive_collision:
-            terminated = (self.collisions[self.ego_idx]) or np.all(self.toggle_list >= 4)
+        # Race mode: lap-based termination logic
         else:
-            terminated = self.boundary_exceeded[self.ego_idx]
+            # this is assuming 2 agents
+            # TODO: switch to maybe s-based
+            left_t = 2
+            right_t = 2
 
-        # Truncate based on timestep limit
-        truncated = self.current_step > self.max_episode_steps
+            poses_x = np.array(self.poses_x) - self.start_xs
+            poses_y = np.array(self.poses_y) - self.start_ys
+            delta_pt = np.dot(self.start_rot, np.stack((poses_x, poses_y), axis=0))
+            temp_y = delta_pt[1, :]
+            idx1 = temp_y > left_t
+            idx2 = temp_y < -right_t
+            temp_y[idx1] -= left_t
+            temp_y[idx2] = -right_t - temp_y[idx2]
+            temp_y[np.invert(np.logical_or(idx1, idx2))] = 0
 
-        return bool(terminated), bool(truncated), self.toggle_list >= 4
+            dist2 = delta_pt[0, :] ** 2 + temp_y**2
+            closes = dist2 <= 0.1
+            for i in range(self.num_agents):
+                if closes[i] and not self.near_starts[i]:
+                    self.near_starts[i] = True
+                    self.toggle_list[i] += 1
+                elif not closes[i] and self.near_starts[i]:
+                    self.near_starts[i] = False
+                    self.toggle_list[i] += 1
+                self.lap_counts[i] = self.toggle_list[i] // 2
+                if self.toggle_list[i] < 4:
+                    self.lap_times[i] = self.current_time
+
+            # Determine natural termination based on collision detection mode
+            if self.predictive_collision:
+                terminated = (self.collisions[self.ego_idx]) or np.all(self.toggle_list >= 4)
+            else:
+                terminated = self.boundary_exceeded[self.ego_idx]
+
+            # Truncate based on timestep limit
+            truncated = self.current_step > self.max_episode_steps
+
+            return bool(terminated), bool(truncated), self.toggle_list >= 4
 
     def _update_state(self):
         """
@@ -1034,6 +1063,38 @@ class F110Env(gym.Env):
 
         return False  # Within boundaries
 
+    def _check_recovery_success(self) -> bool:
+        """
+        Check if the vehicle is in a recovered state. Defined as all 6 of:
+        delta, beta, r, d_beta, d_r, frenet_u
+        are within a threshold distance from 0. This defn is taken from a phase plane analysis
+        """
+        agent = self.sim.agents[0]
+        std_state = agent.standard_state
+
+        # Get current state values
+        delta = std_state["delta"]
+        beta = std_state["slip"]
+        r = std_state["yaw_rate"]
+
+        # Calculate beta, r derivatives using prev values
+        d_beta = (beta - self.prev_beta) / self.timestep
+        d_r = (r - self.prev_r) / self.timestep
+
+        # Calculate heading error
+        x, y, theta = std_state["x"], std_state["y"], std_state["yaw"]
+        _, _, frenet_u = self.track.cartesian_to_frenet(x, y, theta, use_raceline=False)
+
+        # Check recovery condition
+        return (
+            abs(delta) < self.recovery_delta_thresh
+            and abs(beta) < self.recovery_beta_thresh
+            and abs(r) < self.recovery_r_thresh
+            and abs(d_beta) < self.recovery_d_beta_thresh
+            and abs(d_r) < self.recovery_d_r_thresh
+            and abs(frenet_u) < self.recovery_frenet_u_thresh
+        )
+
     def _get_reward(self):
         """
         Get the reward for the current step
@@ -1138,6 +1199,12 @@ class F110Env(gym.Env):
 
         # calc reward
         reward = self._get_reward()
+
+        # Update for derivative tracking in recovery mode
+        if self.training_mode == "recover":
+            agent = self.sim.agents[0]
+            self.prev_beta = agent.standard_state["slip"]
+            self.prev_r = agent.standard_state["yaw_rate"]
 
         return obs, reward, terminated, truncated, info
 
