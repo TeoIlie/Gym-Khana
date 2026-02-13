@@ -321,7 +321,7 @@ Structure mirrors `train/ppo_race.py` exactly. Key differences:
 
 ---
 
-### [ ] Task 3: Implement recovery initialization in `reset()`
+### [X] Task 3: Implement recovery initialization in `reset()`
 
 **What:** In `reset()`, add the recovery initialization block between options parsing and the `reset_fn.sample()` fallback. When `training_mode == "recover"` and no explicit options given: sample random `v`, `beta`, `r`, and `yaw_perturbation` from uniform distributions, compute Cartesian position and base heading at `recovery_s_init` via `frenet_to_cartesian`, add yaw perturbation to base heading, build full state array, set `states` and `poses`. At end of `reset()`, initialize `prev_beta` and `prev_r` from the actual agent state.
 

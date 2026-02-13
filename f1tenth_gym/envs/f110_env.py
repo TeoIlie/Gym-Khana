@@ -747,10 +747,10 @@ class F110Env(gym.Env):
             "recovery_map": "IMS",
             "recovery_s_init": 96,
             "recovery_s_max": 140,
-            "recovery_v_range": [2, 20],
-            "recovery_beta_range": [-1.047, 1.047],
-            "recovery_r_range": [-1.571, 1.571],
-            "recovery_yaw_range": [-1.047, 1.047],
+            "recovery_v_range": [2, 12],
+            "recovery_beta_range": [-0.349, 0.349],
+            "recovery_r_range": [-0.785, 0.785],
+            "recovery_yaw_range": [-0.785, 0.785],
             "recovery_euclid_gain": 1.0,
             "recovery_timestep_penalty": 1.0,
             "recovery_success_reward": 100,
@@ -1204,6 +1204,20 @@ class F110Env(gym.Env):
             elif has_poses:
                 poses = options["poses"]
 
+        # Recovery mode: generate perturbed initial state if no options given
+        if self.training_mode == "recover" and states is None and poses is None:
+            # uniformly sample ranges for perturbations
+            v = np.random.uniform(*self.recovery_v_range)
+            beta = np.random.uniform(*self.recovery_beta_range)
+            r = np.random.uniform(*self.recovery_r_range)
+            yaw_perturbation = np.random.uniform(*self.recovery_yaw_range)
+
+            # generate initial states and poses
+            x, y, base_yaw = self.track.frenet_to_cartesian(self.recovery_s_init, ey=0, ephi=0)
+            yaw = base_yaw + yaw_perturbation
+            states = np.array([[x, y, 0.0, v, yaw, r, beta]])
+            poses = np.column_stack([states[:, 0], states[:, 1], states[:, 4]])
+
         # If no poses derived yet, sample from reset function
         if poses is None:
             poses = self.reset_fn.sample()
@@ -1241,6 +1255,12 @@ class F110Env(gym.Env):
         # get no input observations without integrating dynamics, so that RaceCar states are not changed
         action = np.zeros((self.num_agents, 2))
         obs, _, _, _, info = self.step(action, skip_integration=True)
+
+        # Initialize derivative tracking for recovery mode
+        if self.training_mode == "recover":
+            agent = self.sim.agents[0]
+            self.prev_beta = agent.standard_state["slip"]
+            self.prev_r = agent.standard_state["yaw_rate"]
 
         return obs, info
 
