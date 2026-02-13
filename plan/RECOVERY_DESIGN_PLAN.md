@@ -15,8 +15,9 @@ Currently this gym env is setup for training racing policies using `train/ppo_ra
     | `beta` (sideslip angle) | [-pi/3, pi/3] | radians |
     | `r` (yaw rate) | [-pi/2, pi/2] | radians/s |
     | `v` (velocity) | [2, 20] | m/s |
+    | `yaw` (yaw in Cartesian coords) | [-pi/3, pi/3] | radians |
 
-    Later on, I will experiment with also perturbing other parameters, such as steering angle, yaw (heading error), and so on, but for now these parameters are sufficient.
+    Later on, I will experiment with also perturbing other parameters, such as steering angle, lateral deviation (given by Cartesian coordinate x), and so on, but for now these parameters are sufficient.
 
 3. **Reset condition** The vehicle must be reset when either it crashes, it succeeds to recover, or it runs of out time
 
@@ -28,6 +29,7 @@ Currently this gym env is setup for training racing policies using `train/ppo_ra
         4. derivative of `beta` is less than `D_BETA_RECOVERY_THRESHOLD` away from `0`
         5. derivative of `r` is less than `D_R_RECOVERY_THRESHOLD` away from `0`
         6. `frenet_u` heading error is less than `FRENET_U_RECOVERY_THRESHOLD` away from `0` - Note that this is not the same as sideslip `beta`. The sideslip tells us the velocity vector of the car is aligned with its position, but that does not mean it is also aligned with the track
+        7. The car is within the track bounds (this is already handled by the reset condition)
 
         Some possible initial values for the thresholds:
 
@@ -107,8 +109,8 @@ There are a few design questions I address separately:
 
 1. How do I perturb the parameters in the range do I want? Should it be randomly chosen with equal probability in the specified ranges? Should it be chosen from a Gaussian distribution, or some other distribution?
     - Initially I will use a uniform distribution. This can be modified in future, for example, but adding curriculum learning to gradually increase perturbation over the course of learning
-2. Do I need all the elements of my recovery condition? How do I set reasonable thresholds?
-    - I do, yes, this is the minimal rigorous definition of recovery
+2. Do I need all the elements of my recovery condition? Is it necessary to include that derivatives of `beta` and `r` are also 0; is that even possible when `beta` and `r` are 0 from the phyiscs? How do I set reasonable thresholds?
+    - For now, I will use this definition, and experiment later with removing the derivatives requirements
 3. Is my reward formulation meaningful?
     - I will begin with my current reward, and implement optional enhancements as needed
 4. How do I configure a gym environment to use my new required features (initialization, reset, reward, etc) when I create it? Should I create a new configuration parameter, something like `"goal"` with setting `race` (default) and `recover` (this new implementation)? How else is it best managed, to create a clear separation between racing and recovering training, enabling both to work in this repo?

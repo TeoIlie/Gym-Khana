@@ -25,11 +25,12 @@ reset_config: "cl_random_static"  # fallback, overridden by training_mode logic
 
 # Recovery-specific
 training_mode: "recover"
-recovery_arc_length: 96       # starting S on IMS straight
-recovery_max_s: 140           # truncation arc-length
+recovery_s_init: 96       # starting S on IMS straight
+recovery_s_max: 140           # truncation arc-length
 recovery_v_range: [2, 20]     # velocity perturbation [m/s]
 recovery_beta_range: [-1.047, 1.047]   # [-pi/3, pi/3] rad
 recovery_r_range: [-1.571, 1.571]      # [-pi/2, pi/2] rad/s
+recovery_yaw_range: [-1.047, 1.047]    # [-pi/3, pi/3] rad (perturbation from track heading)
 
 # Recovery reward gains
 recovery_euclid_gain: 1.0     # K_e
@@ -84,11 +85,12 @@ Add these keys with safe defaults that don't affect existing "race" behavior:
 
 ```python
 "training_mode": "race",           # "race" or "recover"
-"recovery_arc_length": 96,
-"recovery_max_s": 140,
+"recovery_s_init": 96,
+"recovery_s_max": 140,
 "recovery_v_range": [2, 20],
 "recovery_beta_range": [-1.047, 1.047],
 "recovery_r_range": [-1.571, 1.571],
+"recovery_yaw_range": [-1.047, 1.047],
 "recovery_euclid_gain": 1.0,
 "recovery_timestep_penalty": 1.0,
 "recovery_success_reward": 100,
@@ -106,11 +108,12 @@ Add these keys with safe defaults that don't affect existing "race" behavior:
 ```python
 self.training_mode = self.config["training_mode"]
 if self.training_mode == "recover":
-    self.recovery_arc_length = self.config["recovery_arc_length"]
-    self.recovery_max_s = self.config["recovery_max_s"]
+    self.recovery_s_init = self.config["recovery_s_init"]
+    self.recovery_s_max = self.config["recovery_s_max"]
     self.recovery_v_range = self.config["recovery_v_range"]
     self.recovery_beta_range = self.config["recovery_beta_range"]
     self.recovery_r_range = self.config["recovery_r_range"]
+    self.recovery_yaw_range = self.config["recovery_yaw_range"]
     self.recovery_euclid_gain = self.config["recovery_euclid_gain"]
     self.recovery_timestep_penalty = self.config["recovery_timestep_penalty"]
     self.recovery_success_reward = self.config["recovery_success_reward"]
@@ -148,9 +151,11 @@ if self.training_mode == "recover" and states is None and poses is None:
     v = np.random.uniform(*self.recovery_v_range)
     beta = np.random.uniform(*self.recovery_beta_range)
     r = np.random.uniform(*self.recovery_r_range)
-    x, y, yaw = self.track.frenet_to_cartesian(
-        self.recovery_arc_length, ey=0, ephi=0
+    yaw_perturbation = np.random.uniform(*self.recovery_yaw_range)
+    x, y, base_yaw = self.track.frenet_to_cartesian(
+        self.recovery_s_init, ey=0, ephi=0
     )
+    yaw = base_yaw + yaw_perturbation
     states = np.array([[x, y, 0.0, v, yaw, r, beta]])
     poses = np.column_stack([states[:, 0], states[:, 1], states[:, 4]])
 ```
@@ -212,7 +217,7 @@ if self.training_mode == "recover":
         self.poses_x[self.ego_idx], self.poses_y[self.ego_idx]
     )
     truncated = (
-        current_s > self.recovery_max_s
+        current_s > self.recovery_s_max
         or self.current_step > self.max_episode_steps
     )
     return bool(terminated), bool(truncated), self.toggle_list >= 4
@@ -296,7 +301,7 @@ Structure mirrors `train/ppo_race.py` exactly. Key differences:
 
 ## Implementation Tasks (Sequential)
 
-### Task 1: Add `training_mode` config key to the environment
+### [X] Task 1: Add `training_mode` config key to the environment
 
 **What:** Add `"training_mode": "race"` to `default_config()` in `f110_env.py`. Extract it in `__init__()`. Gate the `assert self.progress_gain >= 1.0` so it only applies when `training_mode == "race"`.
 
@@ -306,7 +311,7 @@ Structure mirrors `train/ppo_race.py` exactly. Key differences:
 
 ---
 
-### Task 2: Add recovery config keys to `default_config()`
+### [X] Task 2: Add recovery config keys to `default_config()`
 
 **What:** Add all recovery-specific keys to `default_config()` with safe defaults (see Step 3a in plan above). Extract them in `__init__()` behind `if self.training_mode == "recover"` guard. Initialize derivative tracking state (`prev_beta`, `prev_r`).
 
@@ -316,17 +321,17 @@ Structure mirrors `train/ppo_race.py` exactly. Key differences:
 
 ---
 
-### Task 3: Implement recovery initialization in `reset()`
+### [ ] Task 3: Implement recovery initialization in `reset()`
 
-**What:** In `reset()`, add the recovery initialization block between options parsing and the `reset_fn.sample()` fallback. When `training_mode == "recover"` and no explicit options given: sample random `v`, `beta`, `r` from uniform distributions, compute Cartesian position at `recovery_arc_length` via `frenet_to_cartesian`, build full state array, set `states` and `poses`. At end of `reset()`, initialize `prev_beta` and `prev_r` from the actual agent state.
+**What:** In `reset()`, add the recovery initialization block between options parsing and the `reset_fn.sample()` fallback. When `training_mode == "recover"` and no explicit options given: sample random `v`, `beta`, `r`, and `yaw_perturbation` from uniform distributions, compute Cartesian position and base heading at `recovery_s_init` via `frenet_to_cartesian`, add yaw perturbation to base heading, build full state array, set `states` and `poses`. At end of `reset()`, initialize `prev_beta` and `prev_r` from the actual agent state.
 
 **Files:** `f1tenth_gym/envs/f110_env.py`
 
-**Validate:** Create recovery env, call `reset()` with no options multiple times. Print `agent.standard_state` after each reset — confirm `slip`, `yaw_rate`, and `v_x` values vary within configured ranges. Confirm position is at S=96 on IMS. Confirm passing explicit `options={"states": ...}` still overrides the random perturbation.
+**Validate:** Create recovery env, call `reset()` with no options multiple times. Print `agent.standard_state` after each reset — confirm `slip`, `yaw_rate`, `v_x`, and `yaw` values vary within configured ranges. Confirm position is at S=96 on IMS. Confirm yaw is base track heading ± perturbation. Confirm passing explicit `options={"states": ...}` still overrides the random perturbation.
 
 ---
 
-### Task 4: Implement recovery success check
+### [ ] Task 4: Implement recovery success check
 
 **What:** Add `_check_recovery_success()` method that checks all 6 conditions: `|delta|`, `|beta|`, `|r|`, `|d_beta|`, `|d_r|`, `|frenet_u|` all below their respective thresholds. Computes derivatives via finite difference using `prev_beta`/`prev_r` and `self.timestep`.
 
@@ -336,9 +341,9 @@ Structure mirrors `train/ppo_race.py` exactly. Key differences:
 
 ---
 
-### Task 5: Implement recovery done conditions in `_check_done()`
+### [ ] Task 5: Implement recovery done conditions in `_check_done()`
 
-**What:** Add recovery branch at the top of `_check_done()`. When `training_mode == "recover"`: terminated if boundary exceeded OR recovery succeeded. Truncated if current arc-length > `recovery_max_s` OR `current_step > max_episode_steps`. Store `self.recovery_succeeded` for use by reward. Existing race logic goes in `else` branch.
+**What:** Add recovery branch at the top of `_check_done()`. When `training_mode == "recover"`: terminated if boundary exceeded OR recovery succeeded. Truncated if current arc-length > `recovery_s_max` OR `current_step > max_episode_steps`. Store `self.recovery_succeeded` for use by reward. Existing race logic goes in `else` branch.
 
 **Files:** `f1tenth_gym/envs/f110_env.py`
 
@@ -349,7 +354,7 @@ Structure mirrors `train/ppo_race.py` exactly. Key differences:
 
 ---
 
-### Task 6: Implement recovery reward function
+### [ ] Task 6: Implement recovery reward function
 
 **What:** Add `_get_recovery_reward()` method computing `R = -K_e * sqrt(beta^2 + r^2) + R_col + R_rec - K_c * dt`. Update `prev_beta`/`prev_r` at end of method. Modify `_get_reward()` to dispatch to `_get_recovery_reward()` when `training_mode == "recover"`.
 
@@ -359,7 +364,7 @@ Structure mirrors `train/ppo_race.py` exactly. Key differences:
 
 ---
 
-### Task 7: Create recovery config YAML and factory functions
+### [ ] Task 7: Create recovery config YAML and factory functions
 
 **What:** Create `train/config/gym_config_recover.yaml` with recovery-specific values (see Step 1). Add recovery config loader and constants to `train/config/env_config.py`. Add `get_recovery_train_config()` and `get_recovery_test_config()` factory functions that use shared constants (MODEL, TIMESTEP, INTEGRATOR, PARAMS, etc.) plus recovery-specific overrides.
 
@@ -369,7 +374,7 @@ Structure mirrors `train/ppo_race.py` exactly. Key differences:
 
 ---
 
-### Task 8: Create `ppo_recover.py` training script
+### [ ] Task 8: Create `ppo_recover.py` training script
 
 **What:** Create `train/ppo_recover.py` mirroring `train/ppo_race.py` structure. Import recovery config functions. All 4 modes (train, eval, download, continue). Uses existing `training_utils.py` functions unchanged.
 
@@ -379,7 +384,7 @@ Structure mirrors `train/ppo_race.py` exactly. Key differences:
 
 ---
 
-### Task 9: End-to-end validation
+### [ ] Task 9: End-to-end validation
 
 **What:** Run existing test suite + manual validation of the full recovery pipeline.
 

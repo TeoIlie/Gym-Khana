@@ -90,7 +90,6 @@ class F110Env(gym.Env):
         self.configure(config)
 
         self.seed = self.config["seed"]
-        self.map = self.config["map"]
         self.params = self.config["params"]
         self.num_agents = self.config["num_agents"]
         self.timestep = self.config["timestep"]
@@ -101,6 +100,49 @@ class F110Env(gym.Env):
         self.normalize_act = self.config["normalize_act"]
         self.action_type = CarAction(self.config["control_input"], params=self.params, normalize=self.normalize_act)
         self.num_beams = self.config["num_beams"]
+
+        # training mode
+        self.training_mode = self.config["training_mode"]
+
+        # conditionally set parameters based on training_mode
+        match self.training_mode:
+            case "race":
+                self.map = self.config["map"]
+
+            case "recover":
+                # set recovery map
+                self.map = self.config["recovery_map"]
+
+                # set initial and final arc-lengths
+                self.recovery_s_init = self.config["recovery_s_init"]
+                self.recovery_s_max = self.config["recovery_s_max"]
+
+                # set ranges for initial state perturbation
+                self.recovery_v_range = self.config["recovery_v_range"]
+                self.recovery_beta_range = self.config["recovery_beta_range"]
+                self.recovery_yaw_range = self.config["recovery_yaw_range"]
+                self.recovery_r_range = self.config["recovery_r_range"]
+
+                # set reward parameters
+                self.recovery_euclid_gain = self.config["recovery_euclid_gain"]
+                self.recovery_timestep_penalty = self.config["recovery_timestep_penalty"]
+                self.recovery_success_reward = self.config["recovery_success_reward"]
+                self.recovery_collision_penalty = self.config["recovery_collision_penalty"]
+
+                # set recovery condition threshold values
+                self.recovery_delta_thresh = self.config["recovery_delta_thresh"]
+                self.recovery_beta_thresh = self.config["recovery_beta_thresh"]
+                self.recovery_r_thresh = self.config["recovery_r_thresh"]
+                self.recovery_d_beta_thresh = self.config["recovery_d_beta_thresh"]
+                self.recovery_d_r_thresh = self.config["recovery_d_r_thresh"]
+                self.recovery_frenet_u_thresh = self.config["recovery_frenet_u_thresh"]
+
+                # initialize values for beta, r derivative tracking
+                self.prev_beta = 0.0
+                self.prev_r = 0.0
+
+            case _:
+                raise ValueError(f"Invalid training_mode: '{self.training_mode}'")
 
         # rendering and debug configuration
         self.render_track_lines = self.config["render_track_lines"]
@@ -696,10 +738,29 @@ class F110Env(gym.Env):
             "record_obs_min_max": False,
             "wall_deflection": False,  # default to no wall deflections
             "track_direction": "normal",  # "normal", "reverse", or "random"
+            "training_mode": "race",  # "race" or "recover"
             "out_of_bounds_penalty": -50,
             "progress_gain": 5.0,
             "negative_vel_penalty": -1,
             "max_episode_steps": 4096,
+            # Recovery mode parameters (safe defaults, no effect when training_mode="race")
+            "recovery_map": "IMS",
+            "recovery_s_init": 96,
+            "recovery_s_max": 140,
+            "recovery_v_range": [2, 20],
+            "recovery_beta_range": [-1.047, 1.047],
+            "recovery_r_range": [-1.571, 1.571],
+            "recovery_yaw_range": [-1.047, 1.047],
+            "recovery_euclid_gain": 1.0,
+            "recovery_timestep_penalty": 1.0,
+            "recovery_success_reward": 100,
+            "recovery_collision_penalty": -50,
+            "recovery_delta_thresh": 0.05,
+            "recovery_beta_thresh": 0.05,
+            "recovery_r_thresh": 0.1,
+            "recovery_d_beta_thresh": 0.1,
+            "recovery_d_r_thresh": 0.2,
+            "recovery_frenet_u_thresh": 0.05,
         }
 
     def configure(self, config: dict) -> None:
