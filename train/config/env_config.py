@@ -34,6 +34,7 @@ with open(_config_path, "r") as f:
 
 # Gym shared parameters
 PROJECT_NAME = _config["project_name"]
+RACE_TRAINING_MODE = _config["race_training_mode"]
 MAP = _config["map"]
 TRACK_POOL = _config["track_pool"]
 MODEL = _config["model"]
@@ -115,6 +116,7 @@ def _drift_overrides():
     Drift/race-specific overrides
     """
     return {
+        "training_mode": RACE_TRAINING_MODE,
         "map": MAP,
         "track_pool": TRACK_POOL,
         "track_direction": TRACK_DIRECTION,

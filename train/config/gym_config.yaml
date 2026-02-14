@@ -6,6 +6,7 @@
 
 # Environment
 project_name: "f1tenth-ppo-drift"
+race_training_mode: "race"
 model: "std"  # Vehicle dynamics model: "std" or "mb" (multi-body)
 timestep: 0.01  # Simulation timestep in seconds
 num_agents: 1

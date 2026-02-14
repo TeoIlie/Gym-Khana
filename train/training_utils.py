@@ -1,3 +1,7 @@
+"""
+Helper functions for model training, storage, downloading, and evaluation
+"""
+
 import os
 from pathlib import Path
 from collections import Counter
@@ -309,7 +313,7 @@ def extract_rl_config(model: object, total_timesteps: int, n_envs: int) -> dict:
     return config
 
 
-def download_model_from_wandb(run_id: str, download_dir: str, model_prefix: str) -> str:
+def download_model_from_wandb(run_id: str, download_dir: str, model_prefix: str, project_name: str) -> str:
     """
     Download model from wandb and return the path to cached model.
 
@@ -324,7 +328,7 @@ def download_model_from_wandb(run_id: str, download_dir: str, model_prefix: str)
     os.makedirs(download_dir, exist_ok=True)
 
     api = wandb.Api()
-    run_path = f"{api.default_entity}/{PROJECT_NAME}/runs/{run_id}"
+    run_path = f"{api.default_entity}/{project_name}/runs/{run_id}"
 
     run = api.run(run_path)
     print(f"Found run: {run.name} ({run.state})")
