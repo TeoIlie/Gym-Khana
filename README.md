@@ -39,7 +39,7 @@ python3 waypoint_follow.py
 Or a simple centerline follow example:
 ```bash
 cd examples
-python3 pd_steer_controller.py
+python3 controller_example.py
 ```
 
 A Dockerfile is also provided with support for the GUI with nvidia-docker (nvidia GPU required):
@@ -52,11 +52,19 @@ docker run --gpus all -it -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix f
 Then the same examples can be ran.
 
 ## Training
-The main training script is at `train/ppo_race.py`, and includes functionality for:
+The main racing training script is at `train/ppo_race.py`. The recovery training script is at `train/ppo_recover.py`. Both include functionality for:
 1. Training mode with parallel environments using `SubprocVecEnv` and `train/config` params
 2. Evaluation mode with visualization
 3. Download mode, to fetch model from **wandb**
 4. Continue training mode to continue training an existing model
+
+For example, train a racing model with:
+
+```python
+python3 train/ppo_race.py --m t
+```
+
+Detailed usage guidelines are at the top of the training script files.
 
 ## Configuration
 
@@ -66,6 +74,8 @@ Default configurations are stored in `/train/config/env_config.py`, with paramet
 
 1. `/train/config/env_config.py::get_drift_test_config()`
 2. `/train/config/env_config.py::get_drift_train_config()`
+3. `/train/config/env_config.py::get_recovery_test_config()`
+4. `/train/config/env_config.py::get_recovery_train_config()`
 
 ### Debugging configuration
 
@@ -84,23 +94,26 @@ Default configurations are stored in `/train/config/env_config.py`, with paramet
 
 `gym.make()` configurations:
 
-1. Set `model` to `std` for drifting model with PAC2002 tire model
-2. Use `control_input` `["accl", "steering_angle"]` for best RL drift training
-3. Use parameter dictionary `params` as `F110Env.f1tenth_std_vehicle_params()` or `F110Env.f1tenth_std_drift_bias_params()` for drift parameters on 1/10 scale F1TENTH car
-4. Lookahead curvature/width observations can be configured with spacing and number parameters, and when `render_lookahead_curvatures": True` these will be reflected
+1. Set `training_mode` to define the training goal. This modifies the reset, initialization, track, and reward settings:
+    1. `"race"` (default) is used by `train/ppo_race.py` for training racing policies 
+    2. `"recover"` is used by `train/ppo_recover.py` to train policies for stabilizing an out-of-control vehicle 
+2. Set `model` to `std` for drifting model with PAC2002 tire model
+3. Use `control_input` `["accl", "steering_angle"]` for best RL drift training
+4. Use parameter dictionary `params` as `F110Env.f1tenth_std_vehicle_params()` or `F110Env.f1tenth_std_drift_bias_params()` for drift parameters on 1/10 scale F1TENTH car
+5. Lookahead curvature/width observations can be configured with spacing and number parameters, and when `render_lookahead_curvatures": True` these will be reflected
     1. `lookahead_n_points` - Number of lookahead points (default: 10)
     2. `lookahead_ds` - Spacing between points in meters (default: 0.3m)
     3. `sparse_width_obs` - `False` passes all lookahead point width values as observation, `True` only passes 1st and last. `True` is useful when track width varies very little (default: `False`)
-5. Set `normalize_obs` to `True/False` for normalizing the observation space. Only specific observation types can be normalized
-6. Set `normalize_act` to `True/False` for normalizing the action space. Supported for all action types
-7. Set `predictive_collision` to `True` to use TTC collision checking and `False` for Frenet-based collision checking. Note that this also modifies the reward function.
-8. Set `wall_deflection` to `False` to treat track edges as boundaries, and `True` to treat them as walls that cause a collision and halt the vehicle
-9. Reward configuration options:
+6. Set `normalize_obs` to `True/False` for normalizing the observation space. Only specific observation types can be normalized
+7. Set `normalize_act` to `True/False` for normalizing the action space. Supported for all action types
+8. Set `predictive_collision` to `True` to use TTC collision checking and `False` for Frenet-based collision checking. Note that this also modifies the reward function.
+9. Set `wall_deflection` to `False` to treat track edges as boundaries, and `True` to treat them as walls that cause a collision and halt the vehicle
+10. Reward configuration options:
     1. `progress_gain`: set amount of gain by which to multiply forward progress reward. Must be >= 1
     2. `out_of_bounds_penalty`: penalty for driving off the track boundary
     3. `negative_vel_penalty`: penalty for driving backward
     4. `max_episode_steps`: the maximum number of episode steps
-10. Set `track_direction` to define in which direction to drive around the track:
+11. Set `track_direction` to define in which direction to drive around the track:
     1. `normal` (default): drive around the track in the direction of the waypoints stored in the centerline and raceline files (Note this may be CW or CCW depending on the track map)
     2. `reverse`: drive around in the opposite direction (For ex, CW instead of CCW)
     3. `random`: randomly drive in the 'regular' or 'reverse' direction at each reset with a 50% chance, to learn left and right cornering equally when training a policy with RL

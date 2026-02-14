@@ -146,7 +146,9 @@ docker run --gpus all -it -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix f
   - `get_drift_train_config()`: Configuration for training drift models
 
 **Training Scripts** (`train/`):
-- `ppo_race.py`: Main training script with train/eval/download/continue modes (see Training Models commands above)
+- `ppo_race.py`: training script for racing
+- `ppo_recover.py`: training script for recovery
+- `ppo_common.py`: Shared training workflow (TrainingProfile dataclass, train/eval/download/continue logic)
 - `ppo_example.py`: Simpler example PPO training script
 - `training_utils.py`: Shared utilities for output directory management, environment creation, and callbacks
 
