@@ -5,7 +5,7 @@ import sys
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from train.training_utils import compute_global_track_bounds
+from train.train_utils import compute_global_track_bounds
 
 
 class TestComputeGlobalTrackBounds(unittest.TestCase):
@@ -106,7 +106,7 @@ class TestMakeSubprocvecenvMultiMap(unittest.TestCase):
     def test_cycling_distribution_with_multiple_tracks(self):
         """Test that maps are correctly distributed in cycling pattern across envs."""
         from train.config.env_config import get_drift_train_config
-        from train.training_utils import make_subprocvecenv
+        from train.train_utils import make_subprocvecenv
 
         config = get_drift_train_config()
         n_envs = 6
@@ -126,7 +126,7 @@ class TestMakeSubprocvecenvMultiMap(unittest.TestCase):
         """Test that the distribution counter accurately reflects map assignments."""
         from collections import Counter
         from train.config.env_config import get_drift_train_config
-        from train.training_utils import make_subprocvecenv
+        from train.train_utils import make_subprocvecenv
 
         config = get_drift_train_config()
         n_envs = 10
@@ -153,7 +153,7 @@ class TestMakeSubprocvecenvMultiMap(unittest.TestCase):
     def test_track_pool_none_fallback_to_single_map(self):
         """Test that track_pool=None uses original single-map behavior."""
         from train.config.env_config import get_drift_train_config
-        from train.training_utils import make_subprocvecenv
+        from train.train_utils import make_subprocvecenv
 
         config = get_drift_train_config()
         config["map"] = "Drift"
@@ -173,7 +173,7 @@ class TestMakeSubprocvecenvMultiMap(unittest.TestCase):
         """Test that single track in pool assigns same map to all envs."""
         from collections import Counter
         from train.config.env_config import get_drift_train_config
-        from train.training_utils import make_subprocvecenv
+        from train.train_utils import make_subprocvecenv
 
         config = get_drift_train_config()
         n_envs = 5
@@ -195,7 +195,7 @@ class TestMakeSubprocvecenvMultiMap(unittest.TestCase):
     def test_empty_track_pool_raises_value_error(self):
         """Test that empty track_pool raises ValueError with clear message."""
         from train.config.env_config import get_drift_train_config
-        from train.training_utils import make_subprocvecenv
+        from train.train_utils import make_subprocvecenv
 
         config = get_drift_train_config()
         n_envs = 4
@@ -212,7 +212,7 @@ class TestMakeSubprocvecenvMultiMap(unittest.TestCase):
     def test_invalid_track_name_raises_helpful_error(self):
         """Test that invalid track name in pool raises ValueError with track name."""
         from train.config.env_config import get_drift_train_config
-        from train.training_utils import make_subprocvecenv
+        from train.train_utils import make_subprocvecenv
 
         config = get_drift_train_config()
         n_envs = 2

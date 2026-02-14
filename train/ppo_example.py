@@ -5,7 +5,7 @@ import numpy as np
 from stable_baselines3 import PPO
 from wandb.integration.sb3 import WandbCallback
 from train.config.env_config import PROJECT_NAME, SEED
-from train.training_utils import get_output_dirs, make_output_dirs, get_ckpt_callback
+from train.train_utils import get_output_dirs, make_output_dirs, get_ckpt_callback
 
 # toggle this to train or evaluate
 train = False

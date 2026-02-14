@@ -20,7 +20,6 @@ from train.config.env_config import (
     BEST_MODEL,
     CKPT_SAVE_FREQ,
     N_EVAL_EPISODES,
-    PROJECT_NAME,
     get_env_id,
 )
 

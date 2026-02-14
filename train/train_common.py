@@ -21,7 +21,7 @@ from train.config.env_config import (
     TOTAL_TIMESTEPS,
     get_env_id,
 )
-from train.training_utils import (
+from train.train_utils import (
     get_output_dirs,
     linear_schedule,
     make_output_dirs,

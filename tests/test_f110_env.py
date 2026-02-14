@@ -459,7 +459,7 @@ class TestMultiMapTraining(unittest.TestCase):
         3. Observation spaces are identical despite different tracks (global normalization)
         4. Environments can be reset successfully
         """
-        from train.training_utils import make_subprocvecenv
+        from train.train_utils import make_subprocvecenv
         from train.config.env_config import get_drift_train_config
 
         # Create base config

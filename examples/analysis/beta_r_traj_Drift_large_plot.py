@@ -19,7 +19,7 @@ from stable_baselines3 import PPO
 import matplotlib.pyplot as plt
 
 from train.config.env_config import get_drift_test_config, get_env_id
-from train.training_utils import get_output_dirs, print_header
+from train.train_utils import get_output_dirs, print_header
 
 MODEL_PATH = "/outputs/downloads/flt3rzle/model.zip"
 CONFIG = get_drift_test_config()

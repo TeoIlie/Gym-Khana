@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 from stable_baselines3 import PPO
 from train.config.env_config import get_drift_train_config, get_env_id
-from train.training_utils import get_output_dirs, print_header
+from train.train_utils import get_output_dirs, print_header
 
 # Configuration constants
 PROJ_ROOT = get_output_dirs()[0]
