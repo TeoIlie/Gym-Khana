@@ -406,7 +406,7 @@ The following enhancements were made during Tasks 1-5 implementation:
 
 ---
 
-### [ ] Task 6: Implement recovery reward function
+### [X] Task 6: Implement recovery reward function
 
 **What:** Add `_get_recovery_reward()` method computing `R = -K_e * sqrt(beta^2 + r^2) + R_col + R_rec - K_c * dt`. The method should be pure (no side effects) — derivative tracking (`prev_beta`/`prev_r`) is already updated in `step()` after the reward call. Modify `_get_reward()` to dispatch to `_get_recovery_reward()` when `training_mode == "recover"`. Use hardcoded `[0]` index (single-agent enforced by `__init__`).
 
@@ -416,7 +416,7 @@ The following enhancements were made during Tasks 1-5 implementation:
 
 ---
 
-### [ ] Task 7: Create recovery config YAML and factory functions
+### [X] Task 7: Create recovery config YAML and factory functions
 
 **What:** Create `train/config/gym_config_recover.yaml` with recovery-specific values (see Step 1). Add recovery config loader and constants to `train/config/env_config.py`. Add `get_recovery_train_config()` and `get_recovery_test_config()` factory functions that use shared constants (MODEL, TIMESTEP, INTEGRATOR, PARAMS, etc.) plus recovery-specific overrides.
 

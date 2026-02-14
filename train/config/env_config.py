@@ -5,7 +5,6 @@ Centralized F1TENTH Gym Environment Configuration
 import os
 import yaml
 import multiprocessing
-import gymnasium as gym
 from f1tenth_gym.envs.f110_env import F110Env
 
 # ====================================
@@ -69,6 +68,11 @@ BEST_MODEL = "best_model"
 # LiDAR beams
 NUM_BEAMS = _config["num_beams"]
 
+# Recovery-specific configs
+RECOVERY_PROJECT_NAME = _config["recovery_project_name"]
+RECOVERY_TRAINING_MODE = _config["recovery_training_mode"]
+RECOVERY_TRACK_POOL = _config["recovery_track_pool"]
+
 
 # ====================================
 # Gym config functions
@@ -77,13 +81,11 @@ def get_env_id():
     return "f1tenth_gym:f1tenth-v0"
 
 
-def get_drift_test_config():
+def _base_config(debug_render):
     """
-    Returns gym drift TESTING environment
+    Returns environment params shared across all environments
     """
     return {
-        "map": MAP,
-        "track_pool": TRACK_POOL,
         "num_agents": NUM_AGENTS,
         "timestep": TIMESTEP,
         "integrator": INTEGRATOR,
@@ -92,50 +94,66 @@ def get_drift_test_config():
         "control_input": ACTION_INPUT,
         "observation_config": {"type": OBS_TYPE},
         "reset_config": {"type": RESET_CONFIG},
-        "track_direction": TRACK_DIRECTION,
-        "render_lookahead_curvatures": TEST_DEBUG_RENDER,  # Enable lookahead curvature visualization
+        "render_lookahead_curvatures": debug_render,  # Enable lookahead curvature visualization
         "lookahead_n_points": LOOKAHEAD_N_POINTS,
         "lookahead_ds": LOOKAHEAD_DS,
         "sparse_width_obs": SPARSE_WIDTH_OBS,
-        "debug_frenet_projection": TEST_DEBUG_RENDER,  # Enable Frenet projection debug visualization
+        "debug_frenet_projection": debug_render,  # Enable Frenet projection debug visualization
         "params": PARAMS,
-        "render_track_lines": TEST_DEBUG_RENDER,  # View track lines
-        "render_arc_length_annotations": TEST_DEBUG_RENDER,
+        "render_track_lines": debug_render,  # View track lines
+        "render_arc_length_annotations": debug_render,
         "normalize_obs": NORM_OBS,
         "record_obs_min_max": RECORD_OBS_MIN_MAX,
         "predictive_collision": PREDICTIVE_COLLISION,
         "normalize_act": NORM_ACT,
         "wall_deflection": WALL_DEFLECTION,
     }
+
+
+def _drift_overrides():
+    """
+    Drift/race-specific overrides
+    """
+    return {
+        "map": MAP,
+        "track_pool": TRACK_POOL,
+        "track_direction": TRACK_DIRECTION,
+    }
+
+
+def _recovery_overrides():
+    """
+    Recovery-specific overrides
+    """
+    return {
+        "training_mode": RECOVERY_TRAINING_MODE,
+        "track_pool": RECOVERY_TRACK_POOL,
+    }
+
+
+def get_drift_test_config():
+    """
+    Returns gym drift TESTING environment config
+    """
+    return {**_base_config(TEST_DEBUG_RENDER), **_drift_overrides()}
 
 
 def get_drift_train_config():
     """
-    Returns gym drift TRAINING environment
+    Returns gym drift TRAINING environment config
     """
-    return {
-        "map": MAP,
-        "track_pool": TRACK_POOL,
-        "num_agents": NUM_AGENTS,
-        "timestep": TIMESTEP,
-        "integrator": INTEGRATOR,
-        "model": MODEL,
-        "num_beams": NUM_BEAMS,
-        "control_input": ACTION_INPUT,
-        "observation_config": {"type": OBS_TYPE},
-        "reset_config": {"type": RESET_CONFIG},
-        "track_direction": TRACK_DIRECTION,
-        "render_lookahead_curvatures": TRAIN_DEBUG_RENDER,  # Enable lookahead curvature visualization
-        "lookahead_n_points": LOOKAHEAD_N_POINTS,
-        "lookahead_ds": LOOKAHEAD_DS,
-        "sparse_width_obs": SPARSE_WIDTH_OBS,
-        "debug_frenet_projection": TRAIN_DEBUG_RENDER,  # Enable Frenet projection debug visualization
-        "params": PARAMS,
-        "render_track_lines": TRAIN_DEBUG_RENDER,  # View track lines
-        "render_arc_length_annotations": TRAIN_DEBUG_RENDER,
-        "normalize_obs": NORM_OBS,
-        "record_obs_min_max": RECORD_OBS_MIN_MAX,
-        "predictive_collision": PREDICTIVE_COLLISION,
-        "normalize_act": NORM_ACT,
-        "wall_deflection": WALL_DEFLECTION,
-    }
+    return {**_base_config(TRAIN_DEBUG_RENDER), **_drift_overrides()}
+
+
+def get_recovery_test_config():
+    """
+    Returns gym recovery TESTING environment config
+    """
+    return {**_base_config(TEST_DEBUG_RENDER), **_recovery_overrides()}
+
+
+def get_recovery_train_config():
+    """
+    Returns gym recovery TRAINING environment config
+    """
+    return {**_base_config(TRAIN_DEBUG_RENDER), **_recovery_overrides()}

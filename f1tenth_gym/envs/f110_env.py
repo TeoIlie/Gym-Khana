@@ -108,6 +108,7 @@ class F110Env(gym.Env):
         match self.training_mode:
             case "race":
                 self.map = self.config["map"]
+                self.track_direction_config = self.config["track_direction"]
                 self.max_episode_steps = self.config["max_episode_steps"]
 
             case "recover":
@@ -126,6 +127,7 @@ class F110Env(gym.Env):
 
                 # set recovery map and episode length
                 self.map = self.config["recovery_map"]
+                self.track_direction_config = self.config["recovery_track_direction"]
                 self.max_episode_steps = self.config["recovery_max_episode_steps"]
 
                 # set initial and final arc-lengths
@@ -184,9 +186,6 @@ class F110Env(gym.Env):
 
         # wall deflection behavior
         self.wall_deflection = self.config["wall_deflection"]
-
-        # track direction configuration
-        self.track_direction_config = self.config["track_direction"]
 
         # Validate track direction config
         if self.track_direction_config not in ["normal", "reverse", "random"]:
@@ -766,6 +765,7 @@ class F110Env(gym.Env):
             "recovery_map": "IMS",
             "recovery_s_init": 96,
             "recovery_s_max": 140,
+            "recovery_track_direction": "normal",  # separate from race track_direction, in case it is modified
             "recovery_v_range": [2, 12],
             "recovery_beta_range": [-0.349, 0.349],
             "recovery_r_range": [-0.785, 0.785],
