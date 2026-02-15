@@ -83,20 +83,22 @@ python train/ppo_race.py --m c --path /path/to/model.zip --additional_timesteps 
 ```
 
 ### Formatting/Linting
-Manual formatting:
+Uses `ruff` for formatting, linting, import sorting, and unused import removal.
+
+Manual run:
 ```bash
-black .
+ruff check --fix .  # lint + auto-fix (unused imports, import sorting)
+ruff format .       # format (Black-compatible)
 ```
 
-Linting runs automatically via VSCode settings (`.vscode/settings.json`) on save with:
-- `black` for formatting
-- `isort` for import sorting
-- `flake8` for linting (max line length 120, ignoring E203 and E501)
+Pre-commit hooks run both automatically on `git commit` (configured in `.pre-commit-config.yaml`).
 
-Configuration:
+VSCode runs both on save via `.vscode/settings.json` (requires `charliermarsh.ruff` extension).
+
+Configuration (`pyproject.toml` under `[tool.ruff]`):
 - Line length: 120 characters
 - Target: Python 3.10+
-- Profile: black (for isort)
+- Lint rules: E (pycodestyle), F (pyflakes/unused imports), W (warnings), I (isort)
 
 ### Docker Support
 ```bash

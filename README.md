@@ -156,7 +156,7 @@ Custom maps can be created using the git submodule <https://github.com/TeoIlie/F
 
 ## Formatting/Linting
 
-Run formatting mannually with `black .`. Linting also runs automatically due to settings in `.vscode/settings.json`.
+Run formatting and auto-fixes manually with `ruff check --fix . && ruff format .` Fixes also are applied before commits due to `.pre-commit-config.yaml` file, with `pre-commit` dependency.
 
 ## Important files
 
