@@ -11,18 +11,17 @@ Usage:
 """
 
 import argparse
-import numpy as np
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import torch
-import gymnasium as gym
-from stable_baselines3 import PPO
 from pathlib import Path
 
-from train.config.env_config import get_drift_test_config, get_env_id
+import gymnasium as gym
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+from stable_baselines3 import PPO
+
 from f1tenth_gym.envs.observation import sample_lookahead_curvatures_fast, sample_lookahead_widths_fast
 from f1tenth_gym.envs.utils import normalize_feature
-
+from train.config.env_config import get_drift_test_config, get_env_id
 
 # Constants
 X_MIN, X_MAX = -1.0, 6.0  # Track X bounds with margin
@@ -153,7 +152,7 @@ def construct_grid_observations(X_grid, Y_grid, track, norm_bounds, target_veloc
     print("Constructing observations for grid points...")
     for i in range(n_points):
         if i % 500 == 0:
-            print(f"  Progress: {i}/{n_points} ({100*i/n_points:.1f}%)")
+            print(f"  Progress: {i}/{n_points} ({100 * i / n_points:.1f}%)")
 
         x = X_grid.flat[i]
         y = Y_grid.flat[i]

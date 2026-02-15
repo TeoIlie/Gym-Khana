@@ -7,14 +7,17 @@ Validates:
 3. Performance improvements from binary search optimization
 4. Correct width values at various track positions
 """
+
 import time
+
 import numpy as np
-from f1tenth_gym.envs.track.raceline import Raceline
-from f1tenth_gym.envs.track.cubic_spline import CubicSpline2D
+
 from f1tenth_gym.envs.observation import (
     sample_lookahead_widths,
     sample_lookahead_widths_fast,
 )
+from f1tenth_gym.envs.track.cubic_spline import CubicSpline2D
+from f1tenth_gym.envs.track.raceline import Raceline
 
 
 class MockTrack:
@@ -210,14 +213,14 @@ def test_constant_width_values():
         mean_width = np.mean(widths)
 
         # Assert all values are close to expected
-        assert np.allclose(
-            widths, expected_total, atol=1e-4
-        ), f"Position s={current_s:.2f}m: widths={mean_width:.3f}m != expected {expected_total}m"
+        assert np.allclose(widths, expected_total, atol=1e-4), (
+            f"Position s={current_s:.2f}m: widths={mean_width:.3f}m != expected {expected_total}m"
+        )
 
         # Assert variance is negligible (constant width)
-        assert (
-            width_variance < 1e-6
-        ), f"Position s={current_s:.2f}m: width variance {width_variance:.2e} too high for constant width"
+        assert width_variance < 1e-6, (
+            f"Position s={current_s:.2f}m: width variance {width_variance:.2e} too high for constant width"
+        )
 
 
 def test_edge_cases():
@@ -242,12 +245,12 @@ def test_edge_cases():
         widths_fast = sample_lookahead_widths_fast(track, current_s, n_points, ds)
 
         # Assert shapes match
-        assert (
-            widths_slow.shape == widths_fast.shape
-        ), f"{name}: Shape mismatch: {widths_slow.shape} vs {widths_fast.shape}"
-        assert widths_slow.shape == (
-            n_points,
-        ), f"{name}: Wrong output shape: {widths_slow.shape}, expected ({n_points},)"
+        assert widths_slow.shape == widths_fast.shape, (
+            f"{name}: Shape mismatch: {widths_slow.shape} vs {widths_fast.shape}"
+        )
+        assert widths_slow.shape == (n_points,), (
+            f"{name}: Wrong output shape: {widths_slow.shape}, expected ({n_points},)"
+        )
 
         # Assert numerical agreement
         max_diff = np.max(np.abs(widths_slow - widths_fast))
@@ -257,9 +260,9 @@ def test_edge_cases():
         assert np.all(widths_fast > 0), f"{name}: Widths should be positive"
 
         # Assert widths are reasonable (between 0.5 and 5.0 meters for test tracks)
-        assert np.all(widths_fast < 5.0) and np.all(
-            widths_fast > 0.5
-        ), f"{name}: Widths out of reasonable range [0.5, 5.0]m"
+        assert np.all(widths_fast < 5.0) and np.all(widths_fast > 0.5), (
+            f"{name}: Widths out of reasonable range [0.5, 5.0]m"
+        )
 
 
 def test_performance_comparison():
@@ -317,9 +320,9 @@ def test_wrap_around_behavior():
     widths = sample_lookahead_widths_fast(track, current_s, n_points, ds)
 
     # Assert all widths are constant even with wrap-around
-    assert np.allclose(
-        widths, expected_width, atol=1e-4
-    ), f"Wrap-around failed: widths={widths}, expected all={expected_width}"
+    assert np.allclose(widths, expected_width, atol=1e-4), (
+        f"Wrap-around failed: widths={widths}, expected all={expected_width}"
+    )
 
     # Assert variance is negligible
     width_variance = np.var(widths)
@@ -336,6 +339,7 @@ def test_sparse_width_obs_observation_filtering():
     3. Observation space shape changes correctly between modes
     """
     from unittest.mock import Mock
+
     from f1tenth_gym.envs.observation import VectorObservation
 
     # drift observation features
@@ -378,9 +382,9 @@ def test_sparse_width_obs_observation_filtering():
 
     # drift obs: vx, vy, u, n, r, delta, beta, prev_steer, prev_accl, prev_omega, vel_cmd, 10 curvatures, 10 widths
     expected_size_full = 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 10 + 10  # 31
-    assert (
-        space_full.shape[0] == expected_size_full
-    ), f"Expected obs space size {expected_size_full} with sparse=False, got {space_full.shape[0]}"
+    assert space_full.shape[0] == expected_size_full, (
+        f"Expected obs space size {expected_size_full} with sparse=False, got {space_full.shape[0]}"
+    )
 
     # Test with sparse_width_obs=True (only first and last width values)
     mock_env_sparse = create_mock_env(lookahead_n_points=10, sparse_width_obs=True, normalize_obs=False)
@@ -389,9 +393,9 @@ def test_sparse_width_obs_observation_filtering():
 
     # drift obs: vx, vy, u, n, r, delta, beta, prev_steer, prev_accl, prev_omega, vel_cmd, 10 curvatures, 2 widths
     expected_size_sparse = 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 10 + 2  # 23
-    assert (
-        space_sparse.shape[0] == expected_size_sparse
-    ), f"Expected obs space size {expected_size_sparse} with sparse=True, got {space_sparse.shape[0]}"
+    assert space_sparse.shape[0] == expected_size_sparse, (
+        f"Expected obs space size {expected_size_sparse} with sparse=True, got {space_sparse.shape[0]}"
+    )
 
 
 def test_sparse_width_obs_extracts_correct_values():
@@ -421,13 +425,13 @@ def test_sparse_width_obs_extracts_correct_values():
     assert full_widths.shape == (4,), f"Expected 4 full width values, got shape {full_widths.shape}"
 
     # Verify sparse contains exactly first and last
-    assert np.isclose(
-        sparse_widths[0], full_widths[0], atol=1e-5
-    ), f"First sparse width {sparse_widths[0]} doesn't match first full width {full_widths[0]}"
+    assert np.isclose(sparse_widths[0], full_widths[0], atol=1e-5), (
+        f"First sparse width {sparse_widths[0]} doesn't match first full width {full_widths[0]}"
+    )
 
-    assert np.isclose(
-        sparse_widths[1], full_widths[-1], atol=1e-5
-    ), f"Last sparse width {sparse_widths[1]} doesn't match last full width {full_widths[-1]}"
+    assert np.isclose(sparse_widths[1], full_widths[-1], atol=1e-5), (
+        f"Last sparse width {sparse_widths[1]} doesn't match last full width {full_widths[-1]}"
+    )
 
     # Verify we're testing with varying widths (not all identical)
     width_variance = np.var(full_widths)
@@ -436,8 +440,9 @@ def test_sparse_width_obs_extracts_correct_values():
 
 if __name__ == "__main__":
     # Run tests directly if executed as a script
-    import pytest
     import sys
+
+    import pytest
 
     # Run pytest on this file
     exit_code = pytest.main([__file__, "-v"])

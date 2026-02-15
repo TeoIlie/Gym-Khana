@@ -19,10 +19,11 @@ Usage:
 """
 
 import gymnasium as gym
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from scipy.signal import savgol_filter
 from stable_baselines3 import PPO
+
 from train.config.env_config import get_drift_train_config, get_env_id
 from train.train_utils import get_output_dirs, print_header
 
@@ -151,7 +152,7 @@ def collect_phase_plane_data(model, env, num_episodes, dt):
             d2_frenet_u_all.extend(d2_frenet_u)
             d2_frenet_n_all.extend(d2_frenet_n)
 
-        print(f"Episode {episode+1}/{num_episodes} complete: {len(frenet_u_traj)} steps")
+        print(f"Episode {episode + 1}/{num_episodes} complete: {len(frenet_u_traj)} steps")
 
     return {
         "frenet_u": np.array(frenet_u_all),

@@ -2,14 +2,13 @@
 Compares behaviour of f110 gym mb model with reference commonroad mb model to confirm matching behaviour.
 """
 
-from scipy.integrate import odeint
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+from scipy.integrate import odeint
 
-from commonroad.vehiclemodels.vehicle_dynamics_mb import vehicle_dynamics_mb as cr_vehicle_dynamics_mb
 from commonroad.vehiclemodels.init_mb import init_mb as init_mb_cr
 from commonroad.vehiclemodels.parameters_vehicle1 import parameters_vehicle1
-
+from commonroad.vehiclemodels.vehicle_dynamics_mb import vehicle_dynamics_mb as cr_vehicle_dynamics_mb
 from f1tenth_gym.envs.dynamic_models.multi_body import init_mb
 from f1tenth_gym.envs.dynamic_models.multi_body.multi_body import vehicle_dynamics_mb
 from f1tenth_gym.envs.f110_env import F110Env

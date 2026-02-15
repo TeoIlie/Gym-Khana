@@ -1,6 +1,6 @@
-import unittest
 import os
 import sys
+import unittest
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -125,6 +125,7 @@ class TestMakeSubprocvecenvMultiMap(unittest.TestCase):
     def test_distribution_counting_accuracy(self):
         """Test that the distribution counter accurately reflects map assignments."""
         from collections import Counter
+
         from train.config.env_config import get_drift_train_config
         from train.train_utils import make_subprocvecenv
 
@@ -172,6 +173,7 @@ class TestMakeSubprocvecenvMultiMap(unittest.TestCase):
     def test_single_track_in_pool(self):
         """Test that single track in pool assigns same map to all envs."""
         from collections import Counter
+
         from train.config.env_config import get_drift_train_config
         from train.train_utils import make_subprocvecenv
 

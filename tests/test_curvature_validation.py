@@ -4,9 +4,12 @@ Test script to validate curvature calculations against known geometric shapes.
 This test suite validates that the cubic spline curvature calculations are
 mathematically correct by comparing against known analytical solutions.
 """
+
 import os
-import numpy as np
+
 import matplotlib.pyplot as plt
+import numpy as np
+
 from f1tenth_gym.envs.track.cubic_spline import CubicSpline2D
 
 
@@ -53,7 +56,7 @@ def test_circle():
     # Allow 5% error due to discretization and cubic spline approximation
     tolerance = 0.05 * expected_curvature
     assert error < tolerance, (
-        f"Circle curvature should be {expected_curvature:.4f} ± {tolerance:.4f} m⁻¹, " f"got {mean_curvature:.4f} m⁻¹"
+        f"Circle curvature should be {expected_curvature:.4f} ± {tolerance:.4f} m⁻¹, got {mean_curvature:.4f} m⁻¹"
     )
 
 
@@ -118,8 +121,7 @@ def test_lookahead_sampling():
     # Allow 10% error since we're sampling discrete points on a circle
     tolerance = 0.1 * expected_curvature
     assert abs(mean_curvature - expected_curvature) < tolerance, (
-        f"Lookahead sampling should produce mean curvature ~{expected_curvature:.4f} m⁻¹, "
-        f"got {mean_curvature:.4f} m⁻¹"
+        f"Lookahead sampling should produce mean curvature ~{expected_curvature:.4f} m⁻¹, got {mean_curvature:.4f} m⁻¹"
     )
 
 

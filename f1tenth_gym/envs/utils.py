@@ -1,9 +1,7 @@
-from typing import Any, Dict, TypeVar
 import warnings
+from typing import Any, Dict, TypeVar
 
 import numpy as np
-
-from f1tenth_gym.envs.track.track_utils import get_min_max_curvature, get_min_max_track_width
 
 KeyType = TypeVar("KeyType")
 
@@ -125,8 +123,7 @@ def calculate_norm_bounds(env, features: list[str]):
         a_max = params.get("a_max", None)
         if a_max is None:
             raise ValueError(
-                "Features 'prev_accl_cmd' or 'curr_accl_cmd' require 'a_max' parameter. "
-                "Please configure in env.params."
+                "Features 'prev_accl_cmd' or 'curr_accl_cmd' require 'a_max' parameter. Please configure in env.params."
             )
 
         if "prev_accl_cmd" in features_set:

@@ -2,10 +2,10 @@ import gymnasium as gym
 import numpy as np
 
 from examples.controllers import (
-    create_controller,
     FRENET_N_GAIN,
     FRENET_U_GAIN,
     TARGET_SPEED,
+    create_controller,
 )
 from examples.controllers.steer_controller import (
     LOOKAHEAD_N_POINTS,
@@ -43,8 +43,8 @@ def main():
     )
     obs, _ = env.reset(options={"states": init_state})
 
-    print(f"Centerline Tracking Controller")
-    print(f"==============================")
+    print("Centerline Tracking Controller")
+    print("==============================")
     print(f"Controller gains: Kn={FRENET_N_GAIN}, Ku={FRENET_U_GAIN}")
     print(f"Target speed: {TARGET_SPEED} m/s")
     print(f"Observation space: {env.observation_space}")
@@ -83,7 +83,7 @@ def main():
     avg_lateral = total_lateral_error / step_count
     avg_heading = total_heading_error / step_count
     avg_reward = total_reward / step_count
-    print(f"\nFinal Statistics:")
+    print("\nFinal Statistics:")
     print(f"  Total steps: {step_count}")
     print(f"  Average lateral error: {avg_lateral:.4f} m")
     print(f"  Average heading error: {avg_heading:.4f} rad ({np.degrees(avg_heading):.2f} deg)")

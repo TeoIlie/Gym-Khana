@@ -1,12 +1,12 @@
 # MIT License
 import time
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import gymnasium as gym
 import numpy as np
-from f1tenth_gym.envs.collision_models import get_vertices, collision
 
+from f1tenth_gym.envs.collision_models import collision, get_vertices
 
 # Copyright (c) 2020 Joseph Auckley, Matthew O'Kelly, Aman Sinha, Hongrui Zheng
 

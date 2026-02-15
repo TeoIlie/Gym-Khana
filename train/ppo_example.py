@@ -1,11 +1,13 @@
-import wandb
 import os
+
 import gymnasium as gym
 import numpy as np
 from stable_baselines3 import PPO
 from wandb.integration.sb3 import WandbCallback
+
+import wandb
 from train.config.env_config import PROJECT_NAME, SEED
-from train.train_utils import get_output_dirs, make_output_dirs, get_ckpt_callback
+from train.train_utils import get_ckpt_callback, get_output_dirs, make_output_dirs
 
 # toggle this to train or evaluate
 train = False
@@ -67,7 +69,7 @@ def main():
     else:
         proj_root, _ = get_output_dirs()
         run_id = "q81h6jga"  # replace with your run ID
-        model_path = os.path.join(proj_root, "outputs", "models", "5ybfzkyr", "checkpoints", f"ckpt_1000000_steps.zip")
+        model_path = os.path.join(proj_root, "outputs", "models", "5ybfzkyr", "checkpoints", "ckpt_1000000_steps.zip")
         model = PPO.load(model_path, print_system_info=True, device="cpu")
         eval_env = gym.make(
             "f1tenth_gym:f1tenth-v0",

@@ -1,7 +1,8 @@
 from __future__ import annotations
+
 import pathlib
 from dataclasses import dataclass
-from typing import Tuple, Optional
+from typing import Optional, Tuple
 
 import numpy as np
 import yaml
@@ -9,10 +10,10 @@ from PIL import Image
 from PIL.Image import Transpose
 from yamldataclassconfig.config import YamlDataClassConfig
 
+from ..rendering import EnvRenderer
 from . import Raceline
 from .cubic_spline import CubicSpline2D
 from .track_utils import find_track_dir
-from ..rendering import EnvRenderer
 
 
 @dataclass
@@ -442,7 +443,7 @@ class Track:
                 s_error = abs(s - s_robust)
                 ey_error = abs(ey - ey_robust)
 
-                print(f"[DEBUG Frenet] Method: PRECISE (optimization)")
+                print("[DEBUG Frenet] Method: PRECISE (optimization)")
                 print(f"[DEBUG Frenet] Vehicle: ({x:.2f}, {y:.2f}) -> Projected: ({x_eval:.2f}, {y_eval:.2f})")
                 print(f"[DEBUG Frenet] s_guess={s_guess:.2f}m → s_optimized={s:.2f}m")
                 print(f"[DEBUG Frenet] Validation: s_robust={s_robust:.2f}m (global search)")
@@ -648,7 +649,9 @@ class Track:
         line_pts = np.vstack([self.debug_vehicle_point, self.debug_projected_point])
         if self.debug_render_line is None:
             self.debug_render_line = e.render_lines(
-                line_pts, color=line_color, size=2  # Shape: (2, 2) - two points with x,y coords
+                line_pts,
+                color=line_color,
+                size=2,  # Shape: (2, 2) - two points with x,y coords
             )
         else:
             if hasattr(self.debug_render_line, "setData"):

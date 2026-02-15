@@ -1,8 +1,8 @@
 import time
+
 import gymnasium as gym
 import gymnasium.wrappers
 import numpy as np
-
 from waypoint_follow import PurePursuitPlanner
 
 

@@ -2,9 +2,9 @@ from abc import abstractmethod
 
 import numpy as np
 
+from ..track import Raceline, Track
 from .reset_fn import ResetFn
 from .reset_utils import sample_around_waypoint
-from ..track import Track, Raceline
 
 
 class MaskedResetFn(ResetFn):

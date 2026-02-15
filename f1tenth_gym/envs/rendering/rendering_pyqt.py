@@ -1,22 +1,20 @@
 from __future__ import annotations
+
 import logging
-import math
-from typing import Any, Callable, Optional
 import signal
+from typing import Any, Callable, Optional
 
-import cv2
 import numpy as np
-from PyQt6 import QtWidgets, QtCore
-from PyQt6 import QtGui
 import pyqtgraph as pg
-from pyqtgraph.exporters import ImageExporter
 from PIL import ImageColor
+from PyQt6 import QtCore, QtGui, QtWidgets
+from pyqtgraph.exporters import ImageExporter
 
+from ..track import Track
 from .pyqt_objects import (
     Car,
     TextObject,
 )
-from ..track import Track
 from .renderer import EnvRenderer, RenderSpec
 
 # one-line instructions visualized at the top of the screen (if show_info=True)

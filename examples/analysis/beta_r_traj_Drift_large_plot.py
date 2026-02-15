@@ -4,7 +4,7 @@ Beta (Sideslip) and R (Yaw Rate) Trajectory Plot
 This scrip runs a learned policy in simulation for COLLECTION_LAPS laps,
 following WARMUP_LAPS warm-up laps, and collects the vehicle beta, r values.
 Optionally, the data can be filtered by arc length s-range (START_S to END_S).
-The data is then plotted, coloured by arc-length, to visualize the drifting 
+The data is then plotted, coloured by arc-length, to visualize the drifting
 behavior in the beta-r plane.
 
 Usage:
@@ -13,10 +13,10 @@ Usage:
     3. View generated plots in beta_r_phase_plane.png
 """
 
-import numpy as np
 import gymnasium as gym
-from stable_baselines3 import PPO
 import matplotlib.pyplot as plt
+import numpy as np
+from stable_baselines3 import PPO
 
 from train.config.env_config import get_drift_test_config, get_env_id
 from train.train_utils import get_output_dirs, print_header

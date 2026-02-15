@@ -1,16 +1,15 @@
 import numpy as np
 from numba import njit
-from numba.typed import Dict
 
-from f1tenth_gym.envs.dynamic_models.utils import steering_constraint, accl_constraints
+from f1tenth_gym.envs.dynamic_models.utils import accl_constraints, steering_constraint
 
+from ..kinematic import vehicle_dynamics_ks_cog
 from ..tire_model import (
     formula_lateral,
     formula_lateral_comb,
     formula_longitudinal,
     formula_longitudinal_comb,
 )
-from ..kinematic import vehicle_dynamics_ks_cog
 
 
 def vehicle_dynamics_mb(x: np.ndarray, u_init: np.ndarray, params: dict):

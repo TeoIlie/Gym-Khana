@@ -28,11 +28,12 @@ Author: Hongrui Zheng
 """
 
 from __future__ import annotations
+
 import numpy as np
-import warnings
-from .dynamic_models import DynamicModel
+
 from .action import CarAction
 from .collision_models import collision_multiple, get_vertices
+from .dynamic_models import DynamicModel
 from .integrator import EulerIntegrator, Integrator
 from .laser_models import ScanSimulator2D, check_ttc_jit, ray_cast
 from .track import Track

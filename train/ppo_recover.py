@@ -19,8 +19,8 @@ Usage:
 from train.config.env_config import (
     RECOVERY_PROJECT_NAME,
     RECOVERY_TRACK_POOL,
-    get_recovery_train_config,
     get_recovery_test_config,
+    get_recovery_train_config,
 )
 from train.train_common import TrainingProfile, main
 

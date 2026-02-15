@@ -30,7 +30,7 @@ def display_drift_obs(step, obs, reward, lookahead_n_points, total_reward=None):
     curvatures = obs[11 : 11 + lookahead_n_points]
     widths = obs[11 + lookahead_n_points : 11 + (2 * lookahead_n_points)]
 
-    print(f"\n=====================\nStep {step+1}:\n=====================\n")
+    print(f"\n=====================\nStep {step + 1}:\n=====================\n")
 
     print(
         f"  vx={vx:6.2f}, vy={vy:6.2f}, yaw_rate={yaw_rate:6.2f}, delta={delta:6.4f}, beta={beta:6.4f}\n"
@@ -44,7 +44,7 @@ def display_drift_obs(step, obs, reward, lookahead_n_points, total_reward=None):
     for i, value in enumerate(curvatures, start=1):
         print(f"    Point {i} = {format_float(value)}")
 
-    print(f"  widths lookahead:")
+    print("  widths lookahead:")
     for i, value in enumerate(widths, start=1):
         print(f"    Point {i} = {format_float(value)}")
 

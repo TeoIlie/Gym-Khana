@@ -1,8 +1,9 @@
 from __future__ import annotations
-from .masked_reset import GridResetFn, AllTrackResetFn
-from .map_reset import AllMapResetFn
-from .reset_fn import ResetFn
+
 from ..track import Track
+from .map_reset import AllMapResetFn
+from .masked_reset import AllTrackResetFn, GridResetFn
+from .reset_fn import ResetFn
 
 
 def make_reset_fn(type: str | None, track: Track, num_agents: int, **kwargs) -> ResetFn:

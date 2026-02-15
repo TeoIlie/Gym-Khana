@@ -2,9 +2,11 @@
 Centralized F1TENTH Gym Environment Configuration
 """
 
-import os
-import yaml
 import multiprocessing
+import os
+
+import yaml
+
 from f1tenth_gym.envs.f110_env import F110Env
 
 # ====================================

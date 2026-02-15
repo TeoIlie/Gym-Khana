@@ -2,12 +2,15 @@
 Test to validate that sample_lookahead_curvatures_fast produces identical
 results to sample_lookahead_curvatures while being significantly faster.
 """
+
 import os
 import time
-import numpy as np
+
 import matplotlib.pyplot as plt
-from f1tenth_gym.envs.track.cubic_spline import CubicSpline2D
+import numpy as np
+
 from f1tenth_gym.envs.observation import sample_lookahead_curvatures, sample_lookahead_curvatures_fast
+from f1tenth_gym.envs.track.cubic_spline import CubicSpline2D
 
 
 class MockRaceline:
@@ -180,8 +183,8 @@ def test_performance_comparison():
         speedups.append(speedup)
 
         print(f"\n{track_name.upper()} Track ({n_iterations} iterations):")
-        print(f"  Regular implementation: {time_slow*1000:.2f} ms  ({time_slow*1e6/n_iterations:.2f} µs/call)")
-        print(f"  Fast implementation:    {time_fast*1000:.2f} ms  ({time_fast*1e6/n_iterations:.2f} µs/call)")
+        print(f"  Regular implementation: {time_slow * 1000:.2f} ms  ({time_slow * 1e6 / n_iterations:.2f} µs/call)")
+        print(f"  Fast implementation:    {time_fast * 1000:.2f} ms  ({time_fast * 1e6 / n_iterations:.2f} µs/call)")
         print(f"  Speedup: {speedup:.1f}x")
 
     avg_speedup = np.mean(speedups)
@@ -331,7 +334,7 @@ def test_visualization():
     # Use pytest assertion
     tolerance = 1e-5
     assert max_diff < tolerance, (
-        f"Maximum difference {max_diff:.2e} exceeds tolerance {tolerance:.2e}. " f"Mean difference: {mean_diff:.2e}"
+        f"Maximum difference {max_diff:.2e} exceeds tolerance {tolerance:.2e}. Mean difference: {mean_diff:.2e}"
     )
 
 

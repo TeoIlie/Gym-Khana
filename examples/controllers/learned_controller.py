@@ -1,10 +1,12 @@
 """Wrapper for learned PPO policies to match controller interface."""
 
-import numpy as np
 from typing import Any
+
+import numpy as np
 from stable_baselines3 import PPO
 
 from train.config.env_config import get_drift_test_config
+
 from .base import Controller
 
 

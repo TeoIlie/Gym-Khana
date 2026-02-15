@@ -1,8 +1,7 @@
 import numpy as np
 from numba import njit
-from numba.typed import Dict
 
-from .utils import steering_constraint, accl_constraints
+from .utils import accl_constraints, steering_constraint
 
 
 def vehicle_dynamics_ks(x: np.ndarray, u_init: np.ndarray, params: dict):

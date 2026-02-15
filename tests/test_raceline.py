@@ -1,7 +1,8 @@
-import unittest
-import numpy as np
 import pathlib
 import tempfile
+import unittest
+
+import numpy as np
 
 from f1tenth_gym.envs.track import Raceline
 

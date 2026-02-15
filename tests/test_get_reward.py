@@ -5,9 +5,9 @@ These tests expose the wraparound bug where completing a lap
 gives a large negative reward instead of a small positive reward.
 """
 
-import pytest
-import numpy as np
 import gymnasium as gym
+import numpy as np
+import pytest
 
 
 class TestGetRewardWraparound:
@@ -51,11 +51,11 @@ class TestGetRewardWraparound:
         # Restore original method
         env.track.centerline.spline.calc_arclength_inaccurate = original_calc
 
-        print(f"\nNormal forward progress test:")
+        print("\nNormal forward progress test:")
         print(f"  Track length: {track_length:.2f}m")
         print(f"  Last s: {last_s:.2f}m")
-        print(f"  Current s: 50.1m")
-        print(f"  Expected reward: ~0.1m")
+        print("  Current s: 50.1m")
+        print("  Expected reward: ~0.1m")
         print(f"  Actual reward: {reward:.2f}m")
 
         assert np.isclose(reward, 0.1), f"Forward progress should give ~0.1m reward, got {reward}"
@@ -94,12 +94,12 @@ class TestGetRewardWraparound:
         max_progress = env.params["v_max"] * env.timestep * 10.0  # margin=10
         expected_reward = max_progress  # 2.0m
 
-        print(f"\n✓ Lap completion with clipping:")
+        print("\n✓ Lap completion with clipping:")
         print(f"  Track length: {track_length:.2f}m")
         print(f"  Last s: {last_s:.2f}m (near finish)")
-        print(f"  Current s: 5.00m (crossed finish)")
+        print("  Current s: 5.00m (crossed finish)")
         print(f"  Raw progress: {5.0 - last_s:.2f}m")
-        print(f"  Corrected progress (before clip): ~10.00m")
+        print("  Corrected progress (before clip): ~10.00m")
         print(f"  Max progress (margin=10): {max_progress:.2f}m")
         print(f"  Expected reward (after clip): {expected_reward:.2f}m")
         print(f"  Actual reward: {reward:.2f}m")
@@ -111,9 +111,9 @@ class TestGetRewardWraparound:
         )
 
         # Verify reward matches clipped max_progress
-        assert np.isclose(
-            reward, expected_reward, atol=0.01
-        ), f"Expected clipped reward of {expected_reward:.2f}m, got {reward:.2f}m"
+        assert np.isclose(reward, expected_reward, atol=0.01), (
+            f"Expected clipped reward of {expected_reward:.2f}m, got {reward:.2f}m"
+        )
 
     def test_backward_wraparound_mid_track_to_start(self, env):
         """
@@ -144,11 +144,11 @@ class TestGetRewardWraparound:
         max_progress = env.params["v_max"] * env.timestep * 10.0  # margin=10
         expected_reward = max_progress  # 2.0m (not 20m due to clipping)
 
-        print(f"\n✓ Backward wraparound with clipping (10m before finish to 10m after):")
+        print("\n✓ Backward wraparound with clipping (10m before finish to 10m after):")
         print(f"  Track length: {track_length:.2f}m")
         print(f"  Last s: {last_s:.2f}m")
-        print(f"  Current s: 10.00m")
-        print(f"  Corrected progress (before clip): ~20.00m")
+        print("  Current s: 10.00m")
+        print("  Corrected progress (before clip): ~20.00m")
         print(f"  Max progress (margin=10): {max_progress:.2f}m")
         print(f"  Expected reward (after clip): {expected_reward:.2f}m")
         print(f"  Actual reward: {reward:.2f}m")
@@ -157,9 +157,9 @@ class TestGetRewardWraparound:
         assert reward > 0, f"Wraparound should give positive reward, got {reward}"
 
         # Verify reward matches clipped max_progress
-        assert np.isclose(
-            reward, expected_reward, atol=0.01
-        ), f"Expected clipped reward of {expected_reward:.2f}m, got {reward:.2f}m"
+        assert np.isclose(reward, expected_reward, atol=0.01), (
+            f"Expected clipped reward of {expected_reward:.2f}m, got {reward:.2f}m"
+        )
 
     def test_no_wraparound_(self, env):
         """Test that movement near finish line (without crossing) works correctly"""
@@ -175,10 +175,10 @@ class TestGetRewardWraparound:
 
         reward = env._get_reward()
 
-        print(f"\nNo wraparound (near finish):")
+        print("\nNo wraparound (near finish):")
         print(f"  Last s: {last_s:.2f}m")
         print(f"  Current s: {track_length - 9.9:.2f}m")
-        print(f"  Expected reward: ~0.1m")
+        print("  Expected reward: ~0.1m")
         print(f"  Actual reward: {reward:.2f}m")
 
         assert np.isclose(reward, 0.1), f"Expected reward 0.1, got {reward}"
@@ -197,10 +197,10 @@ class TestGetRewardWraparound:
 
         expected_reward = 50.1 - last_s - 50.0  # progress - collision penalty
 
-        print(f"\nCollision penalty test:")
+        print("\nCollision penalty test:")
         print(f"  Last s: {last_s:.2f}m")
-        print(f"  Progress: 5.00m")
-        print(f"  Collision penalty: 1.00")
+        print("  Progress: 5.00m")
+        print("  Collision penalty: 1.00")
         print(f"  Expected reward: {expected_reward:.2f}m")
         print(f"  Actual reward: {reward:.2f}m")
 
@@ -244,7 +244,7 @@ class TestGetRewardWraparound:
 
         expected_reward = 0.2  # Both agents' progress
 
-        print(f"\nMulti-agent collaborative reward:")
+        print("\nMulti-agent collaborative reward:")
         print(f"  Expected total: {expected_reward:.2f}m")
         print(f"  Actual reward: {reward:.2f}m")
 
@@ -287,7 +287,7 @@ class TestCorrectWraparoundProg:
         corrected = env._correct_wraparound_prog(prog=prog, track_length=track_length)
         expected = 0.2  # Actual distance traveled
 
-        print(f"\n✓ Forward wraparound correction test:")
+        print("\n✓ Forward wraparound correction test:")
         print(f"  Track length: {track_length:.2f}m")
         print(f"  Last s: {last_s:.2f}m (near finish)")
         print(f"  Current s: {current_s:.2f}m (crossed to start)")
@@ -296,7 +296,7 @@ class TestCorrectWraparoundProg:
         print(f"  Expected: {expected:.2f}m")
 
         assert np.isclose(corrected, expected, atol=0.01), (
-            f"Forward wraparound correction failed: " f"expected {expected:.2f}m, got {corrected:.2f}m"
+            f"Forward wraparound correction failed: expected {expected:.2f}m, got {corrected:.2f}m"
         )
 
     def test_backward_wraparound_correction(self, env):
@@ -317,7 +317,7 @@ class TestCorrectWraparoundProg:
         corrected = env._correct_wraparound_prog(prog=prog, track_length=track_length)
         expected = -0.2  # Actual distance traveled backward
 
-        print(f"\n✓ Backward wraparound correction test:")
+        print("\n✓ Backward wraparound correction test:")
         print(f"  Track length: {track_length:.2f}m")
         print(f"  Last s: {last_s:.2f}m (just after start)")
         print(f"  Current s: {current_s:.2f}m (reversed to near finish)")
@@ -326,7 +326,7 @@ class TestCorrectWraparoundProg:
         print(f"  Expected: {expected:.2f}m")
 
         assert np.isclose(corrected, expected, atol=0.01), (
-            f"Backward wraparound correction failed: " f"expected {expected:.2f}m, got {corrected:.2f}m"
+            f"Backward wraparound correction failed: expected {expected:.2f}m, got {corrected:.2f}m"
         )
 
     def test_normal_forward_progress_no_correction(self, env):
@@ -341,13 +341,13 @@ class TestCorrectWraparoundProg:
         prog_normal = 0.15
         corrected = env._correct_wraparound_prog(prog=prog_normal, track_length=track_length)
 
-        print(f"\n✓ Normal forward progress (no correction):")
+        print("\n✓ Normal forward progress (no correction):")
         print(f"  Raw progress: {prog_normal:.2f}m")
         print(f"  Corrected progress: {corrected:.2f}m")
         print(f"  Max allowed: {env.params['v_max'] * env.timestep * 1.05:.4f}m")
 
         assert corrected == prog_normal, (
-            f"Normal progress should not be modified: " f"expected {prog_normal}m, got {corrected}m"
+            f"Normal progress should not be modified: expected {prog_normal}m, got {corrected}m"
         )
 
     def test_normal_backward_progress_no_correction(self, env):
@@ -362,13 +362,13 @@ class TestCorrectWraparoundProg:
         prog_backward = -0.04
         corrected = env._correct_wraparound_prog(prog=prog_backward, track_length=track_length)
 
-        print(f"\n✓ Normal backward progress (no correction):")
+        print("\n✓ Normal backward progress (no correction):")
         print(f"  Raw progress: {prog_backward:.2f}m")
         print(f"  Corrected progress: {corrected:.2f}m")
         print(f"  Min allowed: {-abs(env.params['v_min']) * env.timestep * 1.05:.4f}m")
 
         assert corrected == prog_backward, (
-            f"Normal backward progress should not be modified: " f"expected {prog_backward}m, got {corrected}m"
+            f"Normal backward progress should not be modified: expected {prog_backward}m, got {corrected}m"
         )
 
     def test_zero_progress_no_correction(self, env):
@@ -378,7 +378,7 @@ class TestCorrectWraparoundProg:
         prog_zero = 0.0
         corrected = env._correct_wraparound_prog(prog=prog_zero, track_length=track_length)
 
-        print(f"\n✓ Zero progress (stationary):")
+        print("\n✓ Zero progress (stationary):")
         print(f"  Raw progress: {prog_zero:.2f}m")
         print(f"  Corrected progress: {corrected:.2f}m")
 
@@ -398,7 +398,7 @@ class TestCorrectWraparoundProg:
 
         corrected = env._correct_wraparound_prog(prog=prog_at_threshold, track_length=track_length)
 
-        print(f"\n✓ Boundary test (at forward threshold):")
+        print("\n✓ Boundary test (at forward threshold):")
         print(f"  Threshold: {-max_backward:.4f}m")
         print(f"  Progress: {prog_at_threshold:.4f}m")
         print(f"  Corrected: {corrected:.4f}m")
@@ -420,7 +420,7 @@ class TestCorrectWraparoundProg:
 
         corrected = env._correct_wraparound_prog(prog=prog_at_threshold, track_length=track_length)
 
-        print(f"\n✓ Boundary test (at backward threshold):")
+        print("\n✓ Boundary test (at backward threshold):")
         print(f"  Threshold: {max_forward:.4f}m")
         print(f"  Progress: {prog_at_threshold:.4f}m")
         print(f"  Corrected: {corrected:.4f}m")
@@ -454,10 +454,10 @@ class TestGetRewardEdgeCases:
 
         reward = env._get_reward()
 
-        print(f"\nZero progress test:")
+        print("\nZero progress test:")
         print(f"  Last s: {last_s:.2f}m")
-        print(f"  Current s: 50.00m")
-        print(f"  Expected reward: 0.00m")
+        print("  Current s: 50.00m")
+        print("  Expected reward: 0.00m")
         print(f"  Actual reward: {reward:.2f}m")
 
         assert np.isclose(reward, 0.0), f"Zero progress should give 0 reward, got {reward}"
@@ -475,7 +475,7 @@ class TestGetRewardEdgeCases:
 
         expected_reward = -0.1
 
-        print(f"\nBackward motion (no wraparound):")
+        print("\nBackward motion (no wraparound):")
         print(f"  Last s: {last_s:.2f}m")
         print(f"  Expected reward: {expected_reward:.2f}m")
         print(f"  Actual reward: {reward:.2f}m")
@@ -522,17 +522,17 @@ class TestRewardCalculation:
 
         reward = env._get_reward()
 
-        print(f"\n✓ Out-of-bounds penalty (Frenet mode):")
-        print(f"  Boundary exceeded: True")
-        print(f"  Progress: 0.0m")
+        print("\n✓ Out-of-bounds penalty (Frenet mode):")
+        print("  Boundary exceeded: True")
+        print("  Progress: 0.0m")
         print(f"  Out-of-bounds penalty: {env.out_of_bounds_penalty}")
         print(f"  Expected reward: {env.out_of_bounds_penalty}")
         print(f"  Actual reward: {reward:.2f}")
 
         # In Frenet mode with boundary_exceeded=True, only penalty is applied
-        assert np.isclose(
-            reward, env.out_of_bounds_penalty
-        ), f"Expected out-of-bounds penalty {env.out_of_bounds_penalty}, got {reward}"
+        assert np.isclose(reward, env.out_of_bounds_penalty), (
+            f"Expected out-of-bounds penalty {env.out_of_bounds_penalty}, got {reward}"
+        )
 
     def test_progress_gain_multiplier_application(self, env):
         """Test that forward progress is multiplied by progress_gain before reward calculation"""
@@ -554,15 +554,15 @@ class TestRewardCalculation:
         # Expected: progress (1.0m) * progress_gain (2.0) = 2.0
         expected_reward = 1.0 * env.progress_gain
 
-        print(f"\n✓ Progress gain multiplier:")
-        print(f"  Raw progress: 1.0m")
+        print("\n✓ Progress gain multiplier:")
+        print("  Raw progress: 1.0m")
         print(f"  Progress gain: {env.progress_gain}")
         print(f"  Expected reward: {expected_reward:.2f}")
         print(f"  Actual reward: {reward:.2f}")
 
-        assert np.isclose(
-            reward, expected_reward, atol=0.01
-        ), f"Expected progress gain reward {expected_reward:.2f}, got {reward:.2f}"
+        assert np.isclose(reward, expected_reward, atol=0.01), (
+            f"Expected progress gain reward {expected_reward:.2f}, got {reward:.2f}"
+        )
 
     def test_negative_velocity_penalty_application(self, env):
         """Test that negative_vel_penalty is applied when longitudinal velocity is negative"""
@@ -583,16 +583,16 @@ class TestRewardCalculation:
         # Expected: progress (0.1m) * progress_gain (1.0) + negative_vel_penalty (-0.5)
         expected_reward = (0.1 * 1.0) + (-0.5)
 
-        print(f"\n✓ Negative velocity penalty:")
-        print(f"  Agent velocity: -2.0 m/s")
-        print(f"  Raw progress: 0.1m")
+        print("\n✓ Negative velocity penalty:")
+        print("  Agent velocity: -2.0 m/s")
+        print("  Raw progress: 0.1m")
         print(f"  Negative velocity penalty: {env.negative_vel_penalty}")
         print(f"  Expected reward: {expected_reward:.2f}")
         print(f"  Actual reward: {reward:.2f}")
 
-        assert np.isclose(
-            reward, expected_reward, atol=0.01
-        ), f"Expected reward with velocity penalty {expected_reward:.2f}, got {reward:.2f}"
+        assert np.isclose(reward, expected_reward, atol=0.01), (
+            f"Expected reward with velocity penalty {expected_reward:.2f}, got {reward:.2f}"
+        )
 
 
 if __name__ == "__main__":

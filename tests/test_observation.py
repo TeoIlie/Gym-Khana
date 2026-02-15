@@ -2,6 +2,8 @@ import unittest
 
 import gymnasium as gym
 import numpy as np
+from gymnasium.spaces import Box
+
 from f1tenth_gym.envs import F110Env
 from f1tenth_gym.envs.observation import (
     observation_factory,
@@ -9,7 +11,6 @@ from f1tenth_gym.envs.observation import (
     sample_lookahead_widths_fast,
 )
 from f1tenth_gym.envs.utils import deep_update
-from gymnasium.spaces import Box
 from train.config.env_config import get_drift_train_config, get_env_id
 
 

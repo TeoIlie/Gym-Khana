@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import pathlib
 from typing import Optional
 
@@ -123,7 +124,7 @@ class Raceline:
                     raise ValueError(
                         f"Centerline validation failed at waypoint {i}: "
                         f"w_right={w_right_raw[i]:.3f}m, w_left={w_left_raw[i]:.3f}m "
-                        f"(difference {diff_ratio*100:.1f}% exceeds 10% tolerance). "
+                        f"(difference {diff_ratio * 100:.1f}% exceeds 10% tolerance). "
                         f"Centerline must be centered with symmetric track boundaries. "
                         f"File: {filepath}"
                     )

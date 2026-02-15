@@ -1,5 +1,6 @@
 import gymnasium as gym
 import numpy as np
+
 from f1tenth_gym.envs.f110_env import F110Env
 from train.config.env_config import get_drift_test_config, get_env_id
 
@@ -55,9 +56,9 @@ def accl_and_brake(env, target_vel, max_throttle, min_throttle):
 def main():
     target_vel = 2
 
-    print(f"==============================")
-    print(f"Brake test")
-    print(f"==============================")
+    print("==============================")
+    print("Brake test")
+    print("==============================")
     print(f"Target velocity: {target_vel}")
 
     print("Test 1: Target speed longitudinal action type + braking")
@@ -88,9 +89,9 @@ def main():
 
     total_speed_coast_steps = accl_and_brake(env=env, target_vel=target_vel, max_throttle=max_vel, min_throttle=min_vel)
 
-    print(f"==============================")
-    print(f"Results")
-    print(f"==============================")
+    print("==============================")
+    print("Results")
+    print("==============================")
     print(f"Speed + braking test: {total_speed_braking_steps} steps")
     print(f"Accl + braking test: {total_accl_braking_steps} steps")
     assert total_speed_braking_steps == total_accl_braking_steps, "Why in tarnation ain't the model behave the same?"

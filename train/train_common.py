@@ -1,14 +1,17 @@
 """
 Orchestration methods for model training, downloading, and evaluation
 """
-from dataclasses import dataclass
-import wandb
-import os
+
 import argparse
+import os
+from dataclasses import dataclass
+
 import gymnasium as gym
 import numpy as np
 from stable_baselines3 import PPO
 from wandb.integration.sb3 import WandbCallback
+
+import wandb
 from train.config.env_config import (
     BEST_MODEL,
     CKPT_SAVE_FREQ,
@@ -22,17 +25,17 @@ from train.config.env_config import (
     get_env_id,
 )
 from train.train_utils import (
-    get_output_dirs,
-    linear_schedule,
-    make_output_dirs,
+    download_model_from_wandb,
+    extract_rl_config,
     get_ckpt_callback,
     get_eval_callback,
+    get_output_dirs,
+    linear_schedule,
     make_eval_env,
+    make_output_dirs,
     make_subprocvecenv,
-    save_config,
-    extract_rl_config,
-    download_model_from_wandb,
     print_header,
+    save_config,
 )
 
 
@@ -182,8 +185,8 @@ def continue_training(profile: TrainingProfile, model_path: str, additional_time
 
     model.tensorboard_log = tensorboard_dir
 
-    print(f"Model loaded successfully")
-    print(f"Continuing from checkpoint's timestep count")
+    print("Model loaded successfully")
+    print("Continuing from checkpoint's timestep count")
 
     save_config(profile.train_config, config_dir, "gym_config.yaml")
 
@@ -210,7 +213,7 @@ def continue_training(profile: TrainingProfile, model_path: str, additional_time
     best_model_path = f"{models_dir}/{BEST_MODEL}/{BEST_MODEL}"
     run.save(f"{best_model_path}.zip", base_path=models_dir)
 
-    print(f"\nContinued training completed!")
+    print("\nContinued training completed!")
     print(f"Final model saved: {final_model_path}.zip")
     print(f"New run ID: {new_run_id}")
 

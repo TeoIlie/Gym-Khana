@@ -2,15 +2,16 @@
 Functions for testing different vehicle models (see examples in chap. 11 of documentation)
 Use:
 1. Choose a tire param for p from F110Env
-2. Choose a function to uncomment in main 
-3. Run the code and observe the plots 
+2. Choose a function to uncomment in main
+3. Run the code and observe the plots
 """
 
-from scipy.integrate import odeint
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.pyplot import title, legend
 import math
+
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.pyplot import legend, title
+from scipy.integrate import odeint
 
 from f1tenth_gym.envs.dynamic_models.multi_body import init_mb
 from f1tenth_gym.envs.dynamic_models.multi_body.multi_body import vehicle_dynamics_mb

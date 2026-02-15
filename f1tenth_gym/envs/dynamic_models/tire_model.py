@@ -1,5 +1,4 @@
 import numpy as np
-from numba import njit
 
 """
 Implementation of the PAC2002 tire model

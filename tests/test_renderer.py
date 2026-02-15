@@ -10,7 +10,6 @@ class TestRenderer(unittest.TestCase):
     @staticmethod
     def _make_env(config={}, render_mode=None) -> F110Env:
         import gymnasium as gym
-        import f1tenth_gym
 
         base_config = {
             "map": "Spielberg",

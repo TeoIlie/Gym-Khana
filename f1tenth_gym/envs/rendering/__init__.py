@@ -1,10 +1,11 @@
-import pathlib
 import os
-from typing import Any, Optional
+import pathlib
+from typing import TYPE_CHECKING, Any, Optional
 
-from .renderer import RenderSpec, EnvRenderer
+from .renderer import EnvRenderer, RenderSpec
 
-# from ..track import Track This is due to a circular import
+if TYPE_CHECKING:
+    from ..track import Track
 
 
 def make_renderer(

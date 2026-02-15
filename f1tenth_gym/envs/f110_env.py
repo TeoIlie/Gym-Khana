@@ -25,11 +25,12 @@ Author: Hongrui Zheng
 """
 
 # gym imports
+import warnings
+
 import gymnasium as gym
 
 # others
 import numpy as np
-import warnings
 
 from .action import CarAction, from_single_to_multi_action_space
 
@@ -326,7 +327,7 @@ class F110Env(gym.Env):
                 self.record_obs_min_max = False
             if not self.normalize_obs:
                 warnings.warn(
-                    f"Observation min/max tracking only supported if 'normalize_obs' is True. "
+                    "Observation min/max tracking only supported if 'normalize_obs' is True. "
                     "Setting record_obs_min_max=False.",
                     UserWarning,
                 )

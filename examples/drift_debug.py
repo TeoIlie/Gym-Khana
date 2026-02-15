@@ -19,7 +19,7 @@ if __name__ == "__main__":
     print(f"Drifting observation space: {env.observation_space}")
 
     obs, info = env.reset()
-    print(f"Initial observation after env reset:")
+    print("Initial observation after env reset:")
     display_drift_obs(0, obs, None, LOOKAHEAD_N_POINTS)
 
     # For single agent, action should be 2D array: shape (1, 2)

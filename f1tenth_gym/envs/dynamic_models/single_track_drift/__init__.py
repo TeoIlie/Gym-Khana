@@ -1,10 +1,11 @@
 """
 Single-track drift model initialization function
 """
+
 import numpy as np
 from numba import njit
 
-from .single_track_drift import vehicle_dynamics_std, get_standardized_state_std
+from .single_track_drift import get_standardized_state_std, vehicle_dynamics_std
 
 
 def init_std(init_state, params: dict) -> np.ndarray:

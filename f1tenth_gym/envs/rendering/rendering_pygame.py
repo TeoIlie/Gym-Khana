@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import logging
 import math
 from typing import Any, Callable, Optional
@@ -8,12 +9,12 @@ import numpy as np
 import pygame
 from PIL import ImageColor
 
+from ..track import Track
 from .objects import (
-    Map,
     Car,
+    Map,
     TextObject,
 )
-from ..track import Track
 from .renderer import EnvRenderer, RenderSpec
 
 # one-line instructions visualized at the top of the screen (if show_info=True)

@@ -16,7 +16,7 @@ Usage:
     python train/ppo_race.py --m c --path /path/to/model.zip --additional_timesteps 10000000
 """
 
-from train.config.env_config import PROJECT_NAME, TRACK_POOL, get_drift_train_config, get_drift_test_config
+from train.config.env_config import PROJECT_NAME, TRACK_POOL, get_drift_test_config, get_drift_train_config
 from train.train_common import TrainingProfile, main
 
 profile = TrainingProfile(

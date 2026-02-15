@@ -12,8 +12,8 @@ Usage:
 """
 
 import gymnasium as gym
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.collections import LineCollection
 
 from examples.controllers import create_controller
@@ -113,7 +113,7 @@ def plot_beta_r_convergence(trajectories, output_filename, target_speed):
             edgecolors="black",
             linewidths=2,
             zorder=10,
-            label=f"Start {i+1}: ({init_beta:.0f}°, {init_r:.0f}°/s)" if i < 4 else "",
+            label=f"Start {i + 1}: ({init_beta:.0f}°, {init_r:.0f}°/s)" if i < 4 else "",
         )
 
         # Mark final point
@@ -169,7 +169,7 @@ def plot_beta_r_convergence(trajectories, output_filename, target_speed):
     print(f"\nPlot saved to: {output_filename}")
     for i, traj in enumerate(trajectories):
         print(
-            f"  Trajectory {i+1}: {len(traj['beta'])} points, "
+            f"  Trajectory {i + 1}: {len(traj['beta'])} points, "
             f"converged from ({traj['init'][0]:.0f}°, {traj['init'][1]:.0f}°/s) "
             f"to ({traj['beta'][-1]:.1f}°, {traj['r'][-1]:.1f}°/s)"
         )
@@ -265,7 +265,7 @@ def main():
                 break
 
         if not converged and timestep == MAX_TIMESTEPS - 1:
-            print(f"\n⚠ Max timesteps reached without convergence")
+            print("\n⚠ Max timesteps reached without convergence")
 
         # Store trajectory
         trajectories.append(

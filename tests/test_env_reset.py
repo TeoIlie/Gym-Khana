@@ -4,7 +4,6 @@ from unittest.mock import patch
 import gymnasium as gym
 import numpy as np
 
-
 from f1tenth_gym.envs import F110Env
 
 

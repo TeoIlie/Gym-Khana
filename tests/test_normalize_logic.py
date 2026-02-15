@@ -17,11 +17,11 @@ import pytest
 from f1tenth_gym.envs.action import AcclAction, SpeedAction, SteeringAngleAction, SteeringSpeedAction
 from f1tenth_gym.envs.f110_env import F110Env
 from f1tenth_gym.envs.utils import (
+    GLOBAL_MAX_CURVATURE,
+    GLOBAL_MAX_WIDTH,
+    GLOBAL_MIN_WIDTH,
     calculate_norm_bounds,
     normalize_feature,
-    GLOBAL_MAX_CURVATURE,
-    GLOBAL_MIN_WIDTH,
-    GLOBAL_MAX_WIDTH,
 )
 
 
@@ -533,9 +533,9 @@ class TestNormalizedObservation:
         )
 
         # Vehicle-dependent bounds should also be identical (same vehicle params)
-        assert (
-            bounds_drift["linear_vel_x"] == bounds_spielberg["linear_vel_x"]
-        ), "Vehicle velocity bounds should be identical"
+        assert bounds_drift["linear_vel_x"] == bounds_spielberg["linear_vel_x"], (
+            "Vehicle velocity bounds should be identical"
+        )
         assert bounds_drift["delta"] == bounds_spielberg["delta"], "Steering angle bounds should be identical"
 
         env_drift.close()
@@ -569,19 +569,19 @@ class TestNormalizedObservation:
         # Verify lookahead_curvatures uses global bounds
         expected_curv_bounds = (-GLOBAL_MAX_CURVATURE, GLOBAL_MAX_CURVATURE)
         assert bounds["lookahead_curvatures"] == expected_curv_bounds, (
-            f"Expected lookahead_curvatures bounds {expected_curv_bounds}, " f"got {bounds['lookahead_curvatures']}"
+            f"Expected lookahead_curvatures bounds {expected_curv_bounds}, got {bounds['lookahead_curvatures']}"
         )
 
         # Verify lookahead_widths uses global bounds
         expected_width_bounds = (GLOBAL_MIN_WIDTH, GLOBAL_MAX_WIDTH)
         assert bounds["lookahead_widths"] == expected_width_bounds, (
-            f"Expected lookahead_widths bounds {expected_width_bounds}, " f"got {bounds['lookahead_widths']}"
+            f"Expected lookahead_widths bounds {expected_width_bounds}, got {bounds['lookahead_widths']}"
         )
 
         # Verify frenet_n uses global bounds (half of max width)
         expected_frenet_n_bounds = (-0.5 * GLOBAL_MAX_WIDTH, 0.5 * GLOBAL_MAX_WIDTH)
         assert bounds["frenet_n"] == expected_frenet_n_bounds, (
-            f"Expected frenet_n bounds {expected_frenet_n_bounds}, " f"got {bounds['frenet_n']}"
+            f"Expected frenet_n bounds {expected_frenet_n_bounds}, got {bounds['frenet_n']}"
         )
 
         env.close()
@@ -663,21 +663,21 @@ class TestNormalizedAction:
         assert accl_normalized.scale_factor == a_max, f"Scale factor should be a_max={a_max}"
 
         # Test scaling: -1 → -a_max, 0 → 0, 1 → a_max
-        assert np.isclose(
-            accl_normalized.act(-1.0, dummy_state, params), -a_max
-        ), f"Expected {-a_max}, got {accl_normalized.act(-1.0, dummy_state, params)}"
-        assert np.isclose(
-            accl_normalized.act(0.0, dummy_state, params), 0.0
-        ), f"Expected 0.0, got {accl_normalized.act(0.0, dummy_state, params)}"
-        assert np.isclose(
-            accl_normalized.act(1.0, dummy_state, params), a_max
-        ), f"Expected {a_max}, got {accl_normalized.act(1.0, dummy_state, params)}"
+        assert np.isclose(accl_normalized.act(-1.0, dummy_state, params), -a_max), (
+            f"Expected {-a_max}, got {accl_normalized.act(-1.0, dummy_state, params)}"
+        )
+        assert np.isclose(accl_normalized.act(0.0, dummy_state, params), 0.0), (
+            f"Expected 0.0, got {accl_normalized.act(0.0, dummy_state, params)}"
+        )
+        assert np.isclose(accl_normalized.act(1.0, dummy_state, params), a_max), (
+            f"Expected {a_max}, got {accl_normalized.act(1.0, dummy_state, params)}"
+        )
 
         # Test intermediate value: 0.5 → 0.5 * a_max
         expected = 0.5 * a_max
-        assert np.isclose(
-            accl_normalized.act(0.5, dummy_state, params), expected
-        ), f"Expected {expected}, got {accl_normalized.act(0.5, dummy_state, params)}"
+        assert np.isclose(accl_normalized.act(0.5, dummy_state, params), expected), (
+            f"Expected {expected}, got {accl_normalized.act(0.5, dummy_state, params)}"
+        )
 
         # Test with normalize=False
         accl_unnormalized = AcclAction(params, normalize=False)
@@ -780,12 +780,12 @@ class TestNormalizedAction:
         steering_unnormalized = SteeringAngleAction(params, normalize=False)
 
         # Check action space bounds (should be physical units)
-        assert (
-            steering_unnormalized.lower_limit == s_min
-        ), f"Unnormalized SteeringAngleAction lower limit should be {s_min}"
-        assert (
-            steering_unnormalized.upper_limit == s_max
-        ), f"Unnormalized SteeringAngleAction upper limit should be {s_max}"
+        assert steering_unnormalized.lower_limit == s_min, (
+            f"Unnormalized SteeringAngleAction lower limit should be {s_min}"
+        )
+        assert steering_unnormalized.upper_limit == s_max, (
+            f"Unnormalized SteeringAngleAction upper limit should be {s_max}"
+        )
         assert steering_unnormalized.scale_factor == 1.0, "Unnormalized scale factor should be 1.0"
 
         # Test passthrough to bang_bang_steer
@@ -805,9 +805,9 @@ class TestNormalizedAction:
         steering_speed_normalized = SteeringSpeedAction(params, normalize=True)
 
         # Check action space bounds
-        assert (
-            steering_speed_normalized.lower_limit == -1.0
-        ), "Normalized SteeringSpeedAction lower limit should be -1.0"
+        assert steering_speed_normalized.lower_limit == -1.0, (
+            "Normalized SteeringSpeedAction lower limit should be -1.0"
+        )
         assert steering_speed_normalized.upper_limit == 1.0, "Normalized SteeringSpeedAction upper limit should be 1.0"
         assert np.isclose(steering_speed_normalized.scale_factor, sv_max), f"Scale factor should be sv_max={sv_max}"
 
@@ -824,12 +824,12 @@ class TestNormalizedAction:
         steering_speed_unnormalized = SteeringSpeedAction(params, normalize=False)
 
         # Check action space bounds (should be physical units)
-        assert (
-            steering_speed_unnormalized.lower_limit == sv_min
-        ), f"Unnormalized SteeringSpeedAction lower limit should be {sv_min}"
-        assert (
-            steering_speed_unnormalized.upper_limit == sv_max
-        ), f"Unnormalized SteeringSpeedAction upper limit should be {sv_max}"
+        assert steering_speed_unnormalized.lower_limit == sv_min, (
+            f"Unnormalized SteeringSpeedAction lower limit should be {sv_min}"
+        )
+        assert steering_speed_unnormalized.upper_limit == sv_max, (
+            f"Unnormalized SteeringSpeedAction upper limit should be {sv_max}"
+        )
         assert steering_speed_unnormalized.scale_factor == 1.0, "Unnormalized scale factor should be 1.0"
 
         # Test passthrough: 2.0 → 2.0, -1.5 → -1.5
@@ -856,12 +856,14 @@ class TestActionIntegration:
         expected_low = np.array([-1.0, -1.0], dtype=np.float32)
         expected_high = np.array([1.0, 1.0], dtype=np.float32)
 
-        np.testing.assert_array_equal(
-            action_space.low, expected_low
-        ), "Normalized CarAction space low should be [-1, -1]"
-        np.testing.assert_array_equal(
-            action_space.high, expected_high
-        ), "Normalized CarAction space high should be [1, 1]"
+        (
+            np.testing.assert_array_equal(action_space.low, expected_low),
+            "Normalized CarAction space low should be [-1, -1]",
+        )
+        (
+            np.testing.assert_array_equal(action_space.high, expected_high),
+            "Normalized CarAction space high should be [1, 1]",
+        )
         assert action_space.shape == (2,), f"Expected shape (2,), got {action_space.shape}"
 
         # Test with normalize=False
@@ -876,12 +878,14 @@ class TestActionIntegration:
         expected_low_unnorm = np.array([params["s_min"], -params["a_max"]], dtype=np.float32)
         expected_high_unnorm = np.array([params["s_max"], params["a_max"]], dtype=np.float32)
 
-        np.testing.assert_array_almost_equal(
-            action_space_unnorm.low, expected_low_unnorm, decimal=4
-        ), "Unnormalized CarAction space should use physical bounds"
-        np.testing.assert_array_almost_equal(
-            action_space_unnorm.high, expected_high_unnorm, decimal=4
-        ), "Unnormalized CarAction space should use physical bounds"
+        (
+            np.testing.assert_array_almost_equal(action_space_unnorm.low, expected_low_unnorm, decimal=4),
+            "Unnormalized CarAction space should use physical bounds",
+        )
+        (
+            np.testing.assert_array_almost_equal(action_space_unnorm.high, expected_high_unnorm, decimal=4),
+            "Unnormalized CarAction space should use physical bounds",
+        )
 
     def test_env_step_with_normalized_actions(self):
         """End-to-end test: environment accepts normalized actions and steps correctly."""
@@ -953,9 +957,9 @@ class TestActionEdgeCases:
             assert np.all(sampled_action <= 1.0), f"Sampled action has values > 1: {sampled_action}"
 
             # Verify action space contains the sampled action
-            assert env.action_space.contains(
-                sampled_action
-            ), f"Action space should contain sampled action: {sampled_action}"
+            assert env.action_space.contains(sampled_action), (
+                f"Action space should contain sampled action: {sampled_action}"
+            )
 
             # Step with sampled action (should not crash)
             obs, reward, terminated, truncated, info = env.step(sampled_action)
@@ -1122,9 +1126,9 @@ class TestPrevSteeringCmdNormalization:
 
         # 0.0 is between s_min and s_max, should normalize to corresponding value
         expected_normalized = 2.0 * (0.0 - s_min) / (s_max - s_min) - 1.0
-        assert np.isclose(
-            prev_steer_obs, expected_normalized, atol=1e-5
-        ), f"Expected prev_steering_cmd ≈ {expected_normalized}, got {prev_steer_obs}"
+        assert np.isclose(prev_steer_obs, expected_normalized, atol=1e-5), (
+            f"Expected prev_steering_cmd ≈ {expected_normalized}, got {prev_steer_obs}"
+        )
 
         env.close()
 

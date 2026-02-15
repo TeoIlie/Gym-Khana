@@ -3,9 +3,9 @@ from abc import abstractmethod
 import cv2
 import numpy as np
 
+from ..track import Track
 from .reset_fn import ResetFn
 from .reset_utils import sample_around_pose
-from ..track import Track
 
 
 class MapResetFn(ResetFn):

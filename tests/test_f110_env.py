@@ -2,6 +2,7 @@ import unittest
 
 import gymnasium as gym
 import numpy as np
+
 from f1tenth_gym.envs.utils import deep_update
 from train.config.env_config import get_drift_test_config, get_env_id
 
@@ -459,8 +460,8 @@ class TestMultiMapTraining(unittest.TestCase):
         3. Observation spaces are identical despite different tracks (global normalization)
         4. Environments can be reset successfully
         """
-        from train.train_utils import make_subprocvecenv
         from train.config.env_config import get_drift_train_config
+        from train.train_utils import make_subprocvecenv
 
         # Create base config
         config = get_drift_train_config()
@@ -504,7 +505,7 @@ class TestMultiMapTraining(unittest.TestCase):
                     np.array_equal(obs_spaces[0].high, obs_spaces[i].high),
                     f"Observation space upper bounds should be identical (env 0 vs env {i})",
                 )
-            print(f"✓ Observation spaces identical across tracks (global normalization working)")
+            print("✓ Observation spaces identical across tracks (global normalization working)")
 
             # 4. Verify action spaces are identical
             action_spaces = env.get_attr("action_space")
@@ -514,7 +515,7 @@ class TestMultiMapTraining(unittest.TestCase):
                     action_spaces[i].shape,
                     f"Action space shapes should be identical (env 0 vs env {i})",
                 )
-            print(f"✓ Action spaces identical across tracks")
+            print("✓ Action spaces identical across tracks")
 
             # 5. Verify reset works and produces valid normalized observations
             obs = env.reset()
@@ -525,7 +526,7 @@ class TestMultiMapTraining(unittest.TestCase):
             # Check normalization bounds
             self.assertTrue(np.all(obs >= -1.0), f"Normalized observations should be >= -1.0, got min={np.min(obs)}")
             self.assertTrue(np.all(obs <= 1.0), f"Normalized observations should be <= 1.0, got max={np.max(obs)}")
-            print(f"✓ Reset successful, observations in normalized range [-1, 1]")
+            print("✓ Reset successful, observations in normalized range [-1, 1]")
 
         finally:
             # Clean up
