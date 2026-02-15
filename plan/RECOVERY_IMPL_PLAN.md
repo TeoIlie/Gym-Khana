@@ -426,7 +426,7 @@ The following enhancements were made during Tasks 1-5 implementation:
 
 ---
 
-### [ ] Task 8: Create `ppo_recover.py` training script
+### [X] Task 8: Create `ppo_recover.py` training script
 
 **What:** Create `train/ppo_recover.py` mirroring `train/ppo_race.py` structure. Import recovery config functions. All 4 modes (train, eval, download, continue). Uses existing `training_utils.py` functions unchanged.
 
@@ -436,7 +436,7 @@ The following enhancements were made during Tasks 1-5 implementation:
 
 ---
 
-### [ ] Task 9: End-to-end validation
+### [X] Task 9: End-to-end validation
 
 **What:** Run existing test suite + manual validation of the full recovery pipeline.
 
