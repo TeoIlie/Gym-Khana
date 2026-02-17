@@ -28,10 +28,10 @@ S = 96  # Arc length on IMS straight section
 SEED = 42
 
 # Grid parameters (radians / rad/s / m/s)
-BETA_VALUES = np.linspace(-1.0472, 1.0472, 10)  # 10 points, +/-60 deg
-R_VALUES = np.linspace(-3.142, 3.142, 10)  # 10 points, +/-180 deg/s
-V_VALUES = np.linspace(2, 12, 3)  # 3 points: [2, 7, 12]
-YAW_VALUES = np.linspace(-1.0472, 1.0472, 3)  # 3 points: [-60, 0, +60] deg
+BETA_VALUES = np.linspace(-1.39, 1.39, 7)  # 10 points, +/-60 deg
+R_VALUES = np.linspace(-13, 13, 7)  # 10 points, +/-180 deg/s
+V_VALUES = np.linspace(4, 5, 2)  # 3 points: [2, 7, 12]
+YAW_VALUES = np.linspace(-0.17, 0.17, 3)  # 3 points: [-60, 0, +60] deg
 
 
 def reset_at_state(eval_env, beta_rad, r_rad, v, yaw_offset_rad):
@@ -132,25 +132,23 @@ def plot_recovery_heatmap(beta_values, r_values, recovery_rates, output_path):
         pct.T,
         origin="lower",
         aspect="auto",
-        cmap="RdYlGn",
+        cmap="magma",
         vmin=0,
         vmax=100,
-        extent=[beta_deg[0], beta_deg[-1], r_deg[0], r_deg[-1]],
+        interpolation="bilinear",
     )
 
     cbar = plt.colorbar(im, ax=ax)
     cbar.set_label("Recovery Rate (%)", fontsize=12, fontweight="bold")
 
-    # Annotate cells
-    beta_centers = beta_deg
-    r_centers = r_deg
-    for i in range(len(beta_centers)):
-        for j in range(len(r_centers)):
+    # Annotate cells at integer positions (aligned with imshow pixels)
+    for i in range(len(beta_deg)):
+        for j in range(len(r_deg)):
             val = pct[i, j]
             color = "white" if val < 40 or val > 80 else "black"
             ax.text(
-                beta_centers[i],
-                r_centers[j],
+                i,
+                j,
                 f"{val:.0f}%",
                 ha="center",
                 va="center",
@@ -158,6 +156,12 @@ def plot_recovery_heatmap(beta_values, r_values, recovery_rates, output_path):
                 fontweight="bold",
                 color=color,
             )
+
+    # Use degree tick labels on integer positions
+    ax.set_xticks(range(len(beta_deg)))
+    ax.set_xticklabels([f"{v:.0f}" for v in beta_deg])
+    ax.set_yticks(range(len(r_deg)))
+    ax.set_yticklabels([f"{v:.0f}" for v in r_deg])
 
     ax.set_xlabel("Beta (sideslip angle) [deg]", fontsize=13, fontweight="bold")
     ax.set_ylabel("R (yaw rate) [deg/s]", fontsize=13, fontweight="bold")

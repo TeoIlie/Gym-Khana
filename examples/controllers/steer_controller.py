@@ -191,6 +191,7 @@ def get_config(obs_type=OBS_TYPE, lookahead_n_points=LOOKAHEAD_N_POINTS, lookahe
     config["debug_frenet_projection"] = False
     config["lookahead_n_points"] = lookahead_n_points
     config["lookahead_ds"] = lookahead_ds
+    config["record_obs_min_max"] = False
     config["render_arc_length_annotations"] = True
     config["track_direction"] = "normal"
     return config

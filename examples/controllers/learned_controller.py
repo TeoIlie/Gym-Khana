@@ -35,4 +35,5 @@ class LearnedController(Controller):
         config = get_drift_test_config()
         config["track_direction"] = "normal"
         config["map"] = self.map
+        config["record_obs_min_max"] = False
         return config
