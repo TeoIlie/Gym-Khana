@@ -21,7 +21,10 @@ from train.config.env_config import get_env_id
 from train.train_utils import get_output_dirs, print_header
 
 CONTROLLER_TYPE = "learned"  # "steer", "stable", "stanley" or "learned"
-MODEL_PATH = "/outputs/downloads/178a1a5l/model.zip"
+LEARNED_TYPE = "recover"  # "drift" or "recover" or "" learned policy type, used for chart naming
+
+MODEL_PATH = "/outputs/downloads/irdqwnhp/model.zip"  # recover model path
+# MODEL_PATH = "/outputs/downloads/8m5f957h/model.zip" # drift model path
 
 # Initial vehicle position on straight section
 S = 96  # Arc length [m]
@@ -281,7 +284,7 @@ def main():
     eval_env.close()
 
     # Generate plot
-    output_filename = proj_root + "/tests/test_figures/beta_r_convergence_" + CONTROLLER_TYPE + "_policy.png"
+    output_filename = f"{proj_root}/tests/test_figures/beta_r_convergence_{CONTROLLER_TYPE}{'_' + LEARNED_TYPE if CONTROLLER_TYPE == 'learned' else ''}_policy.png"
     print("\n\nGenerating convergence plot...")
     plot_beta_r_convergence(trajectories, output_filename, TARGET_SPEED)
 
