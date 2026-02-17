@@ -352,8 +352,14 @@ def download_model_from_wandb(run_id: str, download_dir: str, model_prefix: str,
     # Rename to standardized name
     model_cache_path = os.path.join(download_dir, "model.zip")
     downloaded_path = os.path.join(download_dir, model_file.name)
+
     if downloaded_path != model_cache_path:
         os.rename(downloaded_path, model_cache_path)
+        # Remove empty subdirectory left by WandB's download
+        subdir = os.path.join(download_dir, os.path.dirname(model_file.name))
+
+        if subdir != download_dir and os.path.isdir(subdir):
+            os.rmdir(subdir)
 
     return model_cache_path
 
