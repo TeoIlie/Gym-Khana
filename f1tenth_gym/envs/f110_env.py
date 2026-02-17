@@ -1232,11 +1232,12 @@ class F110Env(gym.Env):
         # calc reward
         reward = self._get_reward()
 
-        # Update for derivative tracking in recovery mode
+        # In recovery mode, update derivative tracking and add recovery success to info dict
         if self.training_mode == "recover":
             agent = self.sim.agents[0]
             self.prev_beta = agent.standard_state["slip"]
             self.prev_r = agent.standard_state["yaw_rate"]
+            info["recovered"] = self.recovery_succeeded
 
         return obs, reward, terminated, truncated, info
 

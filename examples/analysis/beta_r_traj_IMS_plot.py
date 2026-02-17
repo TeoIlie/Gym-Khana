@@ -31,11 +31,6 @@ TARGET_SPEED = 4  # Initial velocity [m/s]
 BETA = 35
 R = 150
 
-# Convergence criteria (in degrees and deg/s)
-CONVERGENCE_BETA_THRESHOLD = 2.0  # [deg]
-CONVERGENCE_R_THRESHOLD = 10.0  # [deg/s]
-MAX_TIMESTEPS = 1000
-
 
 def reset_at_beta_r(eval_env, beta_deg: float, r_deg: float):
     """Reset environment with specified beta (sideslip) and r (yaw rate).
@@ -192,6 +187,8 @@ def main():
 
     # Get controller-specific config and create environment
     config = controller.get_env_config()
+    config["training_mode"] = "recover"
+
     eval_env = gym.make(
         get_env_id(),
         config=config,
@@ -206,8 +203,6 @@ def main():
     init_beta_r = [(BETA, R), (-BETA, R), (BETA, -R), (-BETA, -R)]
 
     print(f"\nTesting {len(init_beta_r)} initial conditions...")
-    print(f"Convergence criteria: |beta| < {CONVERGENCE_BETA_THRESHOLD}°, |r| < {CONVERGENCE_R_THRESHOLD}°/s")
-    print(f"Max timesteps per trajectory: {MAX_TIMESTEPS}\n")
 
     for traj_idx, (init_beta, init_r) in enumerate(init_beta_r):
         print(f"\n--- Trajectory {traj_idx + 1}/{len(init_beta_r)} ---")
@@ -232,7 +227,10 @@ def main():
 
         converged = False
         timestep = 0
-        for timestep in range(1, MAX_TIMESTEPS):
+
+        done, trunc = False, False
+
+        while not done and not trunc:
             # Get action from controller - unified interface!
             action = controller.get_action(obs)
 
@@ -259,13 +257,15 @@ def main():
             print(f"\rStep {timestep}: Beta={beta_deg:6.2f}°, R={r_deg:6.1f}°/s", end="")
 
             # Check convergence
-            if abs(beta_deg) < CONVERGENCE_BETA_THRESHOLD and abs(r_deg) < CONVERGENCE_R_THRESHOLD:
+            if done and info["recovered"]:
                 converged = True
                 print(f"\n✓ Converged at step {timestep}")
-                break
+            elif done and not info["recovered"]:
+                print("\n⚠ Agent exited the track ")
+            elif trunc:
+                print("\n⚠ Max timesteps reached without convergence")
 
-        if not converged and timestep == MAX_TIMESTEPS - 1:
-            print("\n⚠ Max timesteps reached without convergence")
+            timestep += 1
 
         # Store trajectory
         trajectories.append(
