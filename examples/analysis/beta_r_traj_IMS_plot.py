@@ -20,7 +20,7 @@ from examples.controllers import create_controller
 from train.config.env_config import get_env_id
 from train.train_utils import get_output_dirs, print_header
 
-CONTROLLER_TYPE = "learned"  # "steer", "stable", or "learned"
+CONTROLLER_TYPE = "learned"  # "steer", "stable", "stanley" or "learned"
 MODEL_PATH = "/outputs/downloads/178a1a5l/model.zip"
 
 # Initial vehicle position on straight section
