@@ -6,7 +6,34 @@ Recovery training (`ppo_recover.py`) samples initial states from fixed ranges fo
 
 ## Approach
 
-Custom SB3 `BaseCallback` that tracks rolling episode success rate. When success rate >= 80% over a 500-episode window, all four ranges expand by fixed increments. Uses `env_method()` to push updated ranges to all SubprocVecEnv subprocess environments.
+Custom SB3 `BaseCallback` that tracks rolling episode success rate. When success rate >= 80% over a 500-episode window, all four ranges expand simultaneously by fixed increments. Uses `env_method()` to push updated ranges to **all** SubprocVecEnv subprocess environments at once — every subprocess moves to the next stage together.
+
+### Curriculum stages
+
+All four ranges expand in lockstep on each expansion. The number of expansions is determined by whichever range needs the most steps to reach its max:
+
+| Range | Initial | Max | Increment | Steps to max |
+|-------|---------|-----|-----------|-------------|
+| v_lo | 5 | 2 | 0.5 | 6 |
+| v_hi | 9 | 12 | 0.5 | 6 |
+| beta_half | 0.10 | 0.349 | 0.05 | ~5 |
+| r_half | 0.20 | 0.785 | 0.10 | ~6 |
+| yaw_half | 0.20 | 0.785 | 0.10 | ~6 |
+
+This gives **6 expansions = 7 total stages** (initial + 6 expansions). Ranges that reach their max earlier are clamped and stop growing while the others continue.
+
+### Stopping condition
+
+Expansion stops when **all** ranges have reached their max values (`is_at_max()` returns True for all four). After that, the callback continues to log metrics but no longer modifies ranges. Training itself continues until `total_timesteps` is reached — the curriculum only controls range expansion, not training termination.
+
+### `num_timesteps` vs `n_calls`
+
+SB3's `_on_step()` fires once per `env.step()` call, but with `n_envs` parallel environments each call advances `n_envs` timesteps. Two counters exist:
+
+- **`self.n_calls`**: number of times `_on_step()` was called (= number of `env.step()` calls)
+- **`self.num_timesteps`**: total environment steps = `n_calls * n_envs`
+
+The callback uses **`self.num_timesteps`** for both `log_freq` and `max_curriculum_timestep` comparisons, so these thresholds behave consistently regardless of `n_envs`. The `min_episodes_between_expansions` hysteresis uses an episode counter (not timesteps) and is unaffected.
 
 ## Files to Modify
 
@@ -38,11 +65,11 @@ Constructor params:
 - `window_size=500` — rolling success window size
 - `success_threshold=0.8` — expansion trigger
 - `min_episodes_between_expansions=200` — hysteresis guard
-- `max_curriculum_timestep=None` — stop expanding after N timesteps (None = no limit)
-- `log_freq=10000` — wandb logging frequency
+- `max_curriculum_timestep=None` — stop expanding after N `num_timesteps` (None = no limit)
+- `log_freq=10000` — wandb logging frequency (compared against `num_timesteps`, consistent across `n_envs`)
 
 Key methods:
-- **`_init_callback()`**: Push initial (narrow) ranges to all envs via `env_method`
+- **`_on_training_start()`**: Push initial (narrow) ranges to all envs via `env_method` (preferred over `_init_callback` — semantically correct as it runs "before the first rollout starts" when the training env is fully ready)
 - **`_on_step()`**: Check `self.locals["dones"]` and `self.locals["infos"]` for completed episodes. When `dones[i]` is True, read `infos[i]["recovered"]` and append to rolling window. Check expansion conditions. Log periodically.
 - **`_should_expand()`**: Returns True when: window is full AND success_rate >= threshold AND hysteresis satisfied AND not past max_timestep AND not all ranges at max
 - **`_expand_ranges()`**: Call `expand()` on each range, clear window (agent must re-prove competence), reset episode counter, push new ranges to envs, log to wandb
