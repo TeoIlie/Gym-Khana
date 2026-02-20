@@ -110,13 +110,13 @@ curriculum:
   yaw_range:  [-0.20, 0.20, -0.785, 0.785]
 ```
 
-## [ ] Step 4: Load config in `env_config.py`
+## [X] Step 4: Load config in `env_config.py`
 
 After `RECOVERY_TRACK_POOL` (line 77):
 - Add `CURRICULUM_CONFIG = _config.get("curriculum", {})`
 - Add `get_curriculum_config()` function that returns `CURRICULUM_CONFIG`
 
-## [ ] Step 5: Wire into `train_common.py`
+## [X] Step 5: Wire into `train_common.py`
 
 In both `train()` (~line 84) and `continue_training()` (~line 198):
 - Import `make_curriculum_callback` from `train.callbacks` and `get_curriculum_config` from `train.config.env_config`

@@ -76,6 +76,9 @@ RECOVERY_PROJECT_NAME = _config["recovery_project_name"]
 RECOVERY_TRAINING_MODE = _config["recovery_training_mode"]
 RECOVERY_TRACK_POOL = _config["recovery_track_pool"]
 
+# Curriculum learning config
+CURRICULUM_CONFIG = _config.get("curriculum", {})
+
 
 # ====================================
 # Gym config functions
@@ -161,3 +164,8 @@ def get_recovery_train_config():
     Returns gym recovery TRAINING environment config
     """
     return {**_base_config(TRAIN_DEBUG_RENDER), **_recovery_overrides()}
+
+
+def get_curriculum_config():
+    """Returns curriculum learning config dict (empty dict if not configured)."""
+    return CURRICULUM_CONFIG
