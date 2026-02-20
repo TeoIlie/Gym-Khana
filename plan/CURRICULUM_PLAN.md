@@ -10,21 +10,29 @@ Custom SB3 `BaseCallback` that tracks rolling episode success rate. When success
 
 ### Curriculum stages
 
-All four ranges expand in lockstep on each expansion. The number of expansions is determined by whichever range needs the most steps to reach its max:
+All four ranges expand in lockstep. The user specifies `n_stages` (number of expansions). Each range is defined by initial `[lo, hi]` and max `[lo, hi]`. A single increment per range is **derived**:
 
-| Range | Initial | Max | Increment | Steps to max |
-|-------|---------|-----|-----------|-------------|
-| v_lo | 5 | 2 | 0.5 | 6 |
-| v_hi | 9 | 12 | 0.5 | 6 |
-| beta_half | 0.10 | 0.349 | 0.05 | ~5 |
-| r_half | 0.20 | 0.785 | 0.10 | ~6 |
-| yaw_half | 0.20 | 0.785 | 0.10 | ~6 |
+```
+increment = (max_hi - initial_hi) / n_stages
+```
 
-This gives **6 expansions = 7 total stages** (initial + 6 expansions). Ranges that reach their max earlier are clamped and stop growing while the others continue.
+At each expansion: `lo -= increment`, `hi += increment`. After `n_stages` expansions all ranges reach their max values exactly. This requires that lo and hi expand by equal amounts (i.e. `initial_lo - max_lo == max_hi - initial_hi` for each range), which holds for all four ranges by design.
+
+With default config (`n_stages=6`):
+
+| Stage | v | beta | r | yaw |
+|-------|---|------|---|-----|
+| 0 | [5.0, 9.0] | [-0.10, +0.10] | [-0.20, +0.20] | [-0.20, +0.20] |
+| 1 | [4.5, 9.5] | [-0.14, +0.14] | [-0.30, +0.30] | [-0.30, +0.30] |
+| 2 | [4.0, 10.0] | [-0.18, +0.18] | [-0.40, +0.40] | [-0.40, +0.40] |
+| 3 | [3.5, 10.5] | [-0.22, +0.22] | [-0.50, +0.50] | [-0.50, +0.50] |
+| 4 | [3.0, 11.0] | [-0.27, +0.27] | [-0.60, +0.60] | [-0.60, +0.60] |
+| 5 | [2.5, 11.5] | [-0.31, +0.31] | [-0.69, +0.69] | [-0.69, +0.69] |
+| 6 | [2.0, 12.0] | [-0.35, +0.35] | [-0.79, +0.79] | [-0.79, +0.79] |
 
 ### Stopping condition
 
-Expansion stops when **all** ranges have reached their max values (`is_at_max()` returns True for all four). After that, the callback continues to log metrics but no longer modifies ranges. Training itself continues until `total_timesteps` is reached — the curriculum only controls range expansion, not training termination.
+Expansion stops after `n_stages` expansions, at which point all ranges have reached their max values simultaneously. After that, the callback continues to log metrics but no longer modifies ranges. Training itself continues until `total_timesteps` is reached — the curriculum only controls range expansion, not training termination.
 
 ### `num_timesteps` vs `n_calls`
 
@@ -54,9 +62,10 @@ Add `set_recovery_ranges(self, v_range, beta_range, r_range, yaw_range)` that se
 ## Step 2: Create `train/callbacks.py`
 
 ### `CurriculumRange` dataclass
-- Handles both **symmetric** ranges (beta, r, yaw: `[-half, +half]`) and **asymmetric** ranges (v: `[lo, hi]`)
-- Fields: `initial_*`, `max_*`, `increment`, `current_*` (runtime state)
-- Methods: `expand()` → returns bool if changed, `get_range()` → `[lo, hi]`, `is_at_max()` → bool
+- Uniform representation: every range is `[lo, hi]`
+- Fields: `initial_lo`, `initial_hi`, `max_lo`, `max_hi`, `increment` (derived), `current_lo`, `current_hi` (runtime state)
+- Constructor computes `increment = (max_hi - initial_hi) / n_stages` and validates `initial_lo - max_lo == max_hi - initial_hi`
+- Methods: `expand()` → applies `lo -= increment`, `hi += increment`, clamps to max, returns bool if changed; `get_range()` → `[lo, hi]`; `is_at_max()` → bool
 
 ### `CurriculumLearningCallback(BaseCallback)`
 
@@ -71,10 +80,10 @@ Constructor params:
 Key methods:
 - **`_on_training_start()`**: Push initial (narrow) ranges to all envs via `env_method` (preferred over `_init_callback` — semantically correct as it runs "before the first rollout starts" when the training env is fully ready)
 - **`_on_step()`**: Check `self.locals["dones"]` and `self.locals["infos"]` for completed episodes. When `dones[i]` is True, read `infos[i]["recovered"]` and append to rolling window. Check expansion conditions. Log periodically.
-- **`_should_expand()`**: Returns True when: window is full AND success_rate >= threshold AND hysteresis satisfied AND not past max_timestep AND not all ranges at max
+- **`_should_expand()`**: Returns True when: window is full AND success_rate >= threshold AND hysteresis satisfied AND not past max_timestep AND `current_stage < n_stages`
 - **`_expand_ranges()`**: Call `expand()` on each range, clear window (agent must re-prove competence), reset episode counter, push new ranges to envs, log to wandb
 - **`_push_ranges_to_envs()`**: `self.training_env.env_method("set_recovery_ranges", v, beta, r, yaw)`
-- **`_log_metrics()`**: Log `curriculum/success_rate`, `curriculum/expansion_count`, `curriculum/v_range_lo`, `curriculum/v_range_hi`, `curriculum/beta_half`, `curriculum/r_half`, `curriculum/yaw_half` via `wandb.log()`
+- **`_log_metrics()`**: Log `curriculum/success_rate`, `curriculum/expansion_count`, `curriculum/stage`, per-range `curriculum/{name}_lo` and `curriculum/{name}_hi` via `wandb.log()`. Log using `step=self.num_timesteps` so curriculum metrics align with `eval/mean_reward` on the same wandb x-axis — this makes it easy to identify which stage produced the best model.
 
 ### `make_curriculum_callback(config: dict)` factory
 - Returns `None` if `config.get("enabled")` is False
@@ -88,27 +97,17 @@ Append to recovery section:
 ```yaml
 curriculum:
   enabled: true
+  n_stages: 6
   window_size: 500
   success_threshold: 0.8
   min_episodes_between_expansions: 200
   max_curriculum_timestep: null
   log_freq: 10000
-  # Initial (narrow) ranges
-  initial_v_range: [5, 9]
-  initial_beta_half: 0.10
-  initial_r_half: 0.20
-  initial_yaw_half: 0.20
-  # Maximum (target) ranges
-  max_v_range: [2, 12]
-  max_beta_half: 0.349
-  max_r_half: 0.785
-  max_yaw_half: 0.785
-  # Per-expansion increments
-  v_increment_lo: 0.5
-  v_increment_hi: 0.5
-  beta_increment: 0.05
-  r_increment: 0.10
-  yaw_increment: 0.10
+  # Each range: [initial_lo, initial_hi, max_lo, max_hi]
+  v_range:    [5.0, 9.0, 2.0, 12.0]
+  beta_range: [-0.10, 0.10, -0.349, 0.349]
+  r_range:    [-0.20, 0.20, -0.785, 0.785]
+  yaw_range:  [-0.20, 0.20, -0.785, 0.785]
 ```
 
 ## Step 4: Load config in `env_config.py`
