@@ -75,7 +75,7 @@ Constructor params:
 - `success_threshold=0.8` — expansion trigger
 - `min_episodes_between_expansions=1000` — hysteresis guard (must be >= `window_size`; constructor validates this)
 - `max_curriculum_timestep=None` — stop expanding after N `num_timesteps` (None = no limit)
-- `log_freq=10000` — wandb logging frequency (compared against `num_timesteps`, consistent across `n_envs`)
+- Logging frequency reuses `CKPT_SAVE_FREQ` from `env_config.py` (same frequency as checkpoints and eval) — no separate param.
 
 Key methods:
 - **`_on_training_start()`**: Push initial (narrow) ranges to all envs via `env_method` (preferred over `_init_callback` — semantically correct as it runs "before the first rollout starts" when the training env is fully ready)
@@ -91,9 +91,9 @@ Key methods:
 - Only forwards optional keys (`window_size`, `success_threshold`, etc.) that are present in the config dict. Missing keys are omitted from the constructor call, so `__init__` defaults apply. This keeps defaults in a single place (the constructor signature) rather than duplicating them in both `__init__` and the factory's `config.get()` calls.
 - Returns configured `CurriculumLearningCallback`
 
-## [ ] Step 3: Add curriculum config to `gym_config.yaml`
+## [X] Step 3: Add curriculum config to `gym_config.yaml`
 
-Append to recovery section:
+Appended to recovery section. No `log_freq` — reuses `CKPT_SAVE_FREQ`.
 
 ```yaml
 curriculum:
@@ -103,7 +103,6 @@ curriculum:
   success_threshold: 0.8
   min_episodes_between_expansions: 1000
   max_curriculum_timestep: null
-  log_freq: 10000
   # Each range: [initial_lo, initial_hi, max_lo, max_hi]
   v_range:    [5.0, 9.0, 2.0, 12.0]
   beta_range: [-0.10, 0.10, -0.349, 0.349]

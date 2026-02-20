@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from stable_baselines3.common.callbacks import BaseCallback
 
 import wandb
+from train.config.env_config import CKPT_SAVE_FREQ
 
 
 @dataclass
@@ -84,8 +85,8 @@ class CurriculumLearningCallback(BaseCallback):
         window_size: int = 500,  # number of episodes across which to evaluate success
         success_threshold: float = 0.8,  # threshold success to progress to next stage
         min_episodes_between_expansions: int = 1000,  # hysteresis: min episodes to wait per stage
-        max_curriculum_timestep: int | None = None,  # maximum timesteps for learning
-        log_freq: int = 10_000,  # frequency of logging
+        max_curriculum_timestep: int
+        | None = None,  # maximum timesteps - beyond this curriculum learning will not go to the next stage
         verbose: int = 0,  # verbosity
     ):
         super().__init__(verbose)
@@ -106,7 +107,6 @@ class CurriculumLearningCallback(BaseCallback):
 
         self.min_episodes_between_expansions = min_episodes_between_expansions
         self.max_curriculum_timestep = max_curriculum_timestep
-        self.log_freq = log_freq
 
         self.success_window: deque[bool] = deque(
             maxlen=window_size
@@ -136,7 +136,7 @@ class CurriculumLearningCallback(BaseCallback):
         if self._should_expand():
             self._expand_ranges()
 
-        if self.num_timesteps - self._last_log_timestep >= self.log_freq:
+        if self.num_timesteps - self._last_log_timestep >= CKPT_SAVE_FREQ:
             self._log_metrics()
             self._last_log_timestep = self.num_timesteps
 
@@ -237,7 +237,6 @@ def make_curriculum_callback(config: dict) -> CurriculumLearningCallback | None:
         "success_threshold",
         "min_episodes_between_expansions",
         "max_curriculum_timestep",
-        "log_freq",
     )
     kwargs = {k: config[k] for k in optional_keys if k in config}
 

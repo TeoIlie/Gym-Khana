@@ -79,7 +79,6 @@ VALID_CONFIG = {
     "success_threshold": 0.8,
     "min_episodes_between_expansions": 1000,
     "max_curriculum_timestep": None,
-    "log_freq": 10_000,
     "v_range": [5.0, 9.0, 2.0, 12.0],
     "beta_range": [-0.10, 0.10, -0.349, 0.349],
     "r_range": [-0.20, 0.20, -0.785, 0.785],
@@ -114,7 +113,6 @@ def test_factory_uses_constructor_defaults_for_missing_keys():
     assert cb.success_threshold == 0.8
     assert cb.min_episodes_between_expansions == 1000
     assert cb.max_curriculum_timestep is None
-    assert cb.log_freq == 10_000
 
 
 def test_factory_ranges_reach_max_after_n_stages():
