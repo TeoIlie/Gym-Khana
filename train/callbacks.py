@@ -206,7 +206,7 @@ class CurriculumLearningCallback(BaseCallback):
             metrics[f"curriculum/{name}_lo"] = r.current_lo
             metrics[f"curriculum/{name}_hi"] = r.current_hi
 
-        wandb.log(metrics, step=self.num_timesteps)
+        wandb.log(metrics)
 
 
 def make_curriculum_callback(config: dict) -> CurriculumLearningCallback | None:
