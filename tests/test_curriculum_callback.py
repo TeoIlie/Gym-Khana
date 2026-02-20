@@ -2,6 +2,9 @@
 Verification tests for CurriculumRange and CurriculumLearningCallback.
 """
 
+from unittest.mock import MagicMock, patch
+
+import numpy as np
 import pytest
 
 from train.callbacks import CurriculumLearningCallback, CurriculumRange, make_curriculum_callback
@@ -128,3 +131,93 @@ def test_factory_ranges_reach_max_after_n_stages():
 
     for r in cb.ranges.values():
         assert r.is_at_max()
+
+
+# ── Callback step logic (mocked SB3 internals) ──────────────────────
+
+N_STAGES = 3
+WINDOW = 10
+HYSTERESIS = 10  # == window_size (minimum allowed)
+
+
+def _make_callback(max_curriculum_timestep=None):
+    """Create a callback with small params for fast testing."""
+    cb = CurriculumLearningCallback(
+        v_range=make_range(n_stages=N_STAGES),
+        beta_range=make_range(name="beta", initial_lo=-0.1, initial_hi=0.1, max_lo=-0.4, max_hi=0.4, n_stages=N_STAGES),
+        r_range=make_range(name="r", initial_lo=-0.2, initial_hi=0.2, max_lo=-0.5, max_hi=0.5, n_stages=N_STAGES),
+        yaw_range=make_range(name="yaw", initial_lo=-0.2, initial_hi=0.2, max_lo=-0.5, max_hi=0.5, n_stages=N_STAGES),
+        n_stages=N_STAGES,
+        window_size=WINDOW,
+        success_threshold=0.8,
+        min_episodes_between_expansions=HYSTERESIS,
+        max_curriculum_timestep=max_curriculum_timestep,
+    )
+    # Mock SB3 internals: training_env is a property that calls self.model.get_env()
+    cb.model = MagicMock()
+    cb.num_timesteps = 0
+    cb.locals = {}
+    return cb
+
+
+def _simulate_episodes(cb, n, recovered=True):
+    """Simulate n completed episodes by calling _on_step repeatedly."""
+    for _ in range(n):
+        cb.num_timesteps += 1
+        cb.locals = {
+            "dones": np.array([True]),
+            "infos": [{"recovered": recovered}],
+        }
+        cb._on_step()
+
+
+@patch("train.callbacks.wandb")
+def test_no_expansion_before_hysteresis(mock_wandb):
+    cb = _make_callback()
+    _simulate_episodes(cb, HYSTERESIS - 1, recovered=True)
+    assert cb.current_stage == 0
+
+
+@patch("train.callbacks.wandb")
+def test_no_expansion_with_low_success_rate(mock_wandb):
+    cb = _make_callback()
+    _simulate_episodes(cb, HYSTERESIS, recovered=False)
+    assert cb.current_stage == 0
+
+
+@patch("train.callbacks.wandb")
+def test_expansion_triggers_when_conditions_met(mock_wandb):
+    cb = _make_callback()
+    _simulate_episodes(cb, HYSTERESIS, recovered=True)
+    assert cb.current_stage == 1
+    assert cb.ranges["v"].get_range() != [5.0, 9.0]  # range widened
+
+
+@patch("train.callbacks.wandb")
+def test_window_clears_after_expansion(mock_wandb):
+    cb = _make_callback()
+    _simulate_episodes(cb, HYSTERESIS, recovered=True)
+    assert cb.current_stage == 1
+    assert cb.episodes_since_expansion == 0
+    assert len(cb.success_window) == 0
+
+
+@patch("train.callbacks.wandb")
+def test_stops_at_n_stages(mock_wandb):
+    cb = _make_callback()
+    for _ in range(N_STAGES):
+        _simulate_episodes(cb, HYSTERESIS, recovered=True)
+    assert cb.current_stage == N_STAGES
+
+    # One more round of successes should not expand further
+    _simulate_episodes(cb, HYSTERESIS, recovered=True)
+    assert cb.current_stage == N_STAGES
+
+
+@patch("train.callbacks.wandb")
+def test_max_curriculum_timestep_blocks_expansion(mock_wandb):
+    cb = _make_callback(max_curriculum_timestep=5)
+    # Push num_timesteps past the cap before feeding episodes
+    cb.num_timesteps = 100
+    _simulate_episodes(cb, HYSTERESIS, recovered=True)
+    assert cb.current_stage == 0
