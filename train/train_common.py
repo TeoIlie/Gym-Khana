@@ -33,6 +33,7 @@ from train.train_utils import (
     get_eval_callback,
     get_output_dirs,
     linear_schedule,
+    log_best_eval_timestep,
     make_eval_env,
     make_output_dirs,
     make_subprocvecenv,
@@ -110,6 +111,8 @@ def train(profile: TrainingProfile):
 
     env.close()
     eval_env.close()
+
+    log_best_eval_timestep(models_dir)
 
     run.finish()
 
@@ -237,6 +240,9 @@ def continue_training(profile: TrainingProfile, model_path: str, additional_time
 
     env.close()
     eval_env.close()
+
+    log_best_eval_timestep(models_dir)
+
     run.finish()
 
 
