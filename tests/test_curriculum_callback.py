@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 from train.callbacks import CurriculumLearningCallback, CurriculumRange, make_curriculum_callback
+from train.config import env_config as env_config_module
 
 # ── CurriculumRange ──────────────────────────────────────────────────
 
@@ -221,3 +222,42 @@ def test_max_curriculum_timestep_blocks_expansion(mock_wandb):
     cb.num_timesteps = 100
     _simulate_episodes(cb, HYSTERESIS, recovered=True)
     assert cb.current_stage == 0
+
+
+# ── _recovery_overrides uses curriculum max ranges ─────────────────
+
+
+def test_recovery_overrides_uses_curriculum_max_ranges_when_enabled():
+    """When curriculum is enabled, recovery ranges should be [max_lo, max_hi] from curriculum config."""
+    curriculum_config = {
+        "enabled": True,
+        "n_stages": 4,
+        "v_range": [6.0, 8.0, 1.0, 13.0],
+        "beta_range": [-0.05, 0.05, -0.5, 0.5],
+        "r_range": [-0.1, 0.1, -1.0, 1.0],
+        "yaw_range": [-0.15, 0.15, -0.9, 0.9],
+    }
+    saved = env_config_module.CURRICULUM_CONFIG
+    try:
+        env_config_module.CURRICULUM_CONFIG = curriculum_config
+        overrides = env_config_module._recovery_overrides()
+        assert overrides["recovery_v_range"] == [1.0, 13.0]
+        assert overrides["recovery_beta_range"] == [-0.5, 0.5]
+        assert overrides["recovery_r_range"] == [-1.0, 1.0]
+        assert overrides["recovery_yaw_range"] == [-0.9, 0.9]
+    finally:
+        env_config_module.CURRICULUM_CONFIG = saved
+
+
+def test_recovery_overrides_no_ranges_when_curriculum_disabled():
+    """When curriculum is disabled, recovery ranges should not be set (fall back to F110Env defaults)."""
+    saved = env_config_module.CURRICULUM_CONFIG
+    try:
+        env_config_module.CURRICULUM_CONFIG = {"enabled": False}
+        overrides = env_config_module._recovery_overrides()
+        assert "recovery_v_range" not in overrides
+        assert "recovery_beta_range" not in overrides
+        assert "recovery_r_range" not in overrides
+        assert "recovery_yaw_range" not in overrides
+    finally:
+        env_config_module.CURRICULUM_CONFIG = saved
