@@ -6,10 +6,18 @@ a grid of initial (beta, r) conditions, averaging over variations in velocity
 and yaw. The output is a heatmap showing recovery success rate at each (beta, r)
 grid cell, plus printed aggregate metrics.
 
-Usage:
-    1. Edit MODEL_PATH, S, grid parameters as needed
+Usage — Steer controller:
+    1. Set CONTROLLER_TYPE = "stanley" or "steer" and DESC to a description string
     2. Run: python examples/analysis/beta_r_avg_plot.py
-    3. View generated heatmap in tests/test_figures/
+    3. Output saved to tests/test_figures/recover_heatmap/CONTROLLER_TYPE
+
+Usage — Learned (PPO) controller:
+    1. Set CONTROLLER_TYPE = "learned"
+    2. Set LEARNED_TYPE to "drift" or "recover"
+    3. Set RUN_ID to the wandb run ID (model downloaded to outputs/downloads/<RUN_ID>/)
+    4. Set DESC to a short description of the model
+    5. Run: python examples/analysis/beta_r_avg_plot.py
+    6. Output saved to tests/test_figures/recover_heatmap/<RUN_ID>/
 """
 
 import os
@@ -22,15 +30,34 @@ from examples.controllers import create_controller
 from train.config.env_config import get_env_id
 from train.train_utils import get_output_dirs, print_header
 
+# CONTROLLER_TYPE = "stanley"
+# DESC = "stanley"
+
 CONTROLLER_TYPE = "learned"
 
-LEARNED_TYPE = "drift"
-RUN_ID = "178a1a5l"
-DESC = "drift model - CW & CCW on Drift_large, with `sparse_width_obs` = True"
+# LEARNED_TYPE = "drift"
+# RUN_ID = "178a1a5l"
+# DESC = "drift model - CW & CCW on Drift_large, with `sparse_width_obs` = True"
 
 # LEARNED_TYPE = "recover"
 # RUN_ID = "p13d1mdz"
 # DESC = "recovering model - original with Euclidean reward"
+
+# LEARNED_TYPE = "recover"
+# RUN_ID = "irdqwnhp"
+# DESC = "recovering model - no Euclidean reward"
+
+# LEARNED_TYPE = "recover"
+# RUN_ID = "8m5f957h"
+# DESC = "recovering model - Euclidean reward, larger beta, r ranges"
+
+# LEARNED_TYPE = "recover"
+# RUN_ID = "50x16c1d"
+# DESC = "recovering model - Euclidean reward, curriculum learning, smaller beta, r ranges"
+
+LEARNED_TYPE = "recover"
+RUN_ID = "qhj88o3r"
+DESC = "recovering model - Euclidean reward, curriculum learning, larger beta, r ranges"
 
 MODEL_PATH = "/outputs/downloads/" + RUN_ID + "/model.zip"
 
@@ -261,9 +288,9 @@ def main():
     recovery_rates, mean_recovery_times = run_grid_evaluation(eval_env, controller)
 
     subfolder = (
-        f"{proj_root}/tests/test_figures/{RUN_ID}"
+        f"{proj_root}/tests/test_figures/recover_heatmap/{RUN_ID}"
         if CONTROLLER_TYPE == "learned"
-        else f"{proj_root}/tests/test_figures"
+        else f"{proj_root}/tests/test_figures/recover_heatmap/{CONTROLLER_TYPE}"
     )
     os.makedirs(subfolder, exist_ok=True)
     output_path = (
