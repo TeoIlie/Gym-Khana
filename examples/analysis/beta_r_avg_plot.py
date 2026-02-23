@@ -6,11 +6,21 @@ a grid of initial (beta, r) conditions, averaging over variations in velocity
 and yaw. The output is a heatmap showing recovery success rate at each (beta, r)
 grid cell, plus printed aggregate metrics.
 
-Usage:
-    1. Edit MODEL_PATH, S, grid parameters as needed
+Usage — Steer controller:
+    1. Set CONTROLLER_TYPE = "stanley" or "steer" and DESC to a description string
     2. Run: python examples/analysis/beta_r_avg_plot.py
-    3. View generated heatmap in tests/test_figures/
+    3. Output saved to tests/test_figures/recover_heatmap/CONTROLLER_TYPE
+
+Usage — Learned (PPO) controller:
+    1. Set CONTROLLER_TYPE = "learned"
+    2. Set LEARNED_TYPE to "drift" or "recover"
+    3. Set RUN_ID to the wandb run ID (model downloaded to outputs/downloads/<RUN_ID>/)
+    4. Set DESC to a short description of the model
+    5. Run: python examples/analysis/beta_r_avg_plot.py
+    6. Output saved to tests/test_figures/recover_heatmap/<RUN_ID>/
 """
+
+import os
 
 import gymnasium as gym
 import matplotlib.pyplot as plt
@@ -20,9 +30,36 @@ from examples.controllers import create_controller
 from train.config.env_config import get_env_id
 from train.train_utils import get_output_dirs, print_header
 
+# CONTROLLER_TYPE = "stanley"
+# DESC = "stanley"
+
 CONTROLLER_TYPE = "learned"
-LEARNED_TYPE = "drift"
-MODEL_PATH = "/outputs/downloads/178a1a5l/model.zip"
+
+# LEARNED_TYPE = "drift"
+# RUN_ID = "178a1a5l"
+# DESC = "drift model - CW & CCW on Drift_large, with `sparse_width_obs` = True"
+
+# LEARNED_TYPE = "recover"
+# RUN_ID = "p13d1mdz"
+# DESC = "recovering model - original with Euclidean reward"
+
+# LEARNED_TYPE = "recover"
+# RUN_ID = "irdqwnhp"
+# DESC = "recovering model - no Euclidean reward"
+
+# LEARNED_TYPE = "recover"
+# RUN_ID = "8m5f957h"
+# DESC = "recovering model - Euclidean reward, larger beta, r ranges"
+
+# LEARNED_TYPE = "recover"
+# RUN_ID = "50x16c1d"
+# DESC = "recovering model - Euclidean reward, curriculum learning, smaller beta, r ranges"
+
+LEARNED_TYPE = "recover"
+RUN_ID = "qhj88o3r"
+DESC = "recovering model - Euclidean reward, curriculum learning, larger beta, r ranges"
+
+MODEL_PATH = "/outputs/downloads/" + RUN_ID + "/model.zip"
 
 S = 96  # Arc length on IMS straight section
 SEED = 42
@@ -180,32 +217,45 @@ def plot_recovery_heatmap(beta_values, r_values, recovery_rates, output_path):
     plt.show()
 
 
-def print_metrics(recovery_rates, mean_recovery_times):
-    """Print aggregate recovery metrics."""
+def print_metrics(recovery_rates, mean_recovery_times, output_dir=None):
+    """Print aggregate recovery metrics and optionally save to a txt file."""
     n_inner = len(V_VALUES) * len(YAW_VALUES)
 
-    # Per-episode binary outcomes across all 900 episodes
-    # recovery_rates is per-cell fraction; overall rate is mean of cells
     overall_rate = np.mean(recovery_rates) * 100
     overall_std = np.std(recovery_rates) * 100
 
-    # Recovery times (only successful episodes)
     valid_times = mean_recovery_times[~np.isnan(mean_recovery_times)]
 
-    print("\n" + "=" * 50)
-    print("RECOVERY METRICS")
-    print("=" * 50)
-    print(f"Grid: {len(BETA_VALUES)}x{len(R_VALUES)} (beta x r), {n_inner} (v, yaw) combos per cell")
-    print(f"Total episodes: {len(BETA_VALUES) * len(R_VALUES) * n_inner}")
-    print(f"Overall recovery rate: {overall_rate:.1f}% (std across cells: {overall_std:.1f}%)")
+    lines = [
+        "",
+        "=" * 50,
+        "RECOVERY METRICS",
+        "=" * 50,
+        f"Grid: {len(BETA_VALUES)}x{len(R_VALUES)} (beta x r), {n_inner} (v, yaw) combos per cell",
+        f"Total episodes: {len(BETA_VALUES) * len(R_VALUES) * n_inner}",
+        f"Overall recovery rate: {overall_rate:.1f}% (std across cells: {overall_std:.1f}%)",
+    ]
 
     if len(valid_times) > 0:
-        print(f"Mean recovery time:   {np.mean(valid_times):.3f} s")
-        print(f"Median recovery time: {np.median(valid_times):.3f} s")
-        print(f"Std recovery time:    {np.std(valid_times):.3f} s")
+        lines += [
+            f"Mean recovery time:   {np.mean(valid_times):.3f} s",
+            f"Median recovery time: {np.median(valid_times):.3f} s",
+            f"Std recovery time:    {np.std(valid_times):.3f} s",
+        ]
     else:
-        print("No successful recoveries recorded.")
-    print("=" * 50)
+        lines.append("No successful recoveries recorded.")
+    lines.append("=" * 50)
+
+    text = "\n".join(lines)
+    print(text)
+
+    if output_dir is not None:
+        metrics_path = os.path.join(output_dir, "metrics.txt")
+        with open(metrics_path, "w") as f:
+            f.write(text + "\n")
+            if DESC:
+                f.write(f"\nNote: {DESC}\n")
+        print(f"Metrics saved to: {metrics_path}")
 
 
 def main():
@@ -237,14 +287,20 @@ def main():
 
     recovery_rates, mean_recovery_times = run_grid_evaluation(eval_env, controller)
 
+    subfolder = (
+        f"{proj_root}/tests/test_figures/recover_heatmap/{RUN_ID}"
+        if CONTROLLER_TYPE == "learned"
+        else f"{proj_root}/tests/test_figures/recover_heatmap/{CONTROLLER_TYPE}"
+    )
+    os.makedirs(subfolder, exist_ok=True)
     output_path = (
-        f"{proj_root}/tests/test_figures/"
+        f"{subfolder}/"
         f"beta_r_recovery_heatmap_{CONTROLLER_TYPE}"
         f"{'_' + LEARNED_TYPE if CONTROLLER_TYPE == 'learned' else ''}_policy.png"
     )
     plot_recovery_heatmap(BETA_VALUES, R_VALUES, recovery_rates, output_path)
 
-    print_metrics(recovery_rates, mean_recovery_times)
+    print_metrics(recovery_rates, mean_recovery_times, output_dir=subfolder)
 
     eval_env.close()
     print("\nDone!")

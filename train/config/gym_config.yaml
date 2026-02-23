@@ -50,7 +50,7 @@ test_debug_render: true
 train_debug_render: false
 
 # Callback config
-ckpt_save_freq: 10000
+ckpt_save_freq: 10000 # reused for EvalCallback and custom CurriculumLearningCallback
 n_eval_episodes: 5
 
 # LiDAR beams config - keep minimal for fast training, as it isn't needed
@@ -63,3 +63,18 @@ num_beams: 2
 recovery_project_name: "f1tenth-ppo-recover"
 recovery_training_mode: "recover"
 recovery_track_pool: null # train only on IMS
+
+# Curriculum learning - gradually expand recovery state ranges
+curriculum:
+  # see train/callbacks.py for more details about parameter uses
+  enabled: true
+  n_stages: 6
+  window_size: 500
+  success_threshold: 0.8
+  min_episodes_between_expansions: 1000
+  max_curriculum_timestep: null
+  # Each range: [initial_lo, initial_hi, max_lo, max_hi]
+  v_range:    [5.0, 9.0, 2.0, 12.0]
+  beta_range: [-0.10, 0.10, -0.349, 0.349]
+  r_range:    [-0.20, 0.20, -0.785, 0.785]
+  yaw_range:  [-0.20, 0.20, -0.785, 0.785]

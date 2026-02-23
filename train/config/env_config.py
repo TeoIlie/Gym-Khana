@@ -76,6 +76,9 @@ RECOVERY_PROJECT_NAME = _config["recovery_project_name"]
 RECOVERY_TRAINING_MODE = _config["recovery_training_mode"]
 RECOVERY_TRACK_POOL = _config["recovery_track_pool"]
 
+# Curriculum learning config
+CURRICULUM_CONFIG = _config.get("curriculum", {})
+
 
 # ====================================
 # Gym config functions
@@ -127,12 +130,25 @@ def _drift_overrides():
 
 def _recovery_overrides():
     """
-    Recovery-specific overrides
+    Recovery-specific overrides. When curriculum learning is enabled, the recovery ranges
+    are set to the curriculum's max_lo/max_hi values.
     """
-    return {
+    overrides = {
         "training_mode": RECOVERY_TRAINING_MODE,
         "track_pool": RECOVERY_TRACK_POOL,
     }
+
+    if CURRICULUM_CONFIG.get("enabled", False):
+        for gym_key, curriculum_key in [
+            ("recovery_v_range", "v_range"),
+            ("recovery_beta_range", "beta_range"),
+            ("recovery_r_range", "r_range"),
+            ("recovery_yaw_range", "yaw_range"),
+        ]:
+            vals = CURRICULUM_CONFIG[curriculum_key]
+            overrides[gym_key] = [vals[2], vals[3]]  # [max_lo, max_hi]
+
+    return overrides
 
 
 def get_drift_test_config():
@@ -161,3 +177,8 @@ def get_recovery_train_config():
     Returns gym recovery TRAINING environment config
     """
     return {**_base_config(TRAIN_DEBUG_RENDER), **_recovery_overrides()}
+
+
+def get_curriculum_config():
+    """Returns curriculum learning config dict (empty dict if not configured)."""
+    return CURRICULUM_CONFIG

@@ -1121,6 +1121,13 @@ class F110Env(gym.Env):
 
         return r_euclid + r_col + r_rec - r_const
 
+    def set_recovery_ranges(self, v_range, beta_range, r_range, yaw_range):
+        """Set recovery initial state sampling ranges (used by curriculum learning)."""
+        self.recovery_v_range = v_range
+        self.recovery_beta_range = beta_range
+        self.recovery_r_range = r_range
+        self.recovery_yaw_range = yaw_range
+
     def _get_reward(self):
         """
         Get the reward for the current step

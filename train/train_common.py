@@ -12,6 +12,7 @@ from stable_baselines3 import PPO
 from wandb.integration.sb3 import WandbCallback
 
 import wandb
+from train.callbacks import make_curriculum_callback
 from train.config.env_config import (
     BEST_MODEL,
     CKPT_SAVE_FREQ,
@@ -22,6 +23,7 @@ from train.config.env_config import (
     SEED,
     START_LEARNING_RATE,
     TOTAL_TIMESTEPS,
+    get_curriculum_config,
     get_env_id,
 )
 from train.train_utils import (
@@ -31,6 +33,7 @@ from train.train_utils import (
     get_eval_callback,
     get_output_dirs,
     linear_schedule,
+    log_best_eval_timestep,
     make_eval_env,
     make_output_dirs,
     make_subprocvecenv,
@@ -81,13 +84,21 @@ def train(profile: TrainingProfile):
     rl_config = extract_rl_config(model, TOTAL_TIMESTEPS, N_ENVS)
     save_config(rl_config, config_dir, "rl_config.yaml")
 
+    curriculum_config = get_curriculum_config()
+    save_config(curriculum_config, config_dir, "curriculum_config.yaml")
+
+    callbacks = [
+        WandbCallback(gradient_save_freq=0, verbose=2),
+        get_ckpt_callback(models_dir=models_dir, save_freq=CKPT_SAVE_FREQ),
+        get_eval_callback(eval_env=eval_env, models_dir=models_dir),
+    ]
+    curriculum_cb = make_curriculum_callback(curriculum_config)
+    if curriculum_cb is not None:
+        callbacks.append(curriculum_cb)
+
     model.learn(
         total_timesteps=TOTAL_TIMESTEPS,
-        callback=[
-            WandbCallback(gradient_save_freq=0, verbose=2),
-            get_ckpt_callback(models_dir=models_dir, save_freq=CKPT_SAVE_FREQ),
-            get_eval_callback(eval_env=eval_env, models_dir=models_dir),
-        ],
+        callback=callbacks,
         progress_bar=True,
     )
 
@@ -100,6 +111,8 @@ def train(profile: TrainingProfile):
 
     env.close()
     eval_env.close()
+
+    log_best_eval_timestep(models_dir)
 
     run.finish()
 
@@ -193,15 +206,23 @@ def continue_training(profile: TrainingProfile, model_path: str, additional_time
     rl_config = extract_rl_config(model, additional_timesteps, N_ENVS)
     save_config(rl_config, config_dir, "rl_config.yaml")
 
+    curriculum_config = get_curriculum_config()
+    save_config(curriculum_config, config_dir, "curriculum_config.yaml")
+
+    callbacks = [
+        WandbCallback(gradient_save_freq=0, verbose=2),
+        get_ckpt_callback(models_dir=models_dir, save_freq=CKPT_SAVE_FREQ),
+        get_eval_callback(eval_env=eval_env, models_dir=models_dir),
+    ]
+    curriculum_cb = make_curriculum_callback(curriculum_config)
+    if curriculum_cb is not None:
+        callbacks.append(curriculum_cb)
+
     print("\nContinuing training...")
 
     model.learn(
         total_timesteps=additional_timesteps,
-        callback=[
-            WandbCallback(gradient_save_freq=0, verbose=2),
-            get_ckpt_callback(models_dir=models_dir, save_freq=CKPT_SAVE_FREQ),
-            get_eval_callback(eval_env=eval_env, models_dir=models_dir),
-        ],
+        callback=callbacks,
         progress_bar=True,
         reset_num_timesteps=False,  # False to continue from checkpoint
     )
@@ -219,6 +240,9 @@ def continue_training(profile: TrainingProfile, model_path: str, additional_time
 
     env.close()
     eval_env.close()
+
+    log_best_eval_timestep(models_dir)
+
     run.finish()
 
 

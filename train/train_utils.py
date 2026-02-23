@@ -7,6 +7,7 @@ from collections import Counter
 from pathlib import Path
 
 import gymnasium as gym
+import numpy as np
 import torch.nn as nn
 import yaml
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
@@ -251,6 +252,19 @@ def get_eval_callback(
         render=False,
         verbose=1,
     )
+
+
+def log_best_eval_timestep(models_dir: str):
+    """Log the timestep at which the best eval/mean_reward occurred."""
+    eval_log_path = f"{models_dir}/eval_logs/evaluations.npz"
+    if not os.path.exists(eval_log_path):
+        print("No eval logs found, skipping best timestep summary.")
+        return
+    data = np.load(eval_log_path)
+    timesteps = data["timesteps"]
+    mean_rewards = data["results"].mean(axis=1)
+    best_idx = np.argmax(mean_rewards)
+    print(f"\nBest eval/mean_reward: {mean_rewards[best_idx]:.2f} at timestep {timesteps[best_idx]}")
 
 
 def make_eval_env(seed: int, config: dict):
