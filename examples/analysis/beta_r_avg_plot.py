@@ -12,6 +12,8 @@ Usage:
     3. View generated heatmap in tests/test_figures/
 """
 
+import os
+
 import gymnasium as gym
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,8 +23,16 @@ from train.config.env_config import get_env_id
 from train.train_utils import get_output_dirs, print_header
 
 CONTROLLER_TYPE = "learned"
+
 LEARNED_TYPE = "drift"
-MODEL_PATH = "/outputs/downloads/178a1a5l/model.zip"
+RUN_ID = "178a1a5l"
+DESC = "drift model - CW & CCW on Drift_large, with `sparse_width_obs` = True"
+
+# LEARNED_TYPE = "recover"
+# RUN_ID = "p13d1mdz"
+# DESC = "recovering model - original with Euclidean reward"
+
+MODEL_PATH = "/outputs/downloads/" + RUN_ID + "/model.zip"
 
 S = 96  # Arc length on IMS straight section
 SEED = 42
@@ -180,32 +190,45 @@ def plot_recovery_heatmap(beta_values, r_values, recovery_rates, output_path):
     plt.show()
 
 
-def print_metrics(recovery_rates, mean_recovery_times):
-    """Print aggregate recovery metrics."""
+def print_metrics(recovery_rates, mean_recovery_times, output_dir=None):
+    """Print aggregate recovery metrics and optionally save to a txt file."""
     n_inner = len(V_VALUES) * len(YAW_VALUES)
 
-    # Per-episode binary outcomes across all 900 episodes
-    # recovery_rates is per-cell fraction; overall rate is mean of cells
     overall_rate = np.mean(recovery_rates) * 100
     overall_std = np.std(recovery_rates) * 100
 
-    # Recovery times (only successful episodes)
     valid_times = mean_recovery_times[~np.isnan(mean_recovery_times)]
 
-    print("\n" + "=" * 50)
-    print("RECOVERY METRICS")
-    print("=" * 50)
-    print(f"Grid: {len(BETA_VALUES)}x{len(R_VALUES)} (beta x r), {n_inner} (v, yaw) combos per cell")
-    print(f"Total episodes: {len(BETA_VALUES) * len(R_VALUES) * n_inner}")
-    print(f"Overall recovery rate: {overall_rate:.1f}% (std across cells: {overall_std:.1f}%)")
+    lines = [
+        "",
+        "=" * 50,
+        "RECOVERY METRICS",
+        "=" * 50,
+        f"Grid: {len(BETA_VALUES)}x{len(R_VALUES)} (beta x r), {n_inner} (v, yaw) combos per cell",
+        f"Total episodes: {len(BETA_VALUES) * len(R_VALUES) * n_inner}",
+        f"Overall recovery rate: {overall_rate:.1f}% (std across cells: {overall_std:.1f}%)",
+    ]
 
     if len(valid_times) > 0:
-        print(f"Mean recovery time:   {np.mean(valid_times):.3f} s")
-        print(f"Median recovery time: {np.median(valid_times):.3f} s")
-        print(f"Std recovery time:    {np.std(valid_times):.3f} s")
+        lines += [
+            f"Mean recovery time:   {np.mean(valid_times):.3f} s",
+            f"Median recovery time: {np.median(valid_times):.3f} s",
+            f"Std recovery time:    {np.std(valid_times):.3f} s",
+        ]
     else:
-        print("No successful recoveries recorded.")
-    print("=" * 50)
+        lines.append("No successful recoveries recorded.")
+    lines.append("=" * 50)
+
+    text = "\n".join(lines)
+    print(text)
+
+    if output_dir is not None:
+        metrics_path = os.path.join(output_dir, "metrics.txt")
+        with open(metrics_path, "w") as f:
+            f.write(text + "\n")
+            if DESC:
+                f.write(f"\nNote: {DESC}\n")
+        print(f"Metrics saved to: {metrics_path}")
 
 
 def main():
@@ -237,14 +260,20 @@ def main():
 
     recovery_rates, mean_recovery_times = run_grid_evaluation(eval_env, controller)
 
+    subfolder = (
+        f"{proj_root}/tests/test_figures/{RUN_ID}"
+        if CONTROLLER_TYPE == "learned"
+        else f"{proj_root}/tests/test_figures"
+    )
+    os.makedirs(subfolder, exist_ok=True)
     output_path = (
-        f"{proj_root}/tests/test_figures/"
+        f"{subfolder}/"
         f"beta_r_recovery_heatmap_{CONTROLLER_TYPE}"
         f"{'_' + LEARNED_TYPE if CONTROLLER_TYPE == 'learned' else ''}_policy.png"
     )
     plot_recovery_heatmap(BETA_VALUES, R_VALUES, recovery_rates, output_path)
 
-    print_metrics(recovery_rates, mean_recovery_times)
+    print_metrics(recovery_rates, mean_recovery_times, output_dir=subfolder)
 
     eval_env.close()
     print("\nDone!")
