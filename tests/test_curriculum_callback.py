@@ -91,15 +91,33 @@ VALID_CONFIG = {
 
 
 def test_factory_returns_callback():
-    cb = make_curriculum_callback(VALID_CONFIG)
+    cb = make_curriculum_callback(VALID_CONFIG, training_mode="recover")
     assert isinstance(cb, CurriculumLearningCallback)
     assert cb.n_stages == 6
     assert cb.ranges["v"].get_range() == [5.0, 9.0]
 
 
 def test_factory_returns_none_when_disabled():
-    assert make_curriculum_callback({"enabled": False}) is None
-    assert make_curriculum_callback({}) is None
+    assert make_curriculum_callback({"enabled": False}, training_mode="recover") is None
+    assert make_curriculum_callback({}, training_mode="recover") is None
+
+
+def test_factory_returns_none_when_disabled_regardless_of_training_mode():
+    """When curriculum is disabled, no error is raised even for non-recover modes."""
+    assert make_curriculum_callback({"enabled": False}, training_mode="race") is None
+    assert make_curriculum_callback({}, training_mode="race") is None
+
+
+def test_factory_raises_on_non_recover_training_mode():
+    """Curriculum learning is only valid for recovery training."""
+    with pytest.raises(ValueError, match="only supported for recovery training"):
+        make_curriculum_callback(VALID_CONFIG, training_mode="race")
+
+    with pytest.raises(ValueError, match="only supported for recovery training"):
+        make_curriculum_callback(VALID_CONFIG, training_mode="")
+
+    with pytest.raises(ValueError, match="only supported for recovery training"):
+        make_curriculum_callback(VALID_CONFIG, training_mode="drift")
 
 
 def test_factory_uses_constructor_defaults_for_missing_keys():
@@ -112,7 +130,7 @@ def test_factory_uses_constructor_defaults_for_missing_keys():
         "r_range": [-0.20, 0.20, -0.785, 0.785],
         "yaw_range": [-0.20, 0.20, -0.785, 0.785],
     }
-    cb = make_curriculum_callback(minimal_config)
+    cb = make_curriculum_callback(minimal_config, training_mode="recover")
     assert cb.window_size == 500
     assert cb.success_threshold == 0.8
     assert cb.min_episodes_between_expansions == 1000
@@ -120,7 +138,7 @@ def test_factory_uses_constructor_defaults_for_missing_keys():
 
 
 def test_factory_ranges_reach_max_after_n_stages():
-    cb = make_curriculum_callback(VALID_CONFIG)
+    cb = make_curriculum_callback(VALID_CONFIG, training_mode="recover")
     for _ in range(6):
         for r in cb.ranges.values():
             r.expand()

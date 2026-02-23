@@ -92,7 +92,9 @@ def train(profile: TrainingProfile):
         get_ckpt_callback(models_dir=models_dir, save_freq=CKPT_SAVE_FREQ),
         get_eval_callback(eval_env=eval_env, models_dir=models_dir),
     ]
-    curriculum_cb = make_curriculum_callback(curriculum_config)
+    curriculum_cb = make_curriculum_callback(
+        curriculum_config, training_mode=profile.train_config.get("training_mode", "")
+    )
     if curriculum_cb is not None:
         callbacks.append(curriculum_cb)
 
@@ -214,7 +216,9 @@ def continue_training(profile: TrainingProfile, model_path: str, additional_time
         get_ckpt_callback(models_dir=models_dir, save_freq=CKPT_SAVE_FREQ),
         get_eval_callback(eval_env=eval_env, models_dir=models_dir),
     ]
-    curriculum_cb = make_curriculum_callback(curriculum_config)
+    curriculum_cb = make_curriculum_callback(
+        curriculum_config, training_mode=profile.train_config.get("training_mode", "")
+    )
     if curriculum_cb is not None:
         callbacks.append(curriculum_cb)
 

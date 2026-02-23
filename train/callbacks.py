@@ -209,14 +209,21 @@ class CurriculumLearningCallback(BaseCallback):
         wandb.log(metrics)
 
 
-def make_curriculum_callback(config: dict) -> CurriculumLearningCallback | None:
+def make_curriculum_callback(config: dict, training_mode: str = "") -> CurriculumLearningCallback | None:
     """
     Factory that builds a CurriculumLearningCallback from a config dict.
 
     Returns None if curriculum is disabled.
+    Raises ValueError if curriculum is enabled but training_mode is not "recover".
     """
     if not config.get("enabled", False):
         return None
+
+    if training_mode != "recover":
+        raise ValueError(
+            f"Curriculum learning is only supported for recovery training (training_mode='recover'), "
+            f"got training_mode='{training_mode}'"
+        )
 
     n_stages = config["n_stages"]
 
