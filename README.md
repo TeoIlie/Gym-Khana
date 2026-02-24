@@ -77,6 +77,14 @@ Default configurations are stored in `/train/config/env_config.py`, with paramet
 3. `/train/config/env_config.py::get_recovery_test_config()`
 4. `/train/config/env_config.py::get_recovery_train_config()`
 
+### Callback and Curriculum Learning (CL) configuration
+
+Default `SB3` callbacks used during training are `WandbCallback`, `CheckpointCallback`, and `EvalCallback`. A custom `CurriculumLearningCallback` is also available, which gradually expands the recovery state initialization ranges as the agent's success rate improves.
+
+CL is configured in `/train/config/gym_config.yaml` under the `curriculum` heading by setting `enabled: true`. Parameters such as `n_stages`, `success_threshold`, and per-state ranges (`v_range`, `beta_range`, etc.) can be tuned there.
+
+Note that CL is only supported for recovery training, with the environment `training_mode` set to `"recover"`. Recovery training is accessed through the training script `train/ppo_recover.py`.
+
 ### Debugging configuration
 
  `gym.make()` configurations:
