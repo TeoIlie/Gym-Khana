@@ -1,0 +1,13 @@
+
+==================================================
+RECOVERY METRICS
+==================================================
+Grid: 7x7 (beta x r), 6 (v, yaw) combos per cell
+Total episodes: 294
+Overall recovery rate: 24.8% (std across cells: 39.6%)
+Mean recovery time:   0.424 s
+Median recovery time: 0.423 s
+Std recovery time:    0.186 s
+==================================================
+
+Note: recovering model - original with Euclidean reward, no curriculum, small beta,r variations
