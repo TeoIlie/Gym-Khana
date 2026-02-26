@@ -90,7 +90,7 @@ def main():
     proj_root, _ = get_output_dirs()
 
     # Load model
-    model = PPO.load(proj_root + MODEL_PATH, print_system_info=True, device="auto")
+    model = PPO.load(proj_root + MODEL_PATH, print_system_info=True, device="cpu")
 
     # Create environment (keep render_mode="human")
     eval_env = gym.make(get_env_id(), config=CONFIG, render_mode="human")

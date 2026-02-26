@@ -2,7 +2,6 @@
 Centralized F1TENTH Gym Environment Configuration
 """
 
-import multiprocessing
 import os
 
 import yaml
@@ -17,7 +16,7 @@ with open(_rl_config_path, "r") as f:
     _rl_config = yaml.safe_load(f)
 
 # RL training parameters
-N_ENVS = _rl_config["core_mult"] * multiprocessing.cpu_count()  # CPU core count * multiplier
+N_ENVS = _rl_config["n_envs"]
 TOTAL_TIMESTEPS = _rl_config["total_timesteps"]
 N_STEPS = _rl_config["n_steps"]
 START_LEARNING_RATE = _rl_config["start_learning_rate"]

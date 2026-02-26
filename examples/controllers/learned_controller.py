@@ -21,7 +21,7 @@ class LearnedController(Controller):
             model_path: Path to saved PPO model (.zip file)
             map: Map name for environment config
         """
-        self.model = PPO.load(model_path, print_system_info=True, device="auto")
+        self.model = PPO.load(model_path, print_system_info=True, device="cpu")
         self.model_path = model_path
         self.map = map
 

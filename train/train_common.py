@@ -76,7 +76,7 @@ def train(profile: TrainingProfile):
         n_steps=N_STEPS,
         verbose=1,
         tensorboard_log=tensorboard_dir,
-        device="auto",
+        device="cpu",
         seed=SEED,
         learning_rate=learning_rate,
     )
@@ -196,7 +196,7 @@ def continue_training(profile: TrainingProfile, model_path: str, additional_time
     env = make_subprocvecenv(SEED, profile.train_config, N_ENVS)
     eval_env = make_eval_env(EVAL_SEED, profile.train_config)
 
-    model = PPO.load(model_path, env=env, device="auto")
+    model = PPO.load(model_path, env=env, device="cpu")
 
     model.tensorboard_log = tensorboard_dir
 

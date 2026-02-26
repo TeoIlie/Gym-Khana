@@ -40,7 +40,7 @@ def main():
             },
         )
 
-        model = PPO("MlpPolicy", env, verbose=1, tensorboard_log=tensorboard_dir, device="auto", seed=SEED)
+        model = PPO("MlpPolicy", env, verbose=1, tensorboard_log=tensorboard_dir, device="cpu", seed=SEED)
         model.learn(
             total_timesteps=1_000_000,
             callback=[
