@@ -1,0 +1,34 @@
+# =============================================================
+# F1TENTH Gym - Cluster Requirements
+# =============================================================
+# INSTALL ORDER:
+#
+# 1) Load modules first:
+#      module load python/3.11 cuda/12.2 scipy-stack gcc opencv
+#
+# 2) Create and activate venv:
+#      python -m venv ~/envs/f1tenth
+#      source ~/envs/f1tenth/bin/activate
+#
+# 3) Install wheelhouse packages (CUDA-compatible, pre-built):
+#      pip install --no-index torch numpy scipy pillow scikit-image
+#
+# 4) Install the rest from PyPI:
+#      pip install -r requirements.txt
+#
+# 5) Install the gym itself in editable mode:
+#      pip install -e . --no-deps
+# =============================================================
+
+gymnasium>=0.29.1,<0.30
+numba>=0.55.2
+PyYAML>=5.3.1
+pygame>=2.5.2,<3
+yamldataclassconfig>=1.5.0,<2
+requests>=2.31.0,<3
+shapely>=2.0.2,<3
+wandb>=0.17.0,<1
+stable-baselines3[extra]>=2.7.0,<3
+omegaconf>=2.3.0,<3
+tensorboard>=2.20.0,<3
+lark>=1.3.1,<2
