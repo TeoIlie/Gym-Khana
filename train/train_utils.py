@@ -3,6 +3,7 @@ Helper functions for model training, storage, downloading, and evaluation
 """
 
 import os
+import traceback
 from collections import Counter
 from pathlib import Path
 
@@ -159,10 +160,15 @@ def make_env(seed: int, rank: int, config: dict):
     """
 
     def _init():
-        env = gym.make(get_env_id(), config=config)
-        env = Monitor(env)
-        env.reset(seed=seed + rank)  # Seed each env differently for diverse experiences
-        return env
+        try:
+            env = gym.make(get_env_id(), config=config)
+            env = Monitor(env)
+            env.reset(seed=seed + rank)  # Seed each env differently for diverse experiences
+            return env
+        except Exception as e:
+            print(f"[Worker rank={rank}] env creation failed: {e}", flush=True)
+            traceback.print_exc()
+            raise
 
     return _init
 
