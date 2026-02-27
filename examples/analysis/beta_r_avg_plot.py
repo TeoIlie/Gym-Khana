@@ -63,9 +63,21 @@ CONTROLLER_TYPE = "learned"
 # RUN_ID = "sysea5vx"
 # DESC = "recovering model - no Euclidean reward, curriculum learning, 200 success reward, smaller beta, r ranges"
 
+# LEARNED_TYPE = "recover"
+# RUN_ID = "qh54psj2"
+# DESC = "recovering model - original with Euclidean reward, no curriculum, small beta,r variations"
+
+# LEARNED_TYPE = "recover"
+# RUN_ID = "65daon9y"
+# DESC = "recovering model - no Euclidean reward"
+
+# LEARNED_TYPE = "recover"
+# RUN_ID = "cn3rnv9v"
+# DESC = "recovering model - Euclidean reward, larger beta, r ranges"
+
 LEARNED_TYPE = "recover"
-RUN_ID = "qh54psj2"
-DESC = "recovering model - original with Euclidean reward, no curriculum, small beta,r variations"
+RUN_ID = "33t51j8g"
+DESC = "recovering model - Euclidean reward, curriculum learning, smaller beta, r ranges"
 
 MODEL_PATH = "/outputs/downloads/" + RUN_ID + "/model.zip"
 
