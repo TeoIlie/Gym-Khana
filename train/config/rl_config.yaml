@@ -1,11 +1,11 @@
 # This file contains RL-specific hyperparameters for PPO training
 
 # seeds for reproducibility
-seed: 42
+seed: 52
 eval_seed: 1000
 
-n_envs: 64  # number of parallel environments for training
-total_timesteps: 40000000  # 120 million timesteps
+n_envs: 128  # number of parallel environments for training
+total_timesteps: 100000000  # timesteps
 n_steps: 4096  # Number of steps per rollout per environment
 start_learning_rate: 0.0003 # initial learning rate
 end_learning_rate: 0.0001 # final learning rate, with linear decay
