@@ -2,7 +2,7 @@
 #SBATCH --job-name=f1tenth_ppo
 #SBATCH --cpus-per-task=64
 #SBATCH --mem=128G
-#SBATCH --time=20:00:00
+#SBATCH --time=21:00:00
 #SBATCH --output=%x_%j.out
 #SBATCH --error=%x_%j.err
 #SBATCH --mail-type=BEGIN,END,FAIL
