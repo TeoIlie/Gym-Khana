@@ -50,7 +50,7 @@ test_debug_render: true
 train_debug_render: false
 
 # Callback config
-ckpt_save_freq: 10000 # reused for EvalCallback and custom CurriculumLearningCallback
+ckpt_save_freq: 5000 # reused for EvalCallback and custom CurriculumLearningCallback
 n_eval_episodes: 5
 
 # LiDAR beams config - keep minimal for fast training, as it isn't needed
