@@ -10,3 +10,7 @@ n_steps: 4096  # Number of steps per rollout per environment
 start_learning_rate: 0.0003 # initial learning rate
 end_learning_rate: 0.0001 # final learning rate, with linear decay
 act_func_neg_slope: 0.2 # actor, critic LeakyReLU negative slope
+
+# Transfer/continue training defaults (mode 'f')
+additional_timesteps: 100000000  # additional timesteps for transfer/continue training
+transfer_reset_log_std: -0.5  # reset log_std to this value; use null to skip reset
