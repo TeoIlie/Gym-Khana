@@ -14,6 +14,12 @@ Usage:
 
     # Continue training from existing model
     python train/ppo_recover.py --m c --path /path/to/model.zip --additional_timesteps 10000000
+
+    # Transfer a racing model to recovery (fresh optimizer + LR + log_std reset)
+    python train/ppo_recover.py --m f --path /path/to/racing_model.zip
+
+    # Transfer without log_std reset (keep source model's exploration level)
+    python train/ppo_recover.py --m f --path /path/to/racing_model.zip --reset_log_std none
 """
 
 from train.config.env_config import (
