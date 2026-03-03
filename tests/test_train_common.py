@@ -2,11 +2,14 @@ import os
 import sys
 import tempfile
 import unittest
+from functools import partial
 from unittest.mock import patch
 
 import gymnasium as gym
+import numpy as np
 import torch
 from stable_baselines3 import PPO
+from stable_baselines3.common.policies import BasePolicy
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -18,8 +21,8 @@ from train.config.env_config import (
 from train.train_utils import linear_schedule
 
 
-def apply_transfer_resets(model, reset_log_std=-0.5):
-    """Replicate the exact reset operations from train_common.py:305-326."""
+def apply_transfer_resets(model, reset_log_std=-0.5, reset_critic=False):
+    """Replicate the exact reset operations from train_common.py transfer_train()."""
     # Fresh LR schedule
     model.learning_rate = linear_schedule(START_LEARNING_RATE, END_LEARNING_RATE)
     model.lr_schedule = model.learning_rate
@@ -39,6 +42,11 @@ def apply_transfer_resets(model, reset_log_std=-0.5):
         if not hasattr(model.policy, "log_std"):
             raise AttributeError("Policy has no log_std parameter (not a continuous action distribution)")
         model.policy.log_std.data.fill_(reset_log_std)
+
+    # Reset critic
+    if reset_critic:
+        model.policy.mlp_extractor.value_net.apply(partial(BasePolicy.init_weights, gain=np.sqrt(2)))
+        model.policy.value_net.apply(partial(BasePolicy.init_weights, gain=1.0))
 
 
 class TestTransferTrainingResets(unittest.TestCase):
@@ -182,6 +190,176 @@ class TestTransferTrainingResets(unittest.TestCase):
 
         apply_transfer_resets(model)
         self.assertEqual(model._n_updates, 0)
+        model.get_env().close()
+
+
+class TestCriticReset(unittest.TestCase):
+    """Test that critic reset reinitializes only critic weights, leaving actor intact."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls._tmp_dir = tempfile.mkdtemp()
+        cls._env = gym.make("Pendulum-v1")
+        model = PPO("MlpPolicy", cls._env, n_steps=64, device="cpu")
+        model.learn(total_timesteps=128)
+        cls._model_path = os.path.join(cls._tmp_dir, "test_model.zip")
+        model.save(cls._model_path)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._env.close()
+        import shutil
+
+        shutil.rmtree(cls._tmp_dir, ignore_errors=True)
+
+    def _load_source(self):
+        env = gym.make("Pendulum-v1")
+        return PPO.load(self._model_path, env=env, device="cpu")
+
+    def _get_named_weight_dict(self, module):
+        return {name: param.data.clone() for name, param in module.named_parameters()}
+
+    def test_actor_weights_preserved_after_critic_reset(self):
+        """Actor hidden layers (mlp_extractor.policy_net) must be unchanged."""
+        source = self._load_source()
+        actor_before = self._get_named_weight_dict(source.policy.mlp_extractor.policy_net)
+
+        apply_transfer_resets(source, reset_critic=True)
+        actor_after = self._get_named_weight_dict(source.policy.mlp_extractor.policy_net)
+
+        for name in actor_before:
+            self.assertTrue(
+                torch.equal(actor_before[name], actor_after[name]),
+                f"Actor weight {name} changed after critic reset",
+            )
+        source.get_env().close()
+
+    def test_action_net_preserved_after_critic_reset(self):
+        """Actor output head (action_net) must be unchanged."""
+        source = self._load_source()
+        action_before = self._get_named_weight_dict(source.policy.action_net)
+
+        apply_transfer_resets(source, reset_critic=True)
+        action_after = self._get_named_weight_dict(source.policy.action_net)
+
+        for name in action_before:
+            self.assertTrue(
+                torch.equal(action_before[name], action_after[name]),
+                f"Action net weight {name} changed after critic reset",
+            )
+        source.get_env().close()
+
+    def test_log_std_preserved_after_critic_reset(self):
+        """log_std must not be affected by critic reset (only by reset_log_std)."""
+        source = self._load_source()
+        log_std_before = source.policy.log_std.data.clone()
+
+        apply_transfer_resets(source, reset_log_std=None, reset_critic=True)
+
+        self.assertTrue(
+            torch.equal(source.policy.log_std.data, log_std_before),
+            "log_std should be unchanged when only critic is reset",
+        )
+        source.get_env().close()
+
+    def test_critic_hidden_weights_changed(self):
+        """Critic hidden layers (mlp_extractor.value_net) should differ after reset."""
+        source = self._load_source()
+        critic_before = self._get_named_weight_dict(source.policy.mlp_extractor.value_net)
+
+        apply_transfer_resets(source, reset_critic=True)
+        critic_after = self._get_named_weight_dict(source.policy.mlp_extractor.value_net)
+
+        any_changed = any(not torch.equal(critic_before[n], critic_after[n]) for n in critic_before)
+        self.assertTrue(any_changed, "At least one critic hidden weight should change after reset")
+        source.get_env().close()
+
+    def test_critic_output_head_changed(self):
+        """Critic output head (value_net) should differ after reset."""
+        source = self._load_source()
+        head_before = self._get_named_weight_dict(source.policy.value_net)
+
+        apply_transfer_resets(source, reset_critic=True)
+        head_after = self._get_named_weight_dict(source.policy.value_net)
+
+        any_changed = any(not torch.equal(head_before[n], head_after[n]) for n in head_before)
+        self.assertTrue(any_changed, "At least one critic output head weight should change after reset")
+        source.get_env().close()
+
+    def test_critic_hidden_uses_orthogonal_init(self):
+        """Critic hidden layer weights should be orthogonal after reset."""
+        model = self._load_source()
+        apply_transfer_resets(model, reset_critic=True)
+
+        for module in model.policy.mlp_extractor.value_net.modules():
+            if isinstance(module, torch.nn.Linear):
+                W = module.weight.data
+                # For orthogonal matrices: W @ W^T ≈ gain^2 * I (for square) or has orthogonal rows
+                # Check that columns are approximately unit-norm (gain=sqrt(2))
+                col_norms = torch.norm(W, dim=0)
+                expected_norm = np.sqrt(2)
+                for i, norm in enumerate(col_norms):
+                    self.assertAlmostEqual(
+                        norm.item(),
+                        expected_norm,
+                        places=3,
+                        msg=f"Critic hidden col {i} norm {norm.item():.4f} != expected {expected_norm:.4f}",
+                    )
+                # Bias should be zero
+                self.assertTrue(torch.all(module.bias.data == 0), "Critic hidden bias should be zero after reset")
+        model.get_env().close()
+
+    def test_critic_output_head_uses_orthogonal_init(self):
+        """Critic output head weight should be orthogonal with gain=1.0."""
+        model = self._load_source()
+        apply_transfer_resets(model, reset_critic=True)
+
+        W = model.policy.value_net.weight.data
+        # Output head is (1, latent_dim) — orthogonal init gives row norm = gain
+        row_norms = torch.norm(W, dim=1)
+        expected_norm = 1.0
+        for i, norm in enumerate(row_norms):
+            self.assertAlmostEqual(
+                norm.item(),
+                expected_norm,
+                places=3,
+                msg=f"Critic output row {i} norm {norm.item():.4f} != expected {expected_norm:.4f}",
+            )
+        self.assertTrue(torch.all(model.policy.value_net.bias.data == 0), "Critic output bias should be zero")
+        model.get_env().close()
+
+    def test_no_critic_reset_preserves_all_weights(self):
+        """With reset_critic=False, all weights (including critic) should be unchanged."""
+        source = self._load_source()
+        all_before = self._get_named_weight_dict(source.policy)
+
+        apply_transfer_resets(source, reset_log_std=None, reset_critic=False)
+        all_after = self._get_named_weight_dict(source.policy)
+
+        for name in all_before:
+            self.assertTrue(
+                torch.equal(all_before[name], all_after[name]),
+                f"Weight {name} changed with reset_critic=False and reset_log_std=None",
+            )
+        source.get_env().close()
+
+    def test_critic_reset_idempotent(self):
+        """Applying critic reset twice should produce valid orthogonal weights both times."""
+        model = self._load_source()
+        apply_transfer_resets(model, reset_critic=True)
+
+        # Capture weights after first reset
+        critic_after_first = self._get_named_weight_dict(model.policy.mlp_extractor.value_net)
+
+        # Apply again
+        model.policy.mlp_extractor.value_net.apply(partial(BasePolicy.init_weights, gain=np.sqrt(2)))
+        model.policy.value_net.apply(partial(BasePolicy.init_weights, gain=1.0))
+
+        # Verify orthogonal init still holds (bias = 0)
+        for module in model.policy.mlp_extractor.value_net.modules():
+            if isinstance(module, torch.nn.Linear):
+                self.assertTrue(torch.all(module.bias.data == 0), "Bias should be zero after second reset")
+        self.assertTrue(torch.all(model.policy.value_net.bias.data == 0))
         model.get_env().close()
 
 
