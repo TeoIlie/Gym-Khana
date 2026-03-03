@@ -39,9 +39,9 @@ CONTROLLER_TYPE = "learned"
 # RUN_ID = "178a1a5l"
 # DESC = "drift model - CW & CCW on Drift_large, with `sparse_width_obs` = True"
 
-LEARNED_TYPE = "drift"
-RUN_ID = "iza03vyw"
-DESC = "drift model - CW & CCW on Drift_large, with `sparse_width_obs` = False"
+# LEARNED_TYPE = "drift"
+# RUN_ID = "iza03vyw"
+# DESC = "drift model - CW & CCW on Drift_large, with `sparse_width_obs` = False"
 
 # LEARNED_TYPE = "drift"
 # RUN_ID = "bsoh5xyb"
@@ -82,6 +82,10 @@ DESC = "drift model - CW & CCW on Drift_large, with `sparse_width_obs` = False"
 # LEARNED_TYPE = "recover"
 # RUN_ID = "w7bkr26u"
 # DESC = "recovering model - no Euclidean reward, curriculum learning, 200 success reward, smaller beta, r ranges"
+
+LEARNED_TYPE = "recover"
+RUN_ID = "g3w88oqx"
+DESC = "recovering model - drift model 178a1a5l retrained with no curriculum learning, small beta-r initial ranges, no Euclidean reward"
 
 MODEL_PATH = "/outputs/downloads/" + RUN_ID + "/model.zip"
 
