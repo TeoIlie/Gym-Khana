@@ -27,6 +27,7 @@ EVAL_SEED = _rl_config["eval_seed"]
 ACT_FUNC_NEG_SLOPE = _rl_config["act_func_neg_slope"]
 ADDITIONAL_TIMESTEPS = _rl_config["additional_timesteps"]
 TRANSFER_RESET_LOG_STD = _rl_config["transfer_reset_log_std"]
+TRANSFER_RESET_CRITIC = _rl_config["transfer_reset_critic"]
 
 
 # ====================================

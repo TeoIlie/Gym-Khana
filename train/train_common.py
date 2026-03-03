@@ -5,10 +5,12 @@ Orchestration methods for model training, downloading, and evaluation
 import argparse
 import os
 from dataclasses import dataclass
+from functools import partial
 
 import gymnasium as gym
 import numpy as np
 from stable_baselines3 import PPO
+from stable_baselines3.common.policies import BasePolicy
 from wandb.integration.sb3 import WandbCallback
 
 import wandb
@@ -24,6 +26,7 @@ from train.config.env_config import (
     SEED,
     START_LEARNING_RATE,
     TOTAL_TIMESTEPS,
+    TRANSFER_RESET_CRITIC,
     TRANSFER_RESET_LOG_STD,
     get_curriculum_config,
     get_env_id,
@@ -257,6 +260,7 @@ def transfer_train(
     model_path: str,
     additional_timesteps: int = ADDITIONAL_TIMESTEPS,
     reset_log_std: float | None = TRANSFER_RESET_LOG_STD,
+    reset_critic: bool = TRANSFER_RESET_CRITIC,
 ):
     """
     Transfer a trained model to a new task with fresh optimizer, LR schedule, and optional log_std reset.
@@ -285,6 +289,7 @@ def transfer_train(
     print(f"Target task: {profile.display_name}")
     print(f"Additional timesteps: {additional_timesteps:,}")
     print(f"Reset log_std: {reset_log_std}")
+    print(f"Reset critic: {reset_critic}")
 
     proj_root, output_root = get_output_dirs()
 
@@ -335,6 +340,12 @@ def transfer_train(
         model.policy.log_std.data.fill_(reset_log_std)
         print(f"Reset log_std to {reset_log_std}")
 
+    # Reset critic network to random weights (orthogonal init), if set in config file
+    if reset_critic:
+        model.policy.mlp_extractor.value_net.apply(partial(BasePolicy.init_weights, gain=np.sqrt(2)))
+        model.policy.value_net.apply(partial(BasePolicy.init_weights, gain=1.0))
+        print("Reset critic network to random weights (orthogonal init)")
+
     print("\nModel loaded successfully")
 
     save_config(profile.train_config, config_dir, "gym_config.yaml")
@@ -346,6 +357,7 @@ def transfer_train(
         "original_model_path": model_path,
         "additional_timesteps": additional_timesteps,
         "reset_log_std": reset_log_std,
+        "reset_critic": reset_critic,
     }
     save_config(transfer_config, config_dir, "transfer_config.yaml")
 

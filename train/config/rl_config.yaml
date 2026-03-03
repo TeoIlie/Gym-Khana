@@ -15,3 +15,4 @@ act_func_neg_slope: 0.2 # actor, critic LeakyReLU negative slope
 # Transfer/continue training defaults (mode 'f')
 additional_timesteps: 100000000  # additional timesteps for transfer/continue training
 transfer_reset_log_std: -0.5  # reset log_std to this value; use null to skip reset
+transfer_reset_critic: true  # reinitialize critic to random weights
