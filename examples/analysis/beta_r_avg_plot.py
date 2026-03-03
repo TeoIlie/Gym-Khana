@@ -9,7 +9,7 @@ grid cell, plus printed aggregate metrics.
 Usage — Steer controller:
     1. Set CONTROLLER_TYPE = "stanley" or "steer" and DESC to a description string
     2. Run: python examples/analysis/beta_r_avg_plot.py
-    3. Output saved to tests/test_figures/recover_heatmap/CONTROLLER_TYPE
+    3. Output saved to figures/analysis/recover_heatmap/CONTROLLER_TYPE
 
 Usage — Learned (PPO) controller:
     1. Set CONTROLLER_TYPE = "learned"
@@ -17,7 +17,7 @@ Usage — Learned (PPO) controller:
     3. Set RUN_ID to the wandb run ID (model downloaded to outputs/downloads/<RUN_ID>/)
     4. Set DESC to a short description of the model
     5. Run: python examples/analysis/beta_r_avg_plot.py
-    6. Output saved to tests/test_figures/recover_heatmap/<RUN_ID>/
+    6. Output saved to figures/analysis/recover_heatmap/<RUN_ID>/
 """
 
 import os
@@ -316,9 +316,9 @@ def main():
     recovery_rates, mean_recovery_times = run_grid_evaluation(eval_env, controller)
 
     subfolder = (
-        f"{proj_root}/tests/test_figures/recover_heatmap/{RUN_ID}"
+        f"{proj_root}/figures/analysis/recover_heatmap/{RUN_ID}"
         if CONTROLLER_TYPE == "learned"
-        else f"{proj_root}/tests/test_figures/recover_heatmap/{CONTROLLER_TYPE}"
+        else f"{proj_root}/figures/analysis/recover_heatmap/{CONTROLLER_TYPE}"
     )
     os.makedirs(subfolder, exist_ok=True)
     output_path = (

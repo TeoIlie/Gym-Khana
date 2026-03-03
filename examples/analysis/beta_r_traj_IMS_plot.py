@@ -285,7 +285,7 @@ def main():
     eval_env.close()
 
     # Generate plot
-    subfolder = f"{proj_root}/tests/test_figures/recover_traj"
+    subfolder = f"{proj_root}/figures/analysis/recover_traj"
     os.makedirs(subfolder, exist_ok=True)
 
     output_filename = f"{subfolder}/beta_r_convergence_{CONTROLLER_TYPE}{'_' + LEARNED_TYPE if CONTROLLER_TYPE == 'learned' else ''}_policy.png"

@@ -13,6 +13,8 @@ Usage:
     3. View generated plots in beta_r_phase_plane.png
 """
 
+import os
+
 import gymnasium as gym
 import matplotlib.pyplot as plt
 import numpy as np
@@ -164,7 +166,9 @@ def main():
         return
 
     # Create plot
-    output_filename = proj_root + "/tests/test_figures/beta_r_phase_plane.png"
+    output_dir = proj_root + "/figures/analysis"
+    os.makedirs(output_dir, exist_ok=True)
+    output_filename = output_dir + "/beta_r_phase_plane.png"
     print("\nGenerating phase plane plot...")
     plot_beta_r_phase_plane(beta_filtered, r_filtered, s_filtered, output_filename, START_S, end_s)
 

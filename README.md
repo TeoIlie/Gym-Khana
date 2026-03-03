@@ -6,7 +6,7 @@
 
 This repository contains a custom gym environment for training Deep Reinforcement Learning policies to race and drift on 1/10 scale or full-size Ackermann vehicles. **SB3** and **wandb** integration included. Based on the f1tenth_gym simulator built by UPenn.
 
-![Demo](tests/test_figures/F1TENTH_PPO_Drift.gif)
+![Demo](figures/F1TENTH_PPO_Drift.gif)
 
 You can find the original sim [documentation](https://f1tenth-gym.readthedocs.io/en/latest/) here.
 
@@ -57,7 +57,7 @@ The main racing training script is at `train/ppo_race.py`. The recovery training
 2. **Evaluate** (`--m e`): Evaluate a trained model with visualization
 3. **Download** (`--m d`): Fetch a model from **wandb** and evaluate it
 4. **Continue** (`--m c`): Continue training an existing model from a checkpoint
-5. **Transfer** (`--m f`): Transfer a pretrained model to a new task, preserving network weights but resetting optimizer, LR schedule, and optionally `log_std` for fresh exploration. Useful for transferring learned dynamics knowledge (e.g. racing to recovery).
+5. **Transfer** (`--m f`): Transfer a pretrained model to a new task, preserving network weights but resetting optimizer, LR schedule, and optionally resetting `log_std` for fresh exploration, and resetting critic network for fresh value approximation. Useful for transferring learned dynamics knowledge (e.g. racing to recovery).
 
 For example, train a racing model with:
 

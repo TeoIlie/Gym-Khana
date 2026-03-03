@@ -47,8 +47,8 @@ def parse_args():
     parser.add_argument(
         "--output",
         type=str,
-        default="tests/test_figures/critic_value_3d_plot.png",
-        help="Output file path (default: tests/test_figures/critic_value_3d_plot.png)",
+        default="figures/analysis/critic_value_3d_plot.png",
+        help="Output file path (default: figures/analysis/critic_value_3d_plot.png)",
     )
     return parser.parse_args()
 
