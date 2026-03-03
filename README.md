@@ -53,14 +53,15 @@ Then the same examples can be ran.
 
 ## Training
 The main racing training script is at `train/ppo_race.py`. The recovery training script is at `train/ppo_recover.py`. Both include functionality for:
-1. Training mode with parallel environments using `SubprocVecEnv` and `train/config` params
-2. Evaluation mode with visualization
-3. Download mode, to fetch model from **wandb**
-4. Continue training mode to continue training an existing model
+1. **Train** (`--m t`): Train a new model with parallel environments using `SubprocVecEnv` and `train/config` params
+2. **Evaluate** (`--m e`): Evaluate a trained model with visualization
+3. **Download** (`--m d`): Fetch a model from **wandb** and evaluate it
+4. **Continue** (`--m c`): Continue training an existing model from a checkpoint
+5. **Transfer** (`--m f`): Transfer a pretrained model to a new task, preserving network weights but resetting optimizer, LR schedule, and optionally `log_std` for fresh exploration. Useful for transferring learned dynamics knowledge (e.g. racing to recovery).
 
 For example, train a racing model with:
 
-```python
+```bash
 python3 train/ppo_race.py --m t
 ```
 
