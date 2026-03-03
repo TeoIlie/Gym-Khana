@@ -11,4 +11,4 @@
 module load python/3.11 scipy-stack gcc opencv
 source ~/envs/f1tenth/bin/activate
 cd ~/F1TENTH_Gym
-python3 train/ppo_recover.py --m c --path outputs/downloads/178a1a5l/model.zip
+python3 train/ppo_recover.py --m f --path outputs/downloads/178a1a5l/model.zip
