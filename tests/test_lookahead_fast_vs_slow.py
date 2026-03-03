@@ -319,7 +319,7 @@ def test_visualization():
     plt.colorbar(im3, ax=axes[2], label="Absolute difference [1/m]")
 
     plt.tight_layout()
-    output_dir = os.path.join(os.path.dirname(__file__), "..", "tests", "test_figures")
+    output_dir = os.path.join(os.path.dirname(__file__), "..", "figures", "tests")
     os.makedirs(output_dir, exist_ok=True)
     plt.savefig(os.path.join(output_dir, "curvature_fast_slow_validation.png"), dpi=300, bbox_inches="tight")
     plt.close(fig)  # Close the figure to free memory

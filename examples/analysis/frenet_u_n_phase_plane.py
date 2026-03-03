@@ -15,8 +15,10 @@ Arrows show the direction and rate of state evolution:
 Usage:
     1. Edit MODEL_PATH constant to point to your trained model
     2. Run: python examples/analysis/phase_plane_analysis.py
-    3. View generated plots in phase_plane_vector_field.png
+    3. View generated plots in frenet_u_n_phase_plane.png
 """
+
+import os
 
 import gymnasium as gym
 import matplotlib.pyplot as plt
@@ -32,7 +34,9 @@ PROJ_ROOT = get_output_dirs()[0]
 NUM_EPISODES = 20  # Number of episodes to collect data
 MODEL_PATH = PROJ_ROOT + "/outputs/downloads/ol035sw5/model.zip"  # Edit this to point to your trained model
 DT = 0.01  # Timestep from config (0.01 seconds = 100 Hz)
-OUTPUT_FILENAME = PROJ_ROOT + "/tests/test_figures/phase_plane_vector_field.png"
+OUTPUT_DIR = PROJ_ROOT + "/figures/analysis"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+OUTPUT_FILENAME = OUTPUT_DIR + "/frenet_u_n_phase_plane.png"
 SUBSAMPLE_RATE = 50  # Subsample before plotting to reduce clutter
 COLOR_PERCENTILE_CLIP = (10, 90)  # Clip outliers for clearer color distribution
 

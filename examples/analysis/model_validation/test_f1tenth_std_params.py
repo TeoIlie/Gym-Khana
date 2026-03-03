@@ -252,7 +252,7 @@ if __name__ == "__main__":
 
     # Create figures directory if it doesn't exist
     today = datetime.now().strftime("%Y-%m-%d")
-    figures_dir = os.path.join(os.path.dirname(__file__), "..", "tire_params", today)
+    figures_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "figures", "analysis", "tire_params", today)
     os.makedirs(figures_dir, exist_ok=True)
 
     # Save f1tenth parameters to YAML

@@ -166,10 +166,9 @@ def test_curvature_visualization():
     ax2.legend()
 
     plt.tight_layout()
-    output_dir = os.path.join(os.path.dirname(__file__), "..", "tests", "test_figures")
+    output_dir = os.path.join(os.path.dirname(__file__), "..", "figures", "tests")
     os.makedirs(output_dir, exist_ok=True)
     plt.savefig(os.path.join(output_dir, "curvature_validation.png"), dpi=300, bbox_inches="tight")
-    # /home/teodor/1.Projects/F1TENTH_Gym/tests/test_figures
     # Verify we got reasonable curvature values
     assert len(curvatures) == len(s_samples), "Curvature samples mismatch"
     assert all(np.isfinite(curvatures)), "All curvatures must be finite"
