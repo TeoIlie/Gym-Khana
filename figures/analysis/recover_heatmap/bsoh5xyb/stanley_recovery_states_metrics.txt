@@ -3,10 +3,10 @@
 STANLEY-BASELINE RECOVERY METRICS
 ==================================================
 Stanley recovery states evaluated: 39
-Learned policy recovered: 38/39 (97.4%)
-Mean recovery time:   1.379 s
-Median recovery time: 0.920 s
-Std recovery time:    1.441 s
+Learned policy recovered: 32/39 (82.1%)
+Mean recovery time:   1.307 s
+Median recovery time: 1.280 s
+Std recovery time:    0.662 s
 ==================================================
 
 Note: drift model - CW & CCW on Drift_large, with sparse_width_obs = True

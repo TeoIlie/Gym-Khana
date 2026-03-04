@@ -31,11 +31,16 @@ from examples.controllers import create_controller
 from train.config.env_config import get_env_id
 from train.train_utils import get_output_dirs, print_header
 
-CONTROLLER_TYPE = "learned"
-LEARNED_TYPE = "drift"
-RUN_ID = "178a1a5l"
-DESC = "drift model - CW & CCW on Drift_large, with `sparse_width_obs` = True"
+CONTROLLER_TYPE = "stanley"
+DESC = "stanley"
+LEARNED_TYPE = ""
+RUN_ID = ""
 
+# CONTROLLER_TYPE = "learned"
+
+# LEARNED_TYPE = "drift"
+# RUN_ID = "178a1a5l"
+# DESC = "drift model - CW & CCW on Drift_large, with `sparse_width_obs` = True"
 
 # LEARNED_TYPE = "drift"
 # RUN_ID = "iza03vyw"

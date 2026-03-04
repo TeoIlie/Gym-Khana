@@ -10,4 +10,4 @@ Median recovery time: 1.705 s
 Std recovery time:    0.731 s
 ==================================================
 
-Note: drift model - CW & CCW on Drift_large, with `sparse_width_obs` = True
+Note: drift model - CW & CCW on Drift_large, with sparse_width_obs = True
