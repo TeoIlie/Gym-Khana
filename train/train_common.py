@@ -34,6 +34,7 @@ from train.config.env_config import (
 from train.train_utils import (
     download_model_from_wandb,
     extract_rl_config,
+    generate_run_id,
     get_ckpt_callback,
     get_eval_callback,
     get_output_dirs,
@@ -62,10 +63,16 @@ def train(profile: TrainingProfile):
 
     proj_root, output_root = get_output_dirs()
 
+    run_id = generate_run_id()
     run = wandb.init(
-        project=profile.project_name, sync_tensorboard=True, monitor_gym=True, dir=proj_root, save_code=True
+        project=profile.project_name,
+        id=run_id,
+        name=run_id,
+        sync_tensorboard=True,
+        monitor_gym=True,
+        dir=proj_root,
+        save_code=True,
     )
-    run_id = run.id
 
     tensorboard_dir, models_dir, config_dir = make_output_dirs(run.id, output_root)
     save_config(profile.train_config, config_dir, "gym_config.yaml")
@@ -183,14 +190,16 @@ def continue_training(profile: TrainingProfile, model_path: str, additional_time
 
     proj_root, output_root = get_output_dirs()
 
+    new_run_id = generate_run_id()
     run = wandb.init(
         project=profile.project_name,
+        id=new_run_id,
+        name=new_run_id,
         sync_tensorboard=True,
         monitor_gym=True,
         dir=proj_root,
         save_code=True,
     )
-    new_run_id = run.id
 
     print(f"New run ID: {new_run_id}")
 
@@ -293,14 +302,16 @@ def transfer_train(
 
     proj_root, output_root = get_output_dirs()
 
+    new_run_id = generate_run_id()
     run = wandb.init(
         project=profile.project_name,
+        id=new_run_id,
+        name=new_run_id,
         sync_tensorboard=True,
         monitor_gym=True,
         dir=proj_root,
         save_code=True,
     )
-    new_run_id = run.id
 
     print(f"New run ID: {new_run_id}")
 

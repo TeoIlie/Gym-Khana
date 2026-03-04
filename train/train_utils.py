@@ -384,6 +384,11 @@ def download_model_from_wandb(run_id: str, download_dir: str, model_prefix: str,
     return model_cache_path
 
 
+def generate_run_id() -> str:
+    """Generate a unique wandb run ID to use as both the run ID and display name."""
+    return wandb.util.generate_id()
+
+
 def print_header(title: str) -> None:
     """
     Print a formatted header for better console readability.
