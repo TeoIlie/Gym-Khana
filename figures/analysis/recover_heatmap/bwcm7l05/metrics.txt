@@ -10,4 +10,4 @@ Median recovery time: 0.911 s
 Std recovery time:    1.487 s
 ==================================================
 
-Note: recovering model - drift model 178a1a5l retrained by loading and continuing training with --m c. No curriculum learning, small beta-r initial ranges, no Euclidean reward
+Note: transfer model - drift model 178a1a5l retrained by loading and continuing training with --m c. No curriculum learning, small beta-r initial ranges, no Euclidean reward

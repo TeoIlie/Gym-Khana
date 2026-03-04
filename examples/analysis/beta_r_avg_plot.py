@@ -31,12 +31,12 @@ from examples.controllers import create_controller
 from train.config.env_config import get_env_id
 from train.train_utils import get_output_dirs, print_header
 
-CONTROLLER_TYPE = "stanley"
-DESC = "stanley"
-LEARNED_TYPE = ""
-RUN_ID = ""
+# CONTROLLER_TYPE = "stanley"
+# DESC = "stanley"
+# LEARNED_TYPE = ""
+# RUN_ID = ""
 
-# CONTROLLER_TYPE = "learned"
+CONTROLLER_TYPE = "learned"
 
 # LEARNED_TYPE = "drift"
 # RUN_ID = "178a1a5l"
@@ -97,6 +97,18 @@ RUN_ID = ""
 # LEARNED_TYPE = "recover"
 # RUN_ID = "pbmnxwcc"
 # DESC = "recovering model - drift model 178a1a5l retrained with Fine-Tuning with Fresh Optimizer + LR Reset + log_std reset + Critic Reinitialization.\nNo curriculum learning, small beta-r initial ranges, no Euclidean reward"
+
+# LEARNED_TYPE = "recover"
+# RUN_ID = "65daon9y"
+# DESC = "recovering model - no Euclidean reward"
+
+# LEARNED_TYPE = "recover"
+# RUN_ID = "cn3rnv9v"
+# DESC = "recovering model - Euclidean reward, larger beta, r ranges"
+
+LEARNED_TYPE = "recover"
+RUN_ID = "33t51j8g"
+DESC = "recovering model - Euclidean reward, curriculum learning, smaller beta, r ranges"
 
 S = 96  # Arc length on IMS straight section
 SEED = 42
