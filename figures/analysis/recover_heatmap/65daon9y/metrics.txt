@@ -4,10 +4,10 @@ RECOVERY METRICS
 ==================================================
 Grid: 7x7 (beta x r), 6 (v, yaw) combos per cell
 Total episodes: 294
-Overall recovery rate: 38.4% (std across cells: 42.2%)
-Mean recovery time:   1.832 s
-Median recovery time: 1.705 s
-Std recovery time:    0.731 s
+Overall recovery rate: 26.5% (std across cells: 42.0%)
+Mean recovery time:   0.782 s
+Median recovery time: 0.452 s
+Std recovery time:    1.269 s
 ==================================================
 
-Note: drift model - CW & CCW on Drift_large, with sparse_width_obs = True
+Note: recovering model - no Euclidean reward

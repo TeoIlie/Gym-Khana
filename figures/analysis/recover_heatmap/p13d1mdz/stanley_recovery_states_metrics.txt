@@ -1,0 +1,12 @@
+
+==================================================
+STANLEY-BASELINE RECOVERY METRICS
+==================================================
+Stanley recovery states evaluated: 39
+Learned policy recovered: 36/39 (92.3%)
+Mean recovery time:   0.316 s
+Median recovery time: 0.320 s
+Std recovery time:    0.154 s
+==================================================
+
+Note: recovering model - original with Euclidean reward

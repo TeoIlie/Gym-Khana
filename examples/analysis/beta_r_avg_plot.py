@@ -20,6 +20,7 @@ Usage — Learned (PPO) controller:
     6. Output saved to figures/analysis/recover_heatmap/<RUN_ID>/
 """
 
+import argparse
 import os
 
 import gymnasium as gym
@@ -32,6 +33,8 @@ from train.train_utils import get_output_dirs, print_header
 
 # CONTROLLER_TYPE = "stanley"
 # DESC = "stanley"
+# LEARNED_TYPE = ""
+# RUN_ID = ""
 
 CONTROLLER_TYPE = "learned"
 
@@ -95,11 +98,29 @@ CONTROLLER_TYPE = "learned"
 # RUN_ID = "w7bkr26u"
 # DESC = "recovering model - no Euclidean reward, curriculum learning, 200 success reward, smaller beta, r ranges"
 
-LEARNED_TYPE = "recover"
-RUN_ID = "g3w88oqx"
-DESC = "recovering model - drift model 178a1a5l retrained with no curriculum learning, small beta-r initial ranges, no Euclidean reward"
+# LEARNED_TYPE = "recover"
+# RUN_ID = "g3w88oqx"
+# DESC = "recovering model - drift model 178a1a5l retrained with Fine-Tuning with Fresh Optimizer + LR Reset + log_std reset with --m f. No curriculum learning, small beta-r initial ranges, no Euclidean reward"
 
-MODEL_PATH = "/outputs/downloads/" + RUN_ID + "/model.zip"
+# LEARNED_TYPE = "recover"
+# RUN_ID = "bwcm7l05"
+# DESC = "recovering model - drift model 178a1a5l retrained by loading and continuing training with --m c. No curriculum learning, small beta-r initial ranges, no Euclidean reward"
+
+# LEARNED_TYPE = "recover"
+# RUN_ID = "pbmnxwcc"
+# DESC = "recovering model - drift model 178a1a5l retrained with Fine-Tuning with Fresh Optimizer + LR Reset + log_std reset + Critic Reinitialization.\nNo curriculum learning, small beta-r initial ranges, no Euclidean reward"
+
+# LEARNED_TYPE = "recover"
+# RUN_ID = "65daon9y"
+# DESC = "recovering model - no Euclidean reward"
+
+# LEARNED_TYPE = "recover"
+# RUN_ID = "cn3rnv9v"
+# DESC = "recovering model - Euclidean reward, larger beta, r ranges"
+
+LEARNED_TYPE = "recover"
+RUN_ID = "33t51j8g"
+DESC = "recovering model - Euclidean reward, curriculum learning, smaller beta, r ranges"
 
 S = 96  # Arc length on IMS straight section
 SEED = 42
@@ -145,14 +166,43 @@ def reset_at_state(eval_env, beta_rad, r_rad, v, yaw_offset_rad):
     return obs
 
 
-def run_grid_evaluation(eval_env, controller):
-    """Run recovery evaluation across the full (beta, r, v, yaw) grid.
+def run_episode(eval_env, controller, beta, r, v, yaw):
+    """Run one recovery episode from the given initial state.
 
     Returns:
-        recovery_rates: (10, 10) array of recovery rate per (beta, r) cell
-        mean_recovery_times: (10, 10) array of mean recovery time (seconds) per cell
+        recovered: Whether the episode ended with successful recovery.
+        time_seconds: Episode duration in seconds.
     """
     dt = eval_env.unwrapped.timestep
+    obs = reset_at_state(eval_env, beta, r, v, yaw)
+
+    done, trunc = False, False
+    steps = 0
+    info = {"recovered": False}
+
+    while not done and not trunc:
+        action = controller.get_action(obs)
+        obs, _, done, trunc, info = eval_env.step(action)
+        steps += 1
+
+    recovered = done and info.get("recovered", False)
+    return recovered, steps * dt
+
+
+def run_grid_evaluation(eval_env, controller, stanley_states=None):
+    """Run recovery evaluation across the full (beta, r, v, yaw) grid.
+
+    Args:
+        eval_env: The gym environment.
+        controller: Controller providing get_action(obs).
+        stanley_states: Optional set of (beta, r, v, yaw) tuples where Stanley succeeded.
+            When provided, also tracks metrics on this subset.
+
+    Returns:
+        recovery_rates: array of recovery rate per (beta, r) cell
+        mean_recovery_times: array of mean recovery time (seconds) per cell
+        successful_states: list of (beta, r, v, yaw) tuples that recovered
+    """
     n_beta = len(BETA_VALUES)
     n_r = len(R_VALUES)
     n_v = len(V_VALUES)
@@ -163,41 +213,45 @@ def run_grid_evaluation(eval_env, controller):
     # Per-cell accumulators
     recovery_counts = np.zeros((n_beta, n_r))
     recovery_time_sums = np.zeros((n_beta, n_r))
-    recovery_time_counts = np.zeros((n_beta, n_r))
+
+    successful_states = []
+
+    # Stanley-subset accumulators
+    stanley_total_count = 0
+    stanley_recovery_times = []
 
     episode = 0
     for i, beta in enumerate(BETA_VALUES):
         for j, r in enumerate(R_VALUES):
             for v in V_VALUES:
                 for yaw in YAW_VALUES:
-                    obs = reset_at_state(eval_env, beta, r, v, yaw)
+                    recovered, time_s = run_episode(eval_env, controller, beta, r, v, yaw)
 
-                    done, trunc = False, False
-                    steps = 0
-                    info = {"recovered": False}
-
-                    while not done and not trunc:
-                        action = controller.get_action(obs)
-                        obs, _, done, trunc, info = eval_env.step(action)
-                        steps += 1
-
-                    if done and info.get("recovered", False):
+                    if recovered:
                         recovery_counts[i, j] += 1
-                        recovery_time_sums[i, j] += steps * dt
-                        recovery_time_counts[i, j] += 1
+                        recovery_time_sums[i, j] += time_s
+                        successful_states.append((beta, r, v, yaw))
+
+                    # Track Stanley-subset metrics
+                    if stanley_states is not None and (beta, r, v, yaw) in stanley_states:
+                        stanley_total_count += 1
+                        if recovered:
+                            stanley_recovery_times.append(time_s)
 
                     episode += 1
                     if episode % 100 == 0:
                         print(f"  Progress: {episode}/{total_episodes} episodes")
 
     recovery_rates = recovery_counts / n_inner
+
+    # compute mean times, guarding against division by 0
     with np.errstate(divide="ignore", invalid="ignore"):
-        mean_recovery_times = np.where(recovery_time_counts > 0, recovery_time_sums / recovery_time_counts, np.nan)
+        mean_recovery_times = np.where(recovery_counts > 0, recovery_time_sums / recovery_counts, np.nan)
 
-    return recovery_rates, mean_recovery_times
+    return recovery_rates, mean_recovery_times, successful_states, stanley_total_count, stanley_recovery_times
 
 
-def plot_recovery_heatmap(beta_values, r_values, recovery_rates, output_path):
+def plot_recovery_heatmap(beta_values, r_values, recovery_rates, output_path, controller_label=""):
     """Plot a heatmap of recovery success rate across the (beta, r) grid."""
     fig, ax = plt.subplots(figsize=(10, 8))
 
@@ -242,7 +296,6 @@ def plot_recovery_heatmap(beta_values, r_values, recovery_rates, output_path):
 
     ax.set_xlabel("Beta (sideslip angle) [deg]", fontsize=13, fontweight="bold")
     ax.set_ylabel("R (yaw rate) [deg/s]", fontsize=13, fontweight="bold")
-    controller_label = f"{CONTROLLER_TYPE}" + (f" ({LEARNED_TYPE})" if LEARNED_TYPE else "")
     ax.set_title(
         f"Recovery Success Rate — {controller_label}\n"
         f"Averaged over v=[{V_VALUES[0]:.0f}..{V_VALUES[-1]:.0f}] m/s, "
@@ -257,30 +310,23 @@ def plot_recovery_heatmap(beta_values, r_values, recovery_rates, output_path):
     plt.show()
 
 
-def print_metrics(recovery_rates, mean_recovery_times, output_dir=None):
-    """Print aggregate recovery metrics and optionally save to a txt file."""
-    n_inner = len(V_VALUES) * len(YAW_VALUES)
+def save_metrics(title, summary_lines, recovery_times, output_path, desc=""):
+    """Format, print, and save recovery metrics to a file.
 
-    overall_rate = np.mean(recovery_rates) * 100
-    overall_std = np.std(recovery_rates) * 100
-
-    valid_times = mean_recovery_times[~np.isnan(mean_recovery_times)]
-
-    lines = [
-        "",
-        "=" * 50,
-        "RECOVERY METRICS",
-        "=" * 50,
-        f"Grid: {len(BETA_VALUES)}x{len(R_VALUES)} (beta x r), {n_inner} (v, yaw) combos per cell",
-        f"Total episodes: {len(BETA_VALUES) * len(R_VALUES) * n_inner}",
-        f"Overall recovery rate: {overall_rate:.1f}% (std across cells: {overall_std:.1f}%)",
-    ]
-
-    if len(valid_times) > 0:
+    Args:
+        title: Section header
+        summary_lines: List of summary strings (grid info, rates, etc.).
+        recovery_times: 1-D array of recovery times for successful episodes.
+        output_path: File path to write the metrics to.
+        desc: Optional description to append to the file.
+    """
+    lines = ["", "=" * 50, title, "=" * 50]
+    lines += summary_lines
+    if len(recovery_times) > 0:
         lines += [
-            f"Mean recovery time:   {np.mean(valid_times):.3f} s",
-            f"Median recovery time: {np.median(valid_times):.3f} s",
-            f"Std recovery time:    {np.std(valid_times):.3f} s",
+            f"Mean recovery time:   {np.mean(recovery_times):.3f} s",
+            f"Median recovery time: {np.median(recovery_times):.3f} s",
+            f"Std recovery time:    {np.std(recovery_times):.3f} s",
         ]
     else:
         lines.append("No successful recoveries recorded.")
@@ -289,23 +335,41 @@ def print_metrics(recovery_rates, mean_recovery_times, output_dir=None):
     text = "\n".join(lines)
     print(text)
 
-    if output_dir is not None:
-        metrics_path = os.path.join(output_dir, "metrics.txt")
-        with open(metrics_path, "w") as f:
-            f.write(text + "\n")
-            if DESC:
-                f.write(f"\nNote: {DESC}\n")
-        print(f"Metrics saved to: {metrics_path}")
+    with open(output_path, "w") as f:
+        f.write(text + "\n")
+        if desc:
+            f.write(f"\nNote: {desc}\n")
+    print(f"Metrics saved to: {output_path}")
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Beta-R Recovery Success Heatmap Analysis")
+    parser.add_argument(
+        "--controller_type", default=CONTROLLER_TYPE, help="Controller type: 'learned', 'stanley', 'steer'"
+    )
+    parser.add_argument("--learned_type", default=LEARNED_TYPE, help="Learned model type: 'drift' or 'recover'")
+    parser.add_argument("--run_id", default=RUN_ID, help="Wandb run ID for the learned model")
+    parser.add_argument("--desc", default=DESC, help="Short description of the model")
+    return parser.parse_args()
 
 
 def main():
+    args = parse_args()
+    controller_type = args.controller_type
+    learned_type = args.learned_type
+    run_id = args.run_id
+    desc = args.desc
+
     print_header("Beta-R Recovery Success Heatmap Analysis")
+    print(f"Controller: {controller_type}, Learned type: {learned_type}, Run ID: {run_id}")
+    print(f"Description: {desc}")
 
     proj_root, _ = get_output_dirs()
 
+    model_path = f"{proj_root}/outputs/downloads/{run_id}/model.zip" if controller_type == "learned" else None
     controller = create_controller(
-        CONTROLLER_TYPE,
-        model_path=proj_root + MODEL_PATH if CONTROLLER_TYPE == "learned" else None,
+        controller_type,
+        model_path=model_path,
         map="IMS",
     )
 
@@ -325,22 +389,91 @@ def main():
         f"{len(V_VALUES) * len(YAW_VALUES)} episodes per cell..."
     )
 
-    recovery_rates, mean_recovery_times = run_grid_evaluation(eval_env, controller)
+    # Load Stanley recovery states for learned controllers
+    stanley_states_path = f"{proj_root}/figures/analysis/recover_heatmap/stanley_recovery_states.npz"
+
+    # Load Stanley recovery states and validate they are a subset of current configured states
+    stanley_states = None
+    if controller_type == "learned" and os.path.exists(stanley_states_path):
+        data = np.load(stanley_states_path)
+
+        grids_match = (
+            np.allclose(data["beta_values"], BETA_VALUES)
+            and np.allclose(data["r_values"], R_VALUES)
+            and np.allclose(data["v_values"], V_VALUES)
+            and np.allclose(data["yaw_values"], YAW_VALUES)
+        )
+        if grids_match:
+            stanley_states = set(map(tuple, data["states"]))
+            print(f"Loaded {len(stanley_states)} Stanley recovery states for baseline comparison")
+        else:
+            print(
+                "Warning: Stanley states were computed with a different grid — "
+                "skipping baseline comparison. Re-run with stanley to regenerate."
+            )
+    elif controller_type == "learned":
+        print(f"Warning: {stanley_states_path} not found — run Stanley evaluation first for baseline metrics")
+
+    recovery_rates, mean_recovery_times, successful_states, stanley_total, stanley_times = run_grid_evaluation(
+        eval_env, controller, stanley_states=stanley_states
+    )
+
+    # Save Stanley successful states with grid parameters
+    if controller_type == "stanley" and successful_states:
+        save_dir = os.path.dirname(stanley_states_path)
+        os.makedirs(save_dir, exist_ok=True)
+        np.savez(
+            stanley_states_path,
+            states=np.array(successful_states),
+            beta_values=BETA_VALUES,
+            r_values=R_VALUES,
+            v_values=V_VALUES,
+            yaw_values=YAW_VALUES,
+        )
+        print(f"Saved {len(successful_states)} Stanley recovery states to: {stanley_states_path}")
 
     subfolder = (
-        f"{proj_root}/figures/analysis/recover_heatmap/{RUN_ID}"
-        if CONTROLLER_TYPE == "learned"
-        else f"{proj_root}/figures/analysis/recover_heatmap/{CONTROLLER_TYPE}"
+        f"{proj_root}/figures/analysis/recover_heatmap/{run_id}"
+        if controller_type == "learned"
+        else f"{proj_root}/figures/analysis/recover_heatmap/{controller_type}"
     )
     os.makedirs(subfolder, exist_ok=True)
     output_path = (
-        f"{subfolder}/"
-        f"beta_r_recovery_heatmap_{CONTROLLER_TYPE}"
-        f"{'_' + LEARNED_TYPE if CONTROLLER_TYPE == 'learned' else ''}_policy.png"
+        f"{subfolder}/beta_r_recovery_heatmap_{controller_type}{'_' + learned_type if learned_type else ''}_policy.png"
     )
-    plot_recovery_heatmap(BETA_VALUES, R_VALUES, recovery_rates, output_path)
+    controller_label = f"{controller_type}" + (f" ({learned_type})" if learned_type else "")
+    plot_recovery_heatmap(BETA_VALUES, R_VALUES, recovery_rates, output_path, controller_label=controller_label)
 
-    print_metrics(recovery_rates, mean_recovery_times, output_dir=subfolder)
+    n_inner = len(V_VALUES) * len(YAW_VALUES)
+    overall_rate = np.mean(recovery_rates) * 100
+    overall_std = np.std(recovery_rates) * 100
+    valid_times = mean_recovery_times[~np.isnan(mean_recovery_times)]
+    save_metrics(
+        "RECOVERY METRICS",
+        [
+            f"Grid: {len(BETA_VALUES)}x{len(R_VALUES)} (beta x r), {n_inner} (v, yaw) combos per cell",
+            f"Total episodes: {len(BETA_VALUES) * len(R_VALUES) * n_inner}",
+            f"Overall recovery rate: {overall_rate:.1f}% (std across cells: {overall_std:.1f}%)",
+        ],
+        valid_times,
+        os.path.join(subfolder, "metrics.txt"),
+        desc=desc,
+    )
+
+    # Stanley-baseline metrics for learned controllers
+    if stanley_total > 0:
+        n_recovered = len(stanley_times)
+        rate = n_recovered / stanley_total * 100
+        save_metrics(
+            "STANLEY-BASELINE RECOVERY METRICS",
+            [
+                f"Stanley recovery states evaluated: {stanley_total}",
+                f"Learned policy recovered: {n_recovered}/{stanley_total} ({rate:.1f}%)",
+            ],
+            np.array(stanley_times),
+            os.path.join(subfolder, "stanley_recovery_states_metrics.txt"),
+            desc=desc,
+        )
 
     eval_env.close()
     print("\nDone!")

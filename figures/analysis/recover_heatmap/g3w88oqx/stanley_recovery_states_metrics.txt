@@ -1,13 +1,12 @@
 
 ==================================================
-RECOVERY METRICS
+STANLEY-BASELINE RECOVERY METRICS
 ==================================================
-Grid: 7x7 (beta x r), 6 (v, yaw) combos per cell
-Total episodes: 294
-Overall recovery rate: 35.7% (std across cells: 42.5%)
-Mean recovery time:   0.491 s
-Median recovery time: 0.465 s
-Std recovery time:    0.218 s
+Stanley recovery states evaluated: 39
+Learned policy recovered: 38/39 (97.4%)
+Mean recovery time:   0.294 s
+Median recovery time: 0.305 s
+Std recovery time:    0.133 s
 ==================================================
 
 Note: transfer model - drift model 178a1a5l retrained with Fine-Tuning with Fresh Optimizer + LR Reset + log_std reset with --m f. No curriculum learning, small beta-r initial ranges, no Euclidean reward

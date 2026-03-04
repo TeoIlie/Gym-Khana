@@ -1,13 +1,12 @@
 
 ==================================================
-RECOVERY METRICS
+STANLEY-BASELINE RECOVERY METRICS
 ==================================================
-Grid: 7x7 (beta x r), 6 (v, yaw) combos per cell
-Total episodes: 294
-Overall recovery rate: 3.7% (std across cells: 10.8%)
-Mean recovery time:   1.229 s
-Median recovery time: 0.700 s
-Std recovery time:    0.938 s
+Stanley recovery states evaluated: 39
+Learned policy recovered: 7/39 (17.9%)
+Mean recovery time:   1.447 s
+Median recovery time: 0.590 s
+Std recovery time:    1.373 s
 ==================================================
 
 Note: drift model - CW & CCW on Drift_large, with sparse_width_obs = False
