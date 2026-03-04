@@ -83,9 +83,17 @@ CONTROLLER_TYPE = "learned"
 # RUN_ID = "w7bkr26u"
 # DESC = "recovering model - no Euclidean reward, curriculum learning, 200 success reward, smaller beta, r ranges"
 
+# LEARNED_TYPE = "recover"
+# RUN_ID = "g3w88oqx"
+# DESC = "recovering model - drift model 178a1a5l retrained with Fine-Tuning with Fresh Optimizer + LR Reset + log_std reset with --m f. No curriculum learning, small beta-r initial ranges, no Euclidean reward"
+
+# LEARNED_TYPE = "recover"
+# RUN_ID = "bwcm7l05"
+# DESC = "recovering model - drift model 178a1a5l retrained by loading and continuing training with --m c. No curriculum learning, small beta-r initial ranges, no Euclidean reward"
+
 LEARNED_TYPE = "recover"
-RUN_ID = "g3w88oqx"
-DESC = "recovering model - drift model 178a1a5l retrained with no curriculum learning, small beta-r initial ranges, no Euclidean reward"
+RUN_ID = "pbmnxwcc"
+DESC = "recovering model - drift model 178a1a5l retrained with Fine-Tuning with Fresh Optimizer + LR Reset + log_std reset + Critic Reinitialization.\nNo curriculum learning, small beta-r initial ranges, no Euclidean reward"
 
 MODEL_PATH = "/outputs/downloads/" + RUN_ID + "/model.zip"
 
