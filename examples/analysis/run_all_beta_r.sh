@@ -6,11 +6,11 @@ cd "$(dirname "$0")/../.."
 SCRIPT="python examples/analysis/beta_r_avg_plot.py"
 
 # Stanley baseline (generates recovery states for learned controller comparison)
-$SCRIPT --controller_type stanley --desc "stanley"
+# $SCRIPT --controller_type stanley --desc "stanley"
 
 # Drift models
-$SCRIPT --controller_type learned --learned_type drift --run_id 178a1a5l --desc "drift model - CW & CCW on Drift_large, with sparse_width_obs = True"
-$SCRIPT --controller_type learned --learned_type drift --run_id iza03vyw --desc "drift model - CW & CCW on Drift_large, with sparse_width_obs = False"
+# $SCRIPT --controller_type learned --learned_type drift --run_id 178a1a5l --desc "drift model - CW & CCW on Drift_large, with sparse_width_obs = True"
+# $SCRIPT --controller_type learned --learned_type drift --run_id iza03vyw --desc "drift model - CW & CCW on Drift_large, with sparse_width_obs = False"
 $SCRIPT --controller_type learned --learned_type drift --run_id bsoh5xyb --desc "drift model - CW & CCW on Drift_large, with sparse_width_obs = True"
 
 # Recover models
