@@ -106,9 +106,13 @@ CONTROLLER_TYPE = "learned"
 # RUN_ID = "cn3rnv9v"
 # DESC = "recovering model - Euclidean reward, larger beta, r ranges"
 
+# LEARNED_TYPE = "recover"
+# RUN_ID = "33t51j8g"
+# DESC = "recovering model - Euclidean reward, curriculum learning, smaller beta, r ranges"
+
 LEARNED_TYPE = "recover"
-RUN_ID = "33t51j8g"
-DESC = "recovering model - Euclidean reward, curriculum learning, smaller beta, r ranges"
+RUN_ID = "l2ww5lee"
+DESC = "transfer model - drift model bsoh5xyb retrained with Fine-Tuning with Fresh Optimizer + LR Reset + log_std reset + Critic Reinitialization. \nNo curriculum learning, small beta-r initial ranges, no Euclidean reward"
 
 S = 96  # Arc length on IMS straight section
 SEED = 42

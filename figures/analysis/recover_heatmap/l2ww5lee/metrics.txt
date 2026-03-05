@@ -1,0 +1,14 @@
+
+==================================================
+RECOVERY METRICS
+==================================================
+Grid: 7x7 (beta x r), 6 (v, yaw) combos per cell
+Total episodes: 294
+Overall recovery rate: 35.4% (std across cells: 42.4%)
+Mean recovery time:   1.511 s
+Median recovery time: 0.512 s
+Std recovery time:    2.284 s
+==================================================
+
+Note: transfer model - drift model bsoh5xyb retrained with Fine-Tuning with Fresh Optimizer + LR Reset + log_std reset + Critic Reinitialization. 
+No curriculum learning, small beta-r initial ranges, no Euclidean reward
