@@ -75,6 +75,8 @@ Merge `KMPCConfig` and `CarConfig` into one file. Changes:
 - Remove `import rospkg` and all `load_*_ros()` functions
 - Add `from_yaml(path)` classmethod on each model
 - Keep all field definitions identical
+- `TrailingConfig` is intentionally excluded — it's only used for head-to-head trailing behind opponents, not needed for time-trial mode
+- Keep `overtake_d` in `KMPCConfig` (used by `acados_settings.py` for initial parameter vector), set to `0.0` in YAML
 
 Source files:
 - `mpc-ref/stack_master/pbl_config/src/pbl_config/controller/mpc/KMPCConfig.py`
@@ -99,12 +101,13 @@ from .bicycle_model import bicycle_model         # was: from kinematic_mpc.bicyc
 
 Source: `mpc-ref/controller/mpc/src/kinematic_mpc/acados_settings.py`
 
-## Step 7: Adapt `kinematic_mpc.py` — Main ROS Removal
+## Step 7: Adapt `kinematic_mpc.py` — ROS & Head-to-Head Removal ✅
 
 Source: `mpc-ref/controller/mpc/src/kinematic_mpc/kinematic_mpc.py`
 
-### 7a. Remove ROS imports
-Delete: `import rospy`, `from f110_msgs.msg import WpntArray`
+### 7a. Remove ROS imports and TrailingConfig
+Delete: `import rospy`, `from f110_msgs.msg import WpntArray`, `from scipy.integrate import solve_ivp`.
+Remove `TrailingConfig` from constructor — it's a PID gap controller for following opponents, unused in time-trial mode. Constructor is now `__init__(self, kmpc_config, car_config)`.
 
 ### 7b. Fix local imports
 ```python
@@ -117,13 +120,40 @@ from .acados_settings import acados_settings
 ### 7c. Replace `rospy.loginfo()` → `print()`
 
 ### 7d. Rewrite `mpc_initialize_solver()` to accept arrays directly
-Replace ROS waypoint-waiting with direct array input. Build `FrenetConverter` and `SplineTrack` from the passed arrays. Call `acados_settings()` with the data.
+Replace ROS `wait_for_message` with direct array input:
+```python
+def mpc_initialize_solver(self, xs, ys, vx_ref, kappa_ref, s_ref, d_left, d_right):
+```
+Build `FrenetConverter` and `SplineTrack` from passed arrays. Call `acados_settings()`.
 
 ### 7e. Remove auto-call to `mpc_initialize_solver()` in `__init__`
 Let the bridge call it explicitly after construction with waypoint data.
 
 ### 7f. Delete ROS-specific helpers
 Remove `_transform_waypoints_to_cartesian()` and `_transform_waypoints_to_coords()`.
+
+### 7g. Remove trailing/overtake logic from `main_loop()`
+The `TRAILING` state used a PID controller (`trailing_controller()`) to modulate target speed for gap-keeping behind an opponent. The `OVERTAKE` state set a lateral offset (`overtake_d`) in the cost function to steer around opponents. Both are dead code in time-trial (guarded by `opponent is not None`).
+
+Removed from `main_loop`:
+- Parameters: `state`, `speed_now`, `opponent`, `acc_now`, `track_length` (all unused in time-trial path)
+- `TRAILING` and `OVERTAKE` branches — only the default raceline-tracking branch remains
+- `overtake_d` hardcoded to `0.0` in online parameters (keeps acados parameter vector compatible with `bicycle_model.py`)
+
+New signature:
+```python
+def main_loop(self, position_in_map, waypoint_array_in_map, position_in_map_frenet, compute_time):
+```
+
+New return value: `(speed, steering_angle)` — removed `acceleration` (always 0), `jerk` (always 0), `states` (ROS visualization only).
+
+### 7h. Remove dead time-delay propagation
+`propagate_time_delay()` result was immediately overwritten (`propagated_x = x0`), so it was effectively disabled. Removed the method and `solve_ivp` import. Kept `_dynamics_of_car()` since `get_warm_start()` still uses it.
+
+### 7i. Clean up `mpc_init_params()`
+Removed trailing/overtake state variables: `self.overtake_d`, `self.gap*`, `self.v_diff`, `self.i_gap`, `self.loop_rate`.
+
+### 7j. Delete `trailing_controller()` method entirely
 
 ## Step 8: Create `gym_bridge.py` — Simulator ↔ KMPC Bridge
 
@@ -135,14 +165,15 @@ Remove `_transform_waypoints_to_cartesian()` and `_transform_waypoints_to_coords
    - Adjust centerline widths: `d_right = w_right_cl + offset`, `d_left = w_left_cl - offset`
    - Clamp to minimum 0.1m to avoid degenerate constraints
 4. Build waypoint_array_in_map (Nx8): `[x, y, vx, d_m=0, s_m, kappa, psi, ax]`
-5. Construct `Kinematic_MPC_Controller` and call `mpc_initialize_solver()` with data
+5. Construct `Kinematic_MPC_Controller(kmpc_config, car_config)` and call `mpc_initialize_solver(xs, ys, vx_ref, kappa_ref, s_ref, d_left, d_right)`
 6. Store `track_length`
 
 ### Per-step `get_action(obs)`:
-1. Extract pose_x, pose_y, pose_theta, linear_vel_x from `obs["agent_0"]`
+1. Extract pose_x, pose_y, pose_theta from `obs["agent_0"]`
 2. Compute Frenet coords via `track.cartesian_to_frenet(x, y, theta, use_raceline=True)`
-3. Call `controller.main_loop(state="GB", position_in_map=[[x,y,theta]], ..., opponent=None, ...)`
-4. Return `np.array([[steering_angle, speed]])`
+3. Call `controller.main_loop(position_in_map=[[x,y,theta]], waypoint_array_in_map=..., position_in_map_frenet=[s,d,alpha], compute_time=...)`
+4. Receives `(speed, steering_angle)` from `main_loop`
+5. Return `np.array([[steering_angle, speed]])`
 
 ## Step 9: Create `mpc_runner.py`
 

@@ -8,7 +8,7 @@ MPC_freq: 20
 
 track_safety_margin: 0.3
 track_max_width: !!float 1e3 # [m]
-overtake_d: 1
+overtake_d: 0
 
 
 ##########################
