@@ -1,0 +1,11 @@
+
+==================================================
+NON-STANLEY RECOVERY TIME METRICS
+==================================================
+States recovered by learned but NOT by Stanley: 39
+Mean recovery time:   0.432 s
+Median recovery time: 0.420 s
+Std recovery time:    0.149 s
+==================================================
+
+Note: recovering model - only Euclidean reward, small beta, r ranges

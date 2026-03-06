@@ -4,6 +4,7 @@ STANLEY-BASELINE RECOVERY METRICS
 ==================================================
 Stanley recovery states evaluated: 39
 Learned policy recovered: 37/39 (94.9%)
+Recovery rate improvement over Stanley: +123.1% (87 vs 39 total recoveries)
 Mean recovery time:   0.333 s
 Median recovery time: 0.320 s
 Std recovery time:    0.201 s

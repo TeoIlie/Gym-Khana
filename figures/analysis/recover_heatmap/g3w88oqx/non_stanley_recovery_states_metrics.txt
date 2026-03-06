@@ -1,13 +1,11 @@
 
 ==================================================
-RECOVERY METRICS
+NON-STANLEY RECOVERY TIME METRICS
 ==================================================
-Grid: 7x7 (beta x r), 6 (v, yaw) combos per cell
-Total episodes: 294
-Overall recovery rate: 35.7% (std across cells: 42.5%)
-Mean recovery time:   0.491 s
-Median recovery time: 0.465 s
-Std recovery time:    0.218 s
+States recovered by learned but NOT by Stanley: 67
+Mean recovery time:   0.508 s
+Median recovery time: 0.460 s
+Std recovery time:    0.233 s
 ==================================================
 
 Note: recovering model - drift model 178a1a5l retrained with Fine-Tuning with Fresh Optimizer + LR Reset + log_std reset with --m f. No curriculum learning, small beta-r initial ranges, no Euclidean reward
