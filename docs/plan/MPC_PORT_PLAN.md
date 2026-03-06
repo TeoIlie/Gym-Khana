@@ -155,47 +155,46 @@ Removed trailing/overtake state variables: `self.overtake_d`, `self.gap*`, `self
 
 ### 7j. Delete `trailing_controller()` method entirely
 
-## Step 8: Create `gym_bridge.py` — Simulator ↔ KMPC Bridge
+## Step 8: Create `gym_bridge.py` — Simulator ↔ KMPC Bridge ✅
+
+### Changes from original plan:
+- **Centerline instead of raceline**: Uses `track.centerline` directly instead of `track.raceline`. Avoids the raceline→centerline width projection complexity. Centerline already has `w_lefts`/`w_rights` natively — no offset computation needed.
+- **Uniform reference speed**: Takes a `ref_speed` parameter and creates a uniform `vx_ref = np.full(n, ref_speed)` array instead of using raceline speed profile. Simpler for initial testing.
+- **Recomputed arc-length**: Computes `s_ref` from cumulative `hypot(diff(xs), diff(ys))` to match the domains of `FrenetConverter` and `SplineTrack`, rather than using the track's stored `ss`.
+- **MPC's own Frenet converter**: Uses `controller.fren_conv.get_frenet()` and `controller.spline.get_derivative()` for Frenet conversion instead of the gym's `track.cartesian_to_frenet()`. Ensures the Frenet coordinates are consistent with what the MPC solver expects internally.
+- **Heading deviation computed manually**: `alpha` computed as `arctan2(sin(θ - θ_track), cos(θ - θ_track))` from `SplineTrack` derivative, since `FrenetConverter.get_frenet()` only returns `(s, d)`.
+- **Vehicle state injection**: Feeds actual `linear_vel_x` and `delta` from observations into `controller.speed` and `controller.steering_angle_buf` each step, so the MPC uses real vehicle state instead of its own predictions.
+- **Constructor signature**: `KMPCGymBridge(track, kmpc_config_path, car_config_path, ref_speed)` — takes a `Track` object and config file paths, not the full env.
+- **`get_start_pose()` helper**: Returns `(x, y, yaw)` from centerline start point for env reset.
 
 ### Initialization:
-1. Load configs from YAML
-2. Extract raceline data from `track.raceline` (xs, ys, vxs, ks, ss, yaws)
-3. **Compute d_left/d_right for raceline points:**
-   - For each raceline point, project onto centerline to get lateral offset
-   - Adjust centerline widths: `d_right = w_right_cl + offset`, `d_left = w_left_cl - offset`
-   - Clamp to minimum 0.1m to avoid degenerate constraints
-4. Build waypoint_array_in_map (Nx8): `[x, y, vx, d_m=0, s_m, kappa, psi, ax]`
-5. Construct `Kinematic_MPC_Controller(kmpc_config, car_config)` and call `mpc_initialize_solver(xs, ys, vx_ref, kappa_ref, s_ref, d_left, d_right)`
-6. Store `track_length`
+1. Load `KMPCConfig` and `CarConfig` from YAML paths
+2. Extract centerline data: `xs, ys, ks, yaws, w_lefts, w_rights` (all cast to `float64`)
+3. Create uniform `vx_ref` from `ref_speed` parameter
+4. Recompute `s_ref` from waypoint distances
+5. Build `waypoint_array` (Nx8): `[x, y, vx, 0, s_m, kappa, yaw, 0]` — only columns 2 (vx) and 4 (s_m) used at runtime
+6. Construct `Kinematic_MPC_Controller(kmpc_config, car_config)` and call `mpc_initialize_solver(xs, ys, vx_ref, ks, s_ref, w_lefts, w_rights)`
 
 ### Per-step `get_action(obs)`:
-1. Extract pose_x, pose_y, pose_theta from `obs["agent_0"]`
-2. Compute Frenet coords via `track.cartesian_to_frenet(x, y, theta, use_raceline=True)`
-3. Call `controller.main_loop(position_in_map=[[x,y,theta]], waypoint_array_in_map=..., position_in_map_frenet=[s,d,alpha], compute_time=...)`
-4. Receives `(speed, steering_angle)` from `main_loop`
-5. Return `np.array([[steering_angle, speed]])`
+1. Extract `pose_x, pose_y, pose_theta` from `obs["agent_0"]`
+2. Compute `(s, d)` via `controller.fren_conv.get_frenet()`
+3. Compute `alpha` (heading deviation) via `controller.spline.get_derivative(s)`
+4. Inject actual vehicle state: `linear_vel_x` → `controller.speed`, `delta` → `controller.steering_angle_buf`
+5. Call `controller.main_loop(position_in_map, waypoint_array, position_in_map_frenet, compute_time)`
+6. Return `np.array([[steering_angle, speed]])`
 
-## Step 9: Create `mpc_runner.py`
+## Step 9: Create `mpc_runner.py` ✅
 
-```python
-env = gym.make("f1tenth_gym:f1tenth-v0", config={
-    "map": "Spielberg",
-    "num_agents": 1,
-    "timestep": 0.01,
-    "integrator": "rk4",
-    "model": "ks",
-    "control_input": ["speed", "steering_angle"],
-    "observation_config": {"type": "kinematic_state"},
-})
+Uses `get_drift_test_config()` as a base config (provides map, num_agents, timestep, integrator, render settings) with overrides for MPC-specific needs.
 
-bridge = KMPCGymBridge(env)
-obs, info = env.reset(options={"poses": np.array([[x0, y0, yaw0]])})
-
-while not done:
-    action = bridge.get_action(obs)
-    obs, reward, done, truncated, info = env.step(action)
-    env.render()
-```
+### Changes from original plan:
+- **Config base**: Uses `get_drift_test_config()` instead of inline dict — reuses existing config infrastructure and inherits render/track settings
+- **Vehicle model**: `model="std"` instead of `"ks"` — STD model used for consistency with drift training infrastructure; MPC re-solves each step so model mismatch is acceptable
+- **Normalization disabled**: Explicitly sets `normalize_act=False`, `normalize_obs=False` since MPC expects raw values
+- **Bridge constructor**: `KMPCGymBridge(track, MPC_CONFIG, CAR_CONFIG, ref_speed=REF_SPEED)` — takes track object and config file paths separately instead of the full env. `ref_speed` parameter controls uniform reference speed (default 2.0 m/s for initial testing)
+- **Start pose**: Uses `bridge.get_start_pose()` to get initial pose from centerline start point
+- **Fixed step count**: Runs for 10,000 steps instead of `while not done` — avoids early termination during debugging
+- **Config paths**: `MPC_CONFIG` and `CAR_CONFIG` defined as module-level `Path` constants pointing to YAML files
 
 ## Step 10: Handle acados Generated Code
 
