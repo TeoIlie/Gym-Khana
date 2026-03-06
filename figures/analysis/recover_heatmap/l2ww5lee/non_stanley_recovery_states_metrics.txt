@@ -1,0 +1,12 @@
+
+==================================================
+NON-STANLEY RECOVERY TIME METRICS
+==================================================
+States recovered by learned but NOT by Stanley: 67
+Mean recovery time:   1.375 s
+Median recovery time: 0.500 s
+Std recovery time:    3.352 s
+==================================================
+
+Note: transfer model - drift model bsoh5xyb retrained with Fine-Tuning with Fresh Optimizer + LR Reset + log_std reset + Critic Reinitialization. 
+No curriculum learning, small beta-r initial ranges, no Euclidean reward

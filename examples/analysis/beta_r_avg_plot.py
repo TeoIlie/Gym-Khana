@@ -1,23 +1,21 @@
 """
 Beta-R Recovery Success Heatmap Analysis
 
-This script systematically evaluates a controller's recovery capability across
-a grid of initial (beta, r) conditions, averaging over variations in velocity
-and yaw. The output is a heatmap showing recovery success rate at each (beta, r)
-grid cell, plus printed aggregate metrics.
+Evaluates a controller's recovery capability across a grid of initial (beta, r)
+conditions, averaging over velocity and yaw variations. Outputs:
+  - Heatmap of recovery success rate per (beta, r) cell
+  - Aggregate recovery metrics (rate, time stats)
+  - For learned controllers compared against a Stanley baseline:
+    - Recovery rate on Stanley-recoverable states and percentage improvement
+    - Recovery time stats for states recovered by learned but NOT by Stanley
 
-Usage — Steer controller:
-    1. Set CONTROLLER_TYPE = "stanley" or "steer" and DESC to a description string
-    2. Run: python examples/analysis/beta_r_avg_plot.py
-    3. Output saved to figures/analysis/recover_heatmap/CONTROLLER_TYPE
+Usage — Stanley baseline (must run first to generate baseline .npz):
+    python examples/analysis/beta_r_avg_plot.py --controller_type stanley
 
 Usage — Learned (PPO) controller:
-    1. Set CONTROLLER_TYPE = "learned"
-    2. Set LEARNED_TYPE to "drift" or "recover"
-    3. Set RUN_ID to the wandb run ID (model downloaded to outputs/downloads/<RUN_ID>/)
-    4. Set DESC to a short description of the model
-    5. Run: python examples/analysis/beta_r_avg_plot.py
-    6. Output saved to figures/analysis/recover_heatmap/<RUN_ID>/
+    python examples/analysis/beta_r_avg_plot.py --controller_type learned --learned_type recover --run_id <wandb_run_id>
+
+Output saved to figures/analysis/recover_heatmap/<controller_type or run_id>/
 """
 
 import argparse
@@ -42,9 +40,9 @@ CONTROLLER_TYPE = "learned"
 # RUN_ID = "178a1a5l"
 # DESC = "drift model - CW & CCW on Drift_large, with `sparse_width_obs` = True"
 
-# LEARNED_TYPE = "drift"
-# RUN_ID = "iza03vyw"
-# DESC = "drift model - CW & CCW on Drift_large, with `sparse_width_obs` = False"
+LEARNED_TYPE = "drift"
+RUN_ID = "iza03vyw"
+DESC = "drift model - CW & CCW on Drift_large, with `sparse_width_obs` = False"
 
 # LEARNED_TYPE = "drift"
 # RUN_ID = "bsoh5xyb"
@@ -118,9 +116,17 @@ CONTROLLER_TYPE = "learned"
 # RUN_ID = "cn3rnv9v"
 # DESC = "recovering model - Euclidean reward, larger beta, r ranges"
 
-LEARNED_TYPE = "recover"
-RUN_ID = "33t51j8g"
-DESC = "recovering model - Euclidean reward, curriculum learning, smaller beta, r ranges"
+# LEARNED_TYPE = "recover"
+# RUN_ID = "33t51j8g"
+# DESC = "recovering model - Euclidean reward, curriculum learning, smaller beta, r ranges"
+
+# LEARNED_TYPE = "recover"
+# RUN_ID = "l2ww5lee"
+# DESC = "transfer model - drift model bsoh5xyb retrained with Fine-Tuning with Fresh Optimizer + LR Reset + log_std reset + Critic Reinitialization. \nNo curriculum learning, small beta-r initial ranges, no Euclidean reward"
+
+# LEARNED_TYPE = "recover"
+# RUN_ID = "gpti2zb1"
+# DESC = "recovering model - original with Euclidean reward, small beta, r ranges, and success reward 50,  collision penalty -100"
 
 S = 96  # Arc length on IMS straight section
 SEED = 42
@@ -219,6 +225,7 @@ def run_grid_evaluation(eval_env, controller, stanley_states=None):
     # Stanley-subset accumulators
     stanley_total_count = 0
     stanley_recovery_times = []
+    non_stanley_recovery_times = []
 
     episode = 0
     for i, beta in enumerate(BETA_VALUES):
@@ -232,11 +239,15 @@ def run_grid_evaluation(eval_env, controller, stanley_states=None):
                         recovery_time_sums[i, j] += time_s
                         successful_states.append((beta, r, v, yaw))
 
-                    # Track Stanley-subset metrics
-                    if stanley_states is not None and (beta, r, v, yaw) in stanley_states:
-                        stanley_total_count += 1
-                        if recovered:
-                            stanley_recovery_times.append(time_s)
+                    # Track Stanley-subset and non-Stanley metrics
+                    if stanley_states is not None:
+                        is_stanley_state = (beta, r, v, yaw) in stanley_states
+                        if is_stanley_state:
+                            stanley_total_count += 1
+                            if recovered:
+                                stanley_recovery_times.append(time_s)
+                        elif recovered:
+                            non_stanley_recovery_times.append(time_s)
 
                     episode += 1
                     if episode % 100 == 0:
@@ -248,7 +259,14 @@ def run_grid_evaluation(eval_env, controller, stanley_states=None):
     with np.errstate(divide="ignore", invalid="ignore"):
         mean_recovery_times = np.where(recovery_counts > 0, recovery_time_sums / recovery_counts, np.nan)
 
-    return recovery_rates, mean_recovery_times, successful_states, stanley_total_count, stanley_recovery_times
+    return (
+        recovery_rates,
+        mean_recovery_times,
+        successful_states,
+        stanley_total_count,
+        stanley_recovery_times,
+        non_stanley_recovery_times,
+    )
 
 
 def plot_recovery_heatmap(beta_values, r_values, recovery_rates, output_path, controller_label=""):
@@ -407,15 +425,15 @@ def main():
             stanley_states = set(map(tuple, data["states"]))
             print(f"Loaded {len(stanley_states)} Stanley recovery states for baseline comparison")
         else:
-            print(
-                "Warning: Stanley states were computed with a different grid — "
-                "skipping baseline comparison. Re-run with stanley to regenerate."
+            raise ValueError(
+                "Stanley states were computed with a different grid — "
+                "re-run with --controller_type stanley to regenerate."
             )
     elif controller_type == "learned":
-        print(f"Warning: {stanley_states_path} not found — run Stanley evaluation first for baseline metrics")
+        raise FileNotFoundError(f"{stanley_states_path} not found — run Stanley evaluation first for baseline metrics")
 
-    recovery_rates, mean_recovery_times, successful_states, stanley_total, stanley_times = run_grid_evaluation(
-        eval_env, controller, stanley_states=stanley_states
+    recovery_rates, mean_recovery_times, successful_states, stanley_total, stanley_times, non_stanley_times = (
+        run_grid_evaluation(eval_env, controller, stanley_states=stanley_states)
     )
 
     # Save Stanley successful states with grid parameters
@@ -464,14 +482,28 @@ def main():
     if stanley_total > 0:
         n_recovered = len(stanley_times)
         rate = n_recovered / stanley_total * 100
+        learned_total_recoveries = len(successful_states)
+        improvement = (learned_total_recoveries - stanley_total) / stanley_total * 100
         save_metrics(
             "STANLEY-BASELINE RECOVERY METRICS",
             [
                 f"Stanley recovery states evaluated: {stanley_total}",
                 f"Learned policy recovered: {n_recovered}/{stanley_total} ({rate:.1f}%)",
+                f"Recovery rate improvement over Stanley: {improvement:+.1f}% ({learned_total_recoveries} vs {stanley_total} total recoveries)",
             ],
             np.array(stanley_times),
             os.path.join(subfolder, "stanley_recovery_states_metrics.txt"),
+            desc=desc,
+        )
+
+        # Non-Stanley recovery time metrics (states learned recovered but Stanley didn't)
+        save_metrics(
+            "NON-STANLEY RECOVERY TIME METRICS",
+            [
+                f"States recovered by learned but NOT by Stanley: {len(non_stanley_times)}",
+            ],
+            np.array(non_stanley_times),
+            os.path.join(subfolder, "non_stanley_recovery_states_metrics.txt"),
             desc=desc,
         )
 
