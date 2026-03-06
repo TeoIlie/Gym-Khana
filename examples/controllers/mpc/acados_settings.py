@@ -33,11 +33,15 @@
 
 # author: Daniel Kloeser
 
+from pathlib import Path
+
 import numpy as np
 from acados_template import AcadosModel, AcadosOcp, AcadosOcpSolver
 
 from .bicycle_model import bicycle_model
 from .config import CarConfig, KMPCConfig
+
+_MPC_DIR = Path(__file__).resolve().parent
 
 
 def acados_settings(s0, kapparef, vx_ref, d_left, d_right, kmpc_config: KMPCConfig, car_config: CarConfig):
@@ -207,8 +211,11 @@ def acados_settings(s0, kapparef, vx_ref, d_left, d_right, kmpc_config: KMPCConf
     ocp.solver_options.print_level = 0
     ocp.solver_options.nlp_solver_tol_comp = 1e-1
 
+    # Write generated C code and JSON into the mpc package directory
+    ocp.code_export_directory = str(_MPC_DIR / "c_generated_code")
+
     # create solver
-    acados_solver = AcadosOcpSolver(ocp, json_file="acados_ocp.json")
+    acados_solver = AcadosOcpSolver(ocp, json_file=str(_MPC_DIR / "acados_ocp.json"))
 
     return constraint, model, acados_solver, params
 

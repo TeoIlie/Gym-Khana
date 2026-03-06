@@ -196,9 +196,11 @@ Uses `get_drift_test_config()` as a base config (provides map, num_agents, times
 - **Fixed step count**: Runs for 10,000 steps instead of `while not done` — avoids early termination during debugging
 - **Config paths**: `MPC_CONFIG` and `CAR_CONFIG` defined as module-level `Path` constants pointing to YAML files
 
-## Step 10: Handle acados Generated Code
+## Step 10: Handle acados Generated Code ✅
 
-Set `ocp.code_export_directory` in `acados_settings.py` to write generated C code to `examples/controllers/mpc/c_generated_code/`. Add to `.gitignore`.
+Set `ocp.code_export_directory` and `json_file` in `acados_settings.py` to write generated C code and solver JSON into the mpc package directory (`examples/controllers/mpc/c_generated_code/` and `examples/controllers/mpc/acados_ocp.json`). Uses `_MPC_DIR = Path(__file__).resolve().parent` to resolve absolute paths regardless of CWD.
+
+Added `acados_ocp.json` to `.gitignore` (alongside the existing `c_generated_code/` entry). Removed stale `acados_ocp.json` that was previously generated in the project root.
 
 ## Verification
 
