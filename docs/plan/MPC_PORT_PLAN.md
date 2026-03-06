@@ -54,12 +54,11 @@ examples/controllers/mpc/
 ├── acados_settings.py        # Copied, import paths fixed
 ├── splinify.py               # Copied as-is (pure numpy/scipy)
 ├── frenet_converter.py       # Copied as-is (pure numpy/scipy)
-├── config.py                 # NEW: merged KMPCConfig + CarConfig + TrailingConfig
+├── config.py                 # NEW: merged KMPCConfig + CarConfig
 ├── gym_bridge.py             # NEW: maps gym obs ↔ main_loop() interface
 └── config/
     ├── kinematic_mpc_params.yaml
-    ├── car_model.yaml              # Updated to match gym vehicle params
-    └── trailing_params.yaml
+    └── car_model.yaml              # Updated to match gym vehicle params
 
 examples/mpc_runner.py              # NEW: runner script
 ```
@@ -68,11 +67,11 @@ examples/mpc_runner.py              # NEW: runner script
 
 - `mpc-ref/controller/mpc/src/kinematic_mpc/utils/splinify.py` → `examples/controllers/mpc/splinify.py`
 - `mpc-ref/f110_utils/libs/frenet_conversion/src/frenet_converter/frenet_converter.py` → `examples/controllers/mpc/frenet_converter.py`
-- 3 YAML config files → `examples/controllers/mpc/config/`
+- 2 YAML config files → `examples/controllers/mpc/config/`
 
 ## Step 4: Create `config.py` — Merged Config Classes
 
-Merge `KMPCConfig`, `CarConfig`, `TrailingConfig` into one file. Changes:
+Merge `KMPCConfig` and `CarConfig` into one file. Changes:
 - Remove `import rospkg` and all `load_*_ros()` functions
 - Add `from_yaml(path)` classmethod on each model
 - Keep all field definitions identical
@@ -80,7 +79,6 @@ Merge `KMPCConfig`, `CarConfig`, `TrailingConfig` into one file. Changes:
 Source files:
 - `mpc-ref/stack_master/pbl_config/src/pbl_config/controller/mpc/KMPCConfig.py`
 - `mpc-ref/stack_master/pbl_config/src/pbl_config/CarConfig.py`
-- `mpc-ref/stack_master/pbl_config/src/pbl_config/TrailingConfig.py`
 
 ## Step 5: Adapt `bicycle_model.py` — Fix Imports Only
 
@@ -112,7 +110,7 @@ Delete: `import rospy`, `from f110_msgs.msg import WpntArray`
 ```python
 from .frenet_converter import FrenetConverter
 from .splinify import SplineTrack
-from .config import KMPCConfig, CarConfig, TrailingConfig
+from .config import KMPCConfig, CarConfig
 from .acados_settings import acados_settings
 ```
 
@@ -191,6 +189,5 @@ Set `ocp.code_export_directory` in `acados_settings.py` to write generated C cod
 | `mpc-ref/f110_utils/.../frenet_converter.py` | Frenet conversion (copy as-is) |
 | `mpc-ref/stack_master/pbl_config/src/pbl_config/controller/mpc/KMPCConfig.py` | Config model |
 | `mpc-ref/stack_master/pbl_config/src/pbl_config/CarConfig.py` | Car params model |
-| `mpc-ref/stack_master/pbl_config/src/pbl_config/TrailingConfig.py` | Trailing config model |
 | `examples/waypoint_follow.py` | Runner script pattern |
 | `f1tenth_gym/envs/track/raceline.py` | Raceline data structure |
