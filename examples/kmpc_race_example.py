@@ -5,6 +5,7 @@ from pathlib import Path
 import gymnasium as gym
 import numpy as np
 from controllers.mpc.gym_bridge import KMPCGymBridge
+from examples_utils import display_kinematic_state_obs
 
 from train.config.env_config import get_drift_test_config, get_env_id
 
@@ -35,11 +36,16 @@ def main():
     obs, info = env.reset(options={"poses": np.array([[x0, y0, yaw0]])})
 
     done = False
+    step = 0
+    total_reward = 0.0
     env.render()
 
     while not done:
         action = bridge.get_action(obs)
         obs, reward, done, truncated, info = env.step(action)
+        total_reward += reward
+        display_kinematic_state_obs(step, obs, reward, total_reward)
+        step += 1
         env.render()
 
     print("Done")

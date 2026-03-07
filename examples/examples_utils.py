@@ -13,7 +13,7 @@ def format_float(x):
 
 def display_drift_obs(step, obs, reward, lookahead_n_points, total_reward=None):
     """
-    Format and print "drift" observation type. Use for debugging
+    Format and print "drift" observation type
     """
     vx = obs[0]
     vy = obs[1]
@@ -48,6 +48,30 @@ def display_drift_obs(step, obs, reward, lookahead_n_points, total_reward=None):
     for i, value in enumerate(widths, start=1):
         print(f"    Point {i} = {format_float(value)}")
 
+    print(f"\n  Reward = {reward}")
+
+    if total_reward is not None:
+        print(f"  Total episode reward = {total_reward}\n")
+
+
+def display_kinematic_state_obs(step, obs, reward, total_reward=None):
+    """
+    Format and print "kinematic_state" observation type
+    """
+    agent_obs = obs["agent_0"]
+    pose_x = float(agent_obs["pose_x"])
+    pose_y = float(agent_obs["pose_y"])
+    delta = float(agent_obs["delta"])
+    vx = float(agent_obs["linear_vel_x"])
+    pose_theta = float(agent_obs["pose_theta"])
+    pose_theta_degrees = np.degrees(pose_theta)
+
+    print(f"\n=====================\nStep {step + 1}:\n=====================\n")
+    print(
+        f"  pose_x={pose_x:8.4f}, pose_y={pose_y:8.4f}\n"
+        f"  heading={pose_theta:8.4f} rad ({pose_theta_degrees:6.2f} deg)\n"
+        f"  vx={vx:6.2f}, delta={delta:6.4f}"
+    )
     print(f"\n  Reward = {reward}")
 
     if total_reward is not None:
