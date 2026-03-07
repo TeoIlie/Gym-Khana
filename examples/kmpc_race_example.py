@@ -1,7 +1,5 @@
 """Runner script for the Kinematic MPC controller on the F1TENTH gym."""
 
-from pathlib import Path
-
 import gymnasium as gym
 import numpy as np
 from controllers.mpc.gym_bridge import KMPCGymBridge
@@ -9,8 +7,6 @@ from examples_utils import display_kinematic_state_obs
 
 from train.config.env_config import get_drift_test_config, get_env_id
 
-MPC_CONFIG = Path(__file__).parent / "controllers" / "mpc" / "config" / "kinematic_mpc_params.yaml"
-CAR_CONFIG = Path(__file__).parent / "controllers" / "mpc" / "config" / "car_model.yaml"
 REF_SPEED = 4.0
 
 
@@ -29,8 +25,7 @@ def main():
         render_mode="human",
     )
 
-    track = env.unwrapped.track
-    bridge = KMPCGymBridge(track, MPC_CONFIG, CAR_CONFIG, ref_speed=REF_SPEED)
+    bridge = KMPCGymBridge(env, ref_speed=REF_SPEED)
 
     x0, y0, yaw0 = bridge.get_start_pose()
     obs, info = env.reset(options={"poses": np.array([[x0, y0, yaw0]])})

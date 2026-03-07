@@ -2,11 +2,21 @@ from pathlib import Path
 
 import numpy as np
 
-from f1tenth_gym.envs.track import Track
-
 from .config import CarConfig, KMPCConfig, PacejkaTireConfig, STMPCConfig
 from .kmpc.kinematic_mpc import Kinematic_MPC_Controller
 from .stmpc.single_track_mpc import Single_track_MPC_Controller
+
+# shared config
+_CONFIG_DIR = Path(__file__).parent / "config"
+CAR_CONFIG = _CONFIG_DIR / "car_model.yaml"
+TIRE_CONFIG = _CONFIG_DIR / "pacejka_tire_params.yaml"
+
+# kinematic MPC config
+KMPC_CONFIG = _CONFIG_DIR / "ks_mpc_params.yaml"
+
+# single-track MPC config has race and recover settings
+STMPC_RACE_CONFIG = _CONFIG_DIR / "st_mpc_race_params.yaml"
+STMPC_RECOVER_CONFIG = _CONFIG_DIR / "st_mpc_recover_params.yaml"
 
 
 class KMPCGymBridge:
@@ -16,12 +26,14 @@ class KMPCGymBridge:
     for coordinate conversion (not the gym's CubicSpline2D).
     """
 
-    def __init__(self, track: Track, kmpc_config_path: str | Path, car_config_path: str | Path, ref_speed: float = 6.0):
-        self.track = track
-        kmpc_config = KMPCConfig.from_yaml(kmpc_config_path)
-        car_config = CarConfig.from_yaml(car_config_path)
+    def __init__(self, env, ref_speed: float = 6.0):
+        self.track = env.unwrapped.track
+        print(f"[KMPCGymBridge] config={KMPC_CONFIG.name}")
 
-        cl = track.centerline
+        kmpc_config = KMPCConfig.from_yaml(KMPC_CONFIG)
+        car_config = CarConfig.from_yaml(CAR_CONFIG)
+
+        cl = self.track.centerline
         xs = cl.xs.astype(np.float64)
         ys = cl.ys.astype(np.float64)
         ks = cl.ks.astype(np.float64)
@@ -93,23 +105,32 @@ class STMPCGymBridge:
     """Bridge between F1TENTH gym environment and the Single Track MPC controller.
 
     Uses the track centerline as reference path and the MPC's own FrenetConverter
-    for coordinate conversion (not the gym's CubicSpline2D).
+    for coordinate conversion (not the gym's CubicSpline2D). Automatically selects
+    MPC config based on env.unwrapped.training_mode:
     """
 
     def __init__(
         self,
-        track: Track,
-        stmpc_config_path: str | Path,
-        car_config_path: str | Path,
-        tire_config_path: str | Path,
+        env,
         ref_speed: float = 4.0,
     ):
-        self.track = track
-        stmpc_config = STMPCConfig.from_yaml(stmpc_config_path)
-        car_config = CarConfig.from_yaml(car_config_path)
-        tire_config = PacejkaTireConfig.from_yaml(tire_config_path)
+        unwrapped = env.unwrapped
+        self.track = unwrapped.track
+        training_mode = unwrapped.training_mode
 
-        cl = track.centerline
+        if training_mode == "recover":
+            stmpc_config_path = STMPC_RECOVER_CONFIG
+        elif training_mode == "race":
+            stmpc_config_path = STMPC_RACE_CONFIG
+        else:
+            raise ValueError(f"STMPCGymBridge: unsupported training_mode '{training_mode}'. ")
+        print(f"[STMPCGymBridge] training_mode='{training_mode}', config={stmpc_config_path.name}")
+
+        stmpc_config = STMPCConfig.from_yaml(stmpc_config_path)
+        car_config = CarConfig.from_yaml(CAR_CONFIG)
+        tire_config = PacejkaTireConfig.from_yaml(TIRE_CONFIG)
+
+        cl = self.track.centerline
         xs = cl.xs.astype(np.float64)
         ys = cl.ys.astype(np.float64)
         ks = cl.ks.astype(np.float64)

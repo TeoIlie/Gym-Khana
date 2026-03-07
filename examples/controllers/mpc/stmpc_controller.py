@@ -1,6 +1,5 @@
 """Controller wrapper for the Single Track MPC (STMPC) controller."""
 
-from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -8,11 +7,6 @@ import numpy as np
 from examples.controllers.base import Controller
 from examples.controllers.mpc.gym_bridge import STMPCGymBridge
 from train.config.env_config import get_drift_test_config
-
-_CONFIG_DIR = Path(__file__).parent / "config"
-STMPC_CONFIG = _CONFIG_DIR / "single_track_mpc_params.yaml"
-CAR_CONFIG = _CONFIG_DIR / "car_model.yaml"
-TIRE_CONFIG = _CONFIG_DIR / "pacejka_tire_params.yaml"
 
 
 class STMPCController(Controller):
@@ -28,8 +22,7 @@ class STMPCController(Controller):
         self.bridge = None
 
     def initialize(self, env) -> None:
-        track = env.unwrapped.track
-        self.bridge = STMPCGymBridge(track, STMPC_CONFIG, CAR_CONFIG, TIRE_CONFIG, ref_speed=self.ref_speed)
+        self.bridge = STMPCGymBridge(env, ref_speed=self.ref_speed)
 
     def on_reset(self, obs) -> None:
         self.bridge.init_from_obs(obs)

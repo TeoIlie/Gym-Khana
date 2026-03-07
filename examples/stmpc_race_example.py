@@ -1,6 +1,4 @@
-"""Runner script for the Single Track MPC controller on the F1TENTH gym (recovery mode)."""
-
-from pathlib import Path
+"""Runner script for the Single Track MPC controller on the F1TENTH gym (race mode)."""
 
 import gymnasium as gym
 import numpy as np
@@ -9,9 +7,6 @@ from controllers.mpc.gym_bridge import STMPCGymBridge
 from examples.examples_utils import display_frenet_dynamic_state_obs
 from train.config.env_config import get_drift_test_config, get_env_id
 
-STMPC_CONFIG = Path(__file__).parent / "controllers" / "mpc" / "config" / "single_track_mpc_params.yaml"
-CAR_CONFIG = Path(__file__).parent / "controllers" / "mpc" / "config" / "car_model.yaml"
-TIRE_CONFIG = Path(__file__).parent / "controllers" / "mpc" / "config" / "pacejka_tire_params.yaml"
 REF_SPEED = 4.0
 
 
@@ -30,11 +25,11 @@ def main():
         render_mode="human",
     )
 
-    track = env.unwrapped.track
-    bridge = STMPCGymBridge(track, STMPC_CONFIG, CAR_CONFIG, TIRE_CONFIG, ref_speed=REF_SPEED)
+    bridge = STMPCGymBridge(env, ref_speed=REF_SPEED)
 
     # Build initial state
     # State format: [x, y, delta, v, yaw, yaw_rate, slip_angle]
+    track = env.unwrapped.track
     x, y, yaw = track.frenet_to_cartesian(0, ey=0, ephi=0)
     init_states = np.array([[x, y, 0.0, REF_SPEED, yaw, 0.0, 0.0]])
 
