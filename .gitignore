@@ -182,5 +182,9 @@ outputs/
 wandb/
 runs/
 
-c_generated_code/
-acados_ocp.json
+# acados output
+ks_c_generated_code/
+ks_acados_ocp.json
+
+st_c_generated_code/
+st_acados_ocp.json

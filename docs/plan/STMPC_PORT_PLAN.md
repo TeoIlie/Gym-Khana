@@ -237,55 +237,144 @@ New return: `(speed, steering_angle, status)`.
 
 ## Step 7: Add `STMPCGymBridge` to `gym_bridge.py`
 
-**File:** `examples/controllers/mpc/gym_bridge.py` — add new class alongside existing `KMPCGymBridge`.
+**Status: DONE**
 
-Add import:
+**File:** `examples/controllers/mpc/gym_bridge.py` — added `STMPCGymBridge` class alongside existing `KMPCGymBridge`.
+
+### Imports
+
+Merged into single expanded import:
 ```python
+from .config import CarConfig, KMPCConfig, PacejkaTireConfig, STMPCConfig
+from .kmpc.kinematic_mpc import Kinematic_MPC_Controller
 from .stmpc.single_track_mpc import Single_track_MPC_Controller
-from .config import STMPCConfig, PacejkaTireConfig
 ```
 
-### `STMPCGymBridge`
+### `STMPCGymBridge.__init__(self, track, stmpc_config_path, car_config_path, tire_config_path, ref_speed=4.0)`
 
-```python
-class STMPCGymBridge:
-    def __init__(self, track: Track, stmpc_config_path, car_config_path,
-                 tire_config_path, ref_speed=4.0):
-```
-
-**Initialization** — same pattern as `KMPCGymBridge` with additions:
-1. Load `STMPCConfig`, `CarConfig`, `PacejkaTireConfig` from YAML paths
-2. Extract centerline, build `vx_ref`, `s_ref`, `waypoint_array` — same as KMPC
+Same pattern as `KMPCGymBridge` with additions:
+1. Load 3 configs: `STMPCConfig`, `CarConfig`, `PacejkaTireConfig` from YAML paths
+2. Extract centerline, build `vx_ref`, `s_ref`, `waypoint_array` — identical to KMPC
 3. Construct `Single_track_MPC_Controller(stmpc_config, car_config, tire_config)`
 4. Call `controller.mpc_initialize_solver(xs, ys, vx_ref, ks, s_ref, w_lefts, w_rights)`
+5. Init `self.last_compute_time = 0.0`
 
-**`get_action(obs)`** — similar to KMPC but feeds additional state:
-1. Extract `pose_x, pose_y, pose_theta, linear_vel_x, linear_vel_y, ang_vel_z, delta` from `obs["agent_0"]`
-2. Compute `(s, d)` and heading deviation `alpha` — same as KMPC
-3. Build `single_track_state = [linear_vel_y, ang_vel_z, prev_acc, delta]`
-4. Inject vehicle state: `controller.speed = linear_vel_x`, `controller.steering_angle_buf[:] = delta`
-5. Call `controller.main_loop(...)`, return `np.array([[steering_angle, speed]])`
+### `STMPCGymBridge.get_action(obs)`
 
-**`get_start_pose()`** — same as KMPC.
+Similar to KMPC with key additions:
+1. Extract pose/Frenet state same as KMPC: `pose_x, pose_y, pose_theta`, compute `s, d, alpha`
+2. Inject vehicle state: `controller.speed = linear_vel_x`, `controller.steering_angle_buf[:] = delta`
+3. **Open-loop startup**: When `vx < v_min`, skip the solver and return `[[0.0, v_min + 3.0]]`.
+   The solver is infeasible from rest because `v_min > 0` and jerk constraints prevent reaching
+   `v_min` in one step. This provides constant forward speed until the car reaches operating velocity.
+4. Extract additional dynamic states from `frenet_dynamic_state` observation:
+   - `linear_vel_y` — lateral velocity
+   - `ang_vel_z` — yaw rate
+   - `delta` — measured steering angle
+5. Build `single_track_state = np.array([linear_vel_y, ang_vel_z, 0.0, delta])`
+   - Index 2 is `measured_acc` — pass 0.0 since controller uses `self.prev_acc` internally (f110 car path)
+6. Call `controller.main_loop(position_in_map, waypoint_array, position_in_map_frenet, single_track_state, last_compute_time)`
+7. Return `np.array([[steering, speed]])`
+
+### `STMPCGymBridge.get_start_pose()` — identical to KMPC.
 
 ## Step 8: Create `stmpc_example.py` Runner
 
+**Status: DONE**
+
 **File:** `examples/stmpc_example.py`
 
-Same pattern as `kmpc_example.py` with:
+Same pattern as `kmpc_example.py` with these differences:
 - Import `STMPCGymBridge` instead of `KMPCGymBridge`
-- Config paths: `STMPC_CONFIG`, `CAR_CONFIG`, `TIRE_CONFIG`
-- `config["model"] = "std"`
-- `config["observation_config"] = {"type": "frenet_dynamic_state"}`
-- `config["control_input"] = ["speed", "steering_angle"]`
+- 3 config paths: `STMPC_CONFIG`, `CAR_CONFIG`, `TIRE_CONFIG`
+- `config["model"] = "std"` — STD model provides dynamic states (v_y, yaw_rate) needed by STMPC
+- `config["observation_config"] = {"type": "frenet_dynamic_state"}` — provides `linear_vel_y`, `ang_vel_z`, `delta`
+- `config["control_input"] = ["speed", "steering_angle"]` — same as KMPC
+- Bridge construction: `STMPCGymBridge(track, STMPC_CONFIG, CAR_CONFIG, TIRE_CONFIG, ref_speed=REF_SPEED)`
+- Reset uses `states` option with initial velocity above `v_min` so solver is immediately feasible:
+  ```python
+  init_speed = 3.0
+  obs, info = env.reset(options={"states": np.array([[x0, y0, 0.0, init_speed, yaw0, 0.0, 0.0]])})
+  bridge.controller.speed = init_speed
+  ```
+  The `states` format for STD model is `[x, y, delta, v, yaw, yaw_rate, slip_angle]`.
+  Setting `bridge.controller.speed` ensures the solver's x0 state is consistent with the sim.
 
 ## Step 9: Update `.gitignore`
 
-Add:
+**Status: DONE**
+
+Added after existing `ks_acados_ocp.json` line:
 ```
 st_c_generated_code/
 st_acados_ocp.json
 ```
+
+## Step 10: Config Tuning for Simulation
+
+**Status: DONE**
+
+The reference config was tuned for a real car with communication delays. Several parameters needed
+adjustment for the zero-delay, potentially-mismatched-model simulation environment.
+
+**File:** `examples/controllers/mpc/config/single_track_mpc_params.yaml`
+
+### 10a. `steps_delay: 3 → 0`
+**Critical fix.** The controller extracts speed/steering from predicted state at index `steps_delay + 1`.
+With `steps_delay=3`, it returned values predicted 0.2s into the future to compensate for real-car
+communication lag. In simulation there is no lag — the command is applied instantly — so this caused
+systematic overshoot and instability. Setting to 0 returns the immediate next-step prediction.
+
+### 10b. `a_min/a_max: -10/10 → -5/5`
+The original ±10 m/s² bounds allowed the solver to plan trajectories requiring extreme tire forces,
+pushing into the nonlinear tire regime where the STMPC's simple Pacejka model and the gym's STD/PAC2002
+model diverge significantly. ±5 m/s² is more conservative while still allowing brisk acceleration.
+
+### 10c. `alat_max: 10 → 6`
+Same rationale as acceleration bounds. At 10 m/s² lateral acceleration, the car would need extreme
+slip angles — exactly where model mismatch causes instability. 6 m/s² keeps cornering within a more
+predictable regime where both tire models agree.
+
+### 10d. `combined_constraints: "None" → "ellipse"`
+Enables friction ellipse constraint: `(a_lat/alat_max)² + (a_long/a_max)² ≤ 1`. Without this,
+longitudinal and lateral acceleration are independent — the solver could plan full braking while
+cornering hard, exceeding the tire's total friction capacity. The ellipse couples them physically:
+more cornering means less available braking/acceleration.
+
+### 10e. `zl/zu: 1000 → 100`
+Softer linear slack penalties give the solver more room to find feasible solutions near constraint
+boundaries, reducing solver failures (ACADOS_MINSTEP errors).
+
+### 10f. `vy_minimization: true` (kept from original)
+Adds `100·v_y²` to the cost, penalizing sustained lateral sliding. Complements `alat_max` —
+`alat_max` caps instantaneous tire demand (hard constraint), while `vy_minimization` discourages
+the accumulated effect of lateral forces (soft cost). Useful as an extra safeguard against model
+mismatch at higher slip angles.
+
+## Debugging Notes
+
+### Solver infeasibility from rest
+The solver fails with ACADOS_MINSTEP when starting from `v_x = 0` because `v_min = 0.5` is enforced
+at stages 1–N, but jerk constraints (`jerk_max = 50`) prevent reaching `v_min` in one time step:
+- `dt = 1/MPC_freq = 0.05s`
+- After 1 step: `a = 50×0.05 = 2.5`, `v ≈ 0`
+- After 3 steps: `v ≈ 0.375 < 0.5`
+
+On failure, `main_loop` returns `speed=0`, keeping the car at rest forever (vicious cycle).
+
+**Solution:** Two-pronged approach:
+1. Initialize with velocity via `env.reset(options={"states": ...})` with `init_speed > v_min`
+2. Open-loop startup fallback in bridge: when `vx < v_min`, return constant `[0.0, v_min + 3.0]`
+
+### Model mismatch diagnosis
+With the solver succeeding (status=0) but the car spinning (yaw_rate -3 to -11 rad/s), the
+systematic approach to distinguish implementation error from model mismatch:
+1. **Verify action interface** — confirmed action order `[steering, speed]` matches gym expectation
+   (`control_inputs[i, 0]` → `raw_steer`, `control_inputs[i, 1]` → `raw_throttle`)
+2. **Check solver output** — solver succeeds with reasonable commands but car doesn't respond as expected
+3. **Identify tire model gap** — STMPC uses simple Pacejka (4 params/axle), gym STD uses PAC2002 (40+ params)
+4. **Fix delay compensation** — `steps_delay=0` eliminated the largest source of instability
+5. **Tighten constraints** — conservative `a_max/alat_max` keeps car in linear tire regime
 
 ## Files Summary
 
@@ -307,7 +396,7 @@ st_acados_ocp.json
 | `mpc/stmpc/acados_settings.py` | **Create** | From `mpc-ref/.../single_track_mpc/acados_settings.py` |
 | `mpc/stmpc/single_track_mpc.py` | **Create** | From `mpc-ref/.../single_track_mpc/single_track_mpc.py` |
 | `mpc/stmpc/indicies.py` | **Create** | From `mpc-ref/.../single_track_mpc/utils/indicies.py` |
-| `mpc/config/single_track_mpc_params.yaml` | **Create** | From NUC2 YAML |
+| `mpc/config/single_track_mpc_params.yaml` | **Create** | From NUC2 YAML, tuned for simulation (Step 10) |
 | `mpc/config/pacejka_tire_params.yaml` | **Create** | From DEFAULT YAML |
 | `examples/stmpc_example.py` | **Create** | STMPC runner |
 | `.gitignore` | **Edit** | Add `st_c_generated_code/`, `st_acados_ocp.json` |
