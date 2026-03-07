@@ -126,8 +126,6 @@ class CarConfig(BaseModel):
     """Maximum Steering Angle in radians"""
     max_steering_velocity: float
     """Maximum Steering Velocity"""
-    racecar_version: str
-    """Name of the car model"""
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> "CarConfig":
