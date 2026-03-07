@@ -45,7 +45,7 @@ examples/controllers/mpc/
 │   └── pacejka_tire_params.yaml         # NEW
 
 examples/
-├── mpc_example.py                       # Updated import path
+├── kmpc_example.py                       # Updated import path
 └── stmpc_example.py                     # NEW
 ```
 
@@ -94,10 +94,10 @@ git mv examples/controllers/mpc/acados_ocp.json examples/controllers/mpc/kmpc/
 **`gym_bridge.py`:**
 - `from .kinematic_mpc import Kinematic_MPC_Controller` → `from .kmpc.kinematic_mpc import Kinematic_MPC_Controller`
 
-**`mpc_example.py`** — no change needed (imports from `controllers.mpc.gym_bridge`)
+**`kmpc_example.py`** — no change needed (imports from `controllers.mpc.gym_bridge`)
 
 ### 0e. Verify KMPC still works
-Run `python examples/mpc_example.py` to confirm nothing broke.
+Run `python examples/kmpc_example.py` to confirm nothing broke.
 
 ## Step 1: Add `STMPCConfig` and `PacejkaTireConfig` to `config.py`
 
@@ -272,7 +272,7 @@ class STMPCGymBridge:
 
 **File:** `examples/stmpc_example.py`
 
-Same pattern as `mpc_example.py` with:
+Same pattern as `kmpc_example.py` with:
 - Import `STMPCGymBridge` instead of `KMPCGymBridge`
 - Config paths: `STMPC_CONFIG`, `CAR_CONFIG`, `TIRE_CONFIG`
 - `config["model"] = "std"`
@@ -312,11 +312,11 @@ st_acados_ocp.json
 | `examples/stmpc_example.py` | **Create** | STMPC runner |
 | `.gitignore` | **Edit** | Add `st_c_generated_code/`, `st_acados_ocp.json` |
 
-**Unchanged:** `mpc/config.py` (KMPCConfig, CarConfig), `mpc/__init__.py`, `examples/mpc_example.py`
+**Unchanged:** `mpc/config.py` (KMPCConfig, CarConfig), `mpc/__init__.py`, `examples/kmpc_example.py`
 
 ## Verification
 
-1. **KMPC regression**: Run `python examples/mpc_example.py` after Step 0 to confirm reorganization didn't break anything
+1. **KMPC regression**: Run `python examples/kmpc_example.py` after Step 0 to confirm reorganization didn't break anything
 2. **Solver init**: Run `python examples/stmpc_example.py` — verify C code generates into `stmpc/st_c_generated_code/`
 3. **Solver convergence**: Check `acados_solver.solve()` returns status 0
 4. **Visual**: Render with `render_mode="human"` — car follows centerline

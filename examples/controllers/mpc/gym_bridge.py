@@ -5,7 +5,7 @@ import numpy as np
 from f1tenth_gym.envs.track import Track
 
 from .config import CarConfig, KMPCConfig
-from .kinematic_mpc import Kinematic_MPC_Controller
+from .kmpc.kinematic_mpc import Kinematic_MPC_Controller
 
 
 class KMPCGymBridge:

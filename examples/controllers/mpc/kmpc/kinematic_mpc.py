@@ -1,10 +1,10 @@
 #! /usr/bin/env python3
 import numpy as np
 
+from ..config import CarConfig, KMPCConfig
+from ..utils.frenet_converter import FrenetConverter
+from ..utils.splinify import SplineTrack
 from .acados_settings import acados_settings
-from .config import CarConfig, KMPCConfig
-from .frenet_converter import FrenetConverter
-from .splinify import SplineTrack
 
 
 class Kinematic_MPC_Controller:

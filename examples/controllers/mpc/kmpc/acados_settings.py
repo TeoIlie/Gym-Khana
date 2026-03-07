@@ -38,8 +38,8 @@ from pathlib import Path
 import numpy as np
 from acados_template import AcadosModel, AcadosOcp, AcadosOcpSolver
 
+from ..config import CarConfig, KMPCConfig
 from .bicycle_model import bicycle_model
-from .config import CarConfig, KMPCConfig
 
 _MPC_DIR = Path(__file__).resolve().parent
 

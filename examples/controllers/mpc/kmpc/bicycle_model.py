@@ -37,7 +37,7 @@ import casadi as cs
 import numpy as np
 from casadi import MX, Function, cos, fmod, interpolant, sin, vertcat
 
-from .config import CarConfig, KMPCConfig
+from ..config import CarConfig, KMPCConfig
 
 
 def bicycle_model(
