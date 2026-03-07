@@ -1,11 +1,11 @@
-"""Runner script for the Single Track MPC controller on the F1TENTH gym."""
+"""Runner script for the Single Track MPC controller on the F1TENTH gym (recovery mode)."""
 
 from pathlib import Path
 
 import gymnasium as gym
-import numpy as np
 from controllers.mpc.gym_bridge import STMPCGymBridge
 
+from examples.examples_utils import display_frenet_dynamic_state_obs
 from train.config.env_config import get_drift_test_config, get_env_id
 
 STMPC_CONFIG = Path(__file__).parent / "controllers" / "mpc" / "config" / "single_track_mpc_params.yaml"
@@ -22,6 +22,7 @@ def main():
     config["normalize_act"] = False
     config["normalize_obs"] = False
     config["track_direction"] = "normal"
+    config["training_mode"] = "recover"
 
     env = gym.make(
         get_env_id(),
@@ -32,20 +33,22 @@ def main():
     track = env.unwrapped.track
     bridge = STMPCGymBridge(track, STMPC_CONFIG, CAR_CONFIG, TIRE_CONFIG, ref_speed=REF_SPEED)
 
-    x0, y0, yaw0 = bridge.get_start_pose()
-    # Initialize with velocity above v_min so the solver is immediately feasible.
-    # states format for STD model: [x, y, delta, v, yaw, yaw_rate, slip_angle]
-    init_speed = 3.0
-    obs, info = env.reset(options={"states": np.array([[x0, y0, 0.0, init_speed, yaw0, 0.0, 0.0]])})
-    bridge.controller.speed = init_speed
+    # Recovery mode: env.reset() generates a random perturbed state at recovery_s_init
+    obs, info = env.reset()
+    bridge.init_from_obs(obs)
 
-    done = False
     env.render()
 
     for step in range(10000):
         action = bridge.get_action(obs)
         obs, reward, done, truncated, info = env.step(action)
+        display_frenet_dynamic_state_obs(step, obs, reward)
         env.render()
+
+        if done or truncated:
+            print(f"Episode ended at step {step} (recovered={info.get('recovered', False)})")
+            obs, info = env.reset()
+            bridge.init_from_obs(obs)
 
     print("Done")
 
