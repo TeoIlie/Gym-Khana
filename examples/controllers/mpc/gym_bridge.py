@@ -189,15 +189,21 @@ class STMPCGymBridge:
     def init_from_obs(self, obs: dict) -> None:
         """Sync the MPC controller's internal state with a gym observation (e.g. after reset)."""
         agent_obs = obs["agent_0"]
+
+        # update x,y pose
         pose_x = float(agent_obs["pose_x"])
         pose_y = float(agent_obs["pose_y"])
 
+        # update arclengths
         s_d = self.controller.fren_conv.get_frenet(np.array([pose_x]), np.array([pose_y]))
         s = float(s_d[0])
 
         self.controller.fre_s = s
         self.controller.previous_frenet_s = s
         self.controller.speed = float(agent_obs["linear_vel_x"])
+
+        # update MPC target velocity to longitudinal velocity
+        self.waypoint_array[:, 2] = float(agent_obs["linear_vel_x"])
 
     def get_start_pose(self) -> tuple[float, float, float]:
         cl = self.track.centerline

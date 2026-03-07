@@ -29,20 +29,33 @@ from examples.controllers import create_controller
 from train.config.env_config import get_env_id
 from train.train_utils import get_output_dirs, print_header
 
+# ==========================
+# CLASSIC CONTROLLERS
+# ==========================
+
 # CONTROLLER_TYPE = "stanley"
 # DESC = "stanley"
 # LEARNED_TYPE = ""
 # RUN_ID = ""
 
-CONTROLLER_TYPE = "learned"
+CONTROLLER_TYPE = "stmpc"
+DESC = "Single-track MPC controller with acados + CasAdi, ported from ForzaETH"
+LEARNED_TYPE = ""
+RUN_ID = ""
+
+# ==========================
+# LEARNED RL CONTROLLERS
+# ==========================
+
+# CONTROLLER_TYPE = "learned"
 
 # LEARNED_TYPE = "drift"
 # RUN_ID = "178a1a5l"
 # DESC = "drift model - CW & CCW on Drift_large, with `sparse_width_obs` = True"
 
-LEARNED_TYPE = "drift"
-RUN_ID = "iza03vyw"
-DESC = "drift model - CW & CCW on Drift_large, with `sparse_width_obs` = False"
+# LEARNED_TYPE = "drift"
+# RUN_ID = "iza03vyw"
+# DESC = "drift model - CW & CCW on Drift_large, with `sparse_width_obs` = False"
 
 # LEARNED_TYPE = "drift"
 # RUN_ID = "bsoh5xyb"
@@ -169,6 +182,7 @@ def run_episode(eval_env, controller, beta, r, v, yaw):
     """
     dt = eval_env.unwrapped.timestep
     obs = reset_at_state(eval_env, beta, r, v, yaw)
+    controller.on_reset(obs)
 
     done, trunc = False, False
     steps = 0
@@ -238,7 +252,7 @@ def run_grid_evaluation(eval_env, controller, stanley_states=None):
                             non_stanley_recovery_times.append(time_s)
 
                     episode += 1
-                    if episode % 100 == 0:
+                    if episode % 10 == 0:
                         print(f"  Progress: {episode}/{total_episodes} episodes")
 
     recovery_rates = recovery_counts / n_inner
@@ -351,7 +365,7 @@ def save_metrics(title, summary_lines, recovery_times, output_path, desc=""):
 def parse_args():
     parser = argparse.ArgumentParser(description="Beta-R Recovery Success Heatmap Analysis")
     parser.add_argument(
-        "--controller_type", default=CONTROLLER_TYPE, help="Controller type: 'learned', 'stanley', 'steer'"
+        "--controller_type", default=CONTROLLER_TYPE, help="Controller type: 'learned', 'stanley', 'steer', 'stmpc'"
     )
     parser.add_argument("--learned_type", default=LEARNED_TYPE, help="Learned model type: 'drift' or 'recover'")
     parser.add_argument("--run_id", default=RUN_ID, help="Wandb run ID for the learned model")
@@ -387,6 +401,8 @@ def main():
         config=config,
         render_mode=None,
     )
+
+    controller.initialize(eval_env)
 
     np.random.seed(SEED)
 
