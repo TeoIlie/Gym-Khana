@@ -48,7 +48,7 @@ class TestTrack(unittest.TestCase):
         """
         mapdir = pathlib.Path(__file__).parent.parent / "maps"
         for trackdir in mapdir.iterdir():
-            if trackdir.is_file():
+            if trackdir.is_file() or trackdir.name.startswith("."):
                 continue
 
             # check subdir is capitalized (at least first letter is capitalized)
