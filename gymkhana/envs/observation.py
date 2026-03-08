@@ -7,7 +7,7 @@ import gymnasium as gym
 import numpy as np
 from numba import njit
 
-from f1tenth_gym.envs.utils import calculate_norm_bounds, normalize_feature
+from gymkhana.envs.utils import calculate_norm_bounds, normalize_feature
 
 
 def sample_lookahead_curvatures(track, current_s: float, n_points: int, ds: float) -> np.ndarray:

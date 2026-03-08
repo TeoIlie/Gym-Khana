@@ -6,7 +6,7 @@ import os
 
 import yaml
 
-from f1tenth_gym.envs.f110_env import F110Env
+from gymkhana.envs.gymkhana_env import GKEnv
 
 # ====================================
 # RL config
@@ -59,7 +59,7 @@ NORM_ACT = _config["normalize_act"]
 WALL_DEFLECTION = _config["wall_deflection"]
 
 # Vehicle parameters
-PARAMS = F110Env.f1tenth_std_drift_bias_params()
+PARAMS = GKEnv.f1tenth_std_drift_bias_params()
 
 # Render/debug params
 TEST_DEBUG_RENDER = _config["test_debug_render"]
@@ -86,7 +86,7 @@ CURRICULUM_CONFIG = _config.get("curriculum", {})
 # Gym config functions
 # ===================================
 def get_env_id():
-    return "f1tenth_gym:f1tenth-v0"
+    return "gymkhana:gymkhana-v0"
 
 
 def _base_config(debug_render):

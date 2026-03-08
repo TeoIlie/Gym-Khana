@@ -23,7 +23,7 @@ def main():
         tensorboard_dir, models_dir, _ = make_output_dirs(run.id, output_root)
 
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": map,
                 "num_agents": 1,
@@ -72,7 +72,7 @@ def main():
         model_path = os.path.join(proj_root, "outputs", "models", "5ybfzkyr", "checkpoints", "ckpt_1000000_steps.zip")
         model = PPO.load(model_path, print_system_info=True, device="cpu")
         eval_env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": map,
                 "num_agents": 1,

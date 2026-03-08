@@ -4,7 +4,7 @@ import unittest
 
 import numpy as np
 
-from f1tenth_gym.envs.track import Raceline
+from gymkhana.envs.track import Raceline
 
 
 class TestRacelineReversed(unittest.TestCase):

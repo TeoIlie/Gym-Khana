@@ -12,9 +12,9 @@ import yaml
 from matplotlib.gridspec import GridSpec
 from scipy.integrate import odeint
 
-from f1tenth_gym.envs.dynamic_models.single_track_drift import init_std
-from f1tenth_gym.envs.dynamic_models.single_track_drift.single_track_drift import vehicle_dynamics_std
-from f1tenth_gym.envs.f110_env import F110Env
+from gymkhana.envs.dynamic_models.single_track_drift import init_std
+from gymkhana.envs.dynamic_models.single_track_drift.single_track_drift import vehicle_dynamics_std
+from gymkhana.envs.gymkhana_env import GKEnv
 
 # ==================
 # SHARED
@@ -43,9 +43,9 @@ initialState_f1tenth = [0, sy0, delta0, vel0_f1tenth, Psi0, dotPsi0, beta0]
 # PARAMS
 # ==================
 # fullscale vehicle params
-p = F110Env.fullscale_vehicle_params()
+p = GKEnv.fullscale_vehicle_params()
 # f1tenth vehicle params (1/10 scale)
-p_10th = F110Env.f1tenth_std_vehicle_params()
+p_10th = GKEnv.f1tenth_std_vehicle_params()
 
 
 def func_STD(x, t, u, p):

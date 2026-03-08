@@ -43,12 +43,12 @@ RUN pip3 install --upgrade pip
 RUN pip3 install PyOpenGL \
                  PyOpenGL_accelerate
 
-RUN mkdir /f1tenth_gym
-COPY . /f1tenth_gym
+RUN mkdir /gymkhana
+COPY . /gymkhana
 
-RUN cd /f1tenth_gym && \
+RUN cd /gymkhana && \
     pip3 install -e .
 
-WORKDIR /f1tenth_gym
+WORKDIR /gymkhana
 
 ENTRYPOINT ["/bin/bash"]

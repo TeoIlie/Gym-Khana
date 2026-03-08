@@ -2,13 +2,13 @@ import unittest
 
 import numpy as np
 
-from f1tenth_gym.envs import F110Env
-from f1tenth_gym.envs.utils import deep_update
+from gymkhana.envs import GKEnv
+from gymkhana.envs.utils import deep_update
 
 
 class TestRenderer(unittest.TestCase):
     @staticmethod
-    def _make_env(config={}, render_mode=None) -> F110Env:
+    def _make_env(config={}, render_mode=None) -> GKEnv:
         import gymnasium as gym
 
         base_config = {
@@ -24,7 +24,7 @@ class TestRenderer(unittest.TestCase):
         config = deep_update(base_config, config)
 
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config=config,
             render_mode=render_mode,
         )

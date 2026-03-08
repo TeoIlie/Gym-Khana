@@ -268,7 +268,7 @@ def test_recovery_overrides_uses_curriculum_max_ranges_when_enabled():
 
 
 def test_recovery_overrides_no_ranges_when_curriculum_disabled():
-    """When curriculum is disabled, recovery ranges should not be set (fall back to F110Env defaults)."""
+    """When curriculum is disabled, recovery ranges should not be set (fall back to GKEnv defaults)."""
     saved = env_config_module.CURRICULUM_CONFIG
     try:
         env_config_module.CURRICULUM_CONFIG = {"enabled": False}

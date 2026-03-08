@@ -5,8 +5,8 @@ import unittest
 
 import numpy as np
 
-from f1tenth_gym.envs.track import Raceline, Track, find_track_dir
-from f1tenth_gym.envs.track.track_utils import get_min_max_curvature, get_min_max_track_width
+from gymkhana.envs.track import Raceline, Track, find_track_dir
+from gymkhana.envs.track.track_utils import get_min_max_curvature, get_min_max_track_width
 
 
 class TestTrack(unittest.TestCase):
@@ -48,7 +48,7 @@ class TestTrack(unittest.TestCase):
         """
         mapdir = pathlib.Path(__file__).parent.parent / "maps"
         for trackdir in mapdir.iterdir():
-            if trackdir.is_file():
+            if trackdir.is_file() or trackdir.name.startswith("."):
                 continue
 
             # check subdir is capitalized (at least first letter is capitalized)

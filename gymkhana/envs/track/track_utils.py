@@ -6,10 +6,16 @@ import numpy as np
 import requests
 from numba import njit
 
+MAPS_URL = "https://github.com/TeoIlie/F1TENTH_Racetracks/releases/download/v1.4.0"
+
 
 def find_track_dir(track_name: str) -> pathlib.Path:
     """
     Find the directory of the track map corresponding to the given track name.
+
+    Searches for the track in the local maps directory (relative to the package root).
+    If not found, falls back to a user-level cache directory (~/.gymkhana/maps/)
+    and downloads the track from GitHub releases if necessary.
 
     Parameters
     ----------
@@ -26,14 +32,21 @@ def find_track_dir(track_name: str) -> pathlib.Path:
     FileNotFoundError
         if no map directory matching the track name is found
     """
-    map_dir = pathlib.Path(__file__).parent.parent.parent.parent / "maps"
+    # Check local maps directory first (for development / git submodule installs)
+    local_map_dir = pathlib.Path(__file__).parent.parent.parent.parent / "maps"
+    if (local_map_dir / track_name).exists():
+        return local_map_dir / track_name
 
-    if not (map_dir / track_name).exists():
+    # Fall back to user cache directory
+    cache_map_dir = pathlib.Path.home() / ".gymkhana" / "maps"
+    cache_map_dir.mkdir(parents=True, exist_ok=True)
+
+    if not (cache_map_dir / track_name).exists():
         print("Downloading Files for: " + track_name)
-        tracks_url = "http://api.f1tenth.org/" + track_name + ".tar.xz"
+        tracks_url = f"{MAPS_URL}/{track_name}.tar.xz"
         tracks_r = requests.get(url=tracks_url, allow_redirects=True)
         if tracks_r.status_code == 404:
-            raise FileNotFoundError(f"No maps exists for {track_name}.")
+            raise FileNotFoundError(f"No map exists for {track_name}.")
 
         tempdir = tempfile.gettempdir() + "/"
 
@@ -42,15 +55,15 @@ def find_track_dir(track_name: str) -> pathlib.Path:
 
         print("Extracting Files for: " + track_name)
         tracks_file = tarfile.open(tempdir + track_name + ".tar.xz")
-        tracks_file.extractall(map_dir)
+        tracks_file.extractall(cache_map_dir)
         tracks_file.close()
 
-    # search for map in the map directory
-    for subdir in map_dir.iterdir():
+    # search for map in the cache directory
+    for subdir in cache_map_dir.iterdir():
         if track_name == str(subdir.stem).replace(" ", ""):
             return subdir
 
-    raise FileNotFoundError(f"no mapdir matching {track_name} in {[map_dir]}")
+    raise FileNotFoundError(f"no mapdir matching {track_name} in {[local_map_dir, cache_map_dir]}")
 
 
 def get_min_max_track_width(track) -> tuple[float, float]:

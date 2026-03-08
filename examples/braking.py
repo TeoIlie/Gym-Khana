@@ -1,7 +1,7 @@
 import gymnasium as gym
 import numpy as np
 
-from f1tenth_gym.envs.f110_env import F110Env
+from gymkhana.envs.gymkhana_env import GKEnv
 from train.config.env_config import get_drift_test_config, get_env_id
 
 
@@ -63,8 +63,8 @@ def main():
 
     print("Test 1: Target speed longitudinal action type + braking")
 
-    max_vel = F110Env.f1tenth_std_vehicle_params()["v_max"]
-    min_vel = F110Env.f1tenth_std_vehicle_params()["v_min"]
+    max_vel = GKEnv.f1tenth_std_vehicle_params()["v_max"]
+    min_vel = GKEnv.f1tenth_std_vehicle_params()["v_min"]
     env = make_env_with_action("speed")
 
     total_speed_braking_steps = accl_and_brake(
@@ -73,7 +73,7 @@ def main():
 
     print("Test 2: Accl longitudinal action type + braking")
 
-    max_accl = F110Env.f1tenth_std_vehicle_params()["a_max"]
+    max_accl = GKEnv.f1tenth_std_vehicle_params()["a_max"]
     min_accl = -max_accl
     env = make_env_with_action("accl")
 
@@ -83,7 +83,7 @@ def main():
 
     print("Test 3: Target speed longitudinal action type + coasting")
 
-    max_vel = F110Env.f1tenth_std_vehicle_params()["v_max"]
+    max_vel = GKEnv.f1tenth_std_vehicle_params()["v_max"]
     min_vel = 0
     env = make_env_with_action("speed")
 

@@ -17,7 +17,7 @@ qjerk: !!float 1e-2 #acceleration cost
 qddelta: !!float 5e-1 #ddelta cost
 qadv: !!float 0 #1e-5
 qn: 40 #40 # 4 for vy minimization
-qalpha: 0.1 #50 # NOTE: actually make the problem quite unstable! # 100 for vy minimization
+qalpha: 50 #50 # NOTE: actually make the problem quite unstable! # 100 for vy minimization
 qv: !!float 10 #2e-2 #2e-1 velocity cost (linear, for velocity maximization)
 
 Zl: !!float 1000 #100 quadratic coefficient state slack variable
