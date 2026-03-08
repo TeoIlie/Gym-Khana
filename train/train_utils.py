@@ -16,8 +16,10 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import SubprocVecEnv
 
 import wandb
+from f1tenth_gym.envs.f110_env import F110Env
 from f1tenth_gym.envs.track import Track
 from f1tenth_gym.envs.track.track_utils import get_min_max_curvature, get_min_max_track_width
+from f1tenth_gym.envs.utils import deep_update
 from train.config.env_config import (
     ACT_FUNC_NEG_SLOPE,
     BEST_MODEL,
@@ -281,6 +283,15 @@ def make_eval_env(seed: int, config: dict):
     env = Monitor(env)
     env.reset(seed=seed)
     return env
+
+
+def save_full_gym_config(update_config: dict, config_dir: str, filename: str) -> None:
+    """
+    Save full gym config to YAML doing deep update to overwrite defaults.
+    """
+    full_config = deep_update(F110Env.default_config(), update_config)
+    full_config.pop("seed", None)  # exclude seed as it is overwritten by make_subprocvecenv
+    save_config(full_config, config_dir, filename)
 
 
 def save_config(config: dict, config_dir: str, filename: str) -> None:
