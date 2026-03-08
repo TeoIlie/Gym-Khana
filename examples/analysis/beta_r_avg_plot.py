@@ -38,16 +38,20 @@ from train.train_utils import get_output_dirs, print_header
 # LEARNED_TYPE = ""
 # RUN_ID = ""
 
-CONTROLLER_TYPE = "stmpc"
-DESC = "Single-track MPC controller with acados + CasAdi, ported from ForzaETH"
-LEARNED_TYPE = ""
-RUN_ID = ""
+# CONTROLLER_TYPE = "stmpc"
+# DESC = "Single-track MPC controller with acados + CasAdi, ported from ForzaETH"
+# LEARNED_TYPE = ""
+# RUN_ID = ""
 
 # ==========================
 # LEARNED RL CONTROLLERS
 # ==========================
 
-# CONTROLLER_TYPE = "learned"
+CONTROLLER_TYPE = "learned"
+
+LEARNED_TYPE = "transfer"
+RUN_ID = "c76n9olh"
+DESC = "transfer model - drift model bsoh5xyb retrained by loading and continuing training with --m c. No curriculum learning, small beta-r initial ranges, no Euclidean reward "
 
 # LEARNED_TYPE = "drift"
 # RUN_ID = "178a1a5l"
@@ -136,7 +140,7 @@ SEED = 42
 BETA_VALUES = np.linspace(-1.39, 1.39, 7)  # 10 points, +/-60 deg
 R_VALUES = np.linspace(-13, 13, 7)  # 10 points, +/-180 deg/s
 V_VALUES = np.linspace(4, 5, 2)  # 3 points: [2, 7, 12]
-YAW_VALUES = np.linspace(-0.17, 0.17, 3)  # 3 points: [-60, 0, +60] deg
+YAW_VALUES = np.linspace(-0.17, 0.17, 3)  # 3 points: [-10, 0, +10] deg
 
 
 def reset_at_state(eval_env, beta_rad, r_rad, v, yaw_offset_rad):
