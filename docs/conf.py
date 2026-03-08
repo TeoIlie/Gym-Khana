@@ -1,8 +1,6 @@
 # flake8: noqa
 import os
 
-import sphinx_rtd_theme
-
 source_suffix = ".rst"
 source_encoding = "utf-8-sig"
 
@@ -19,7 +17,6 @@ is_i18n = tags.has("i18n")
 # -- Theme -------------------------------------------------------------------
 on_rtd = os.environ.get("READTHEDOCS", None) == "True"
 html_theme = "sphinx_rtd_theme"
-html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 if on_rtd:
     using_rtd_theme = True
 html_theme_options = {
@@ -40,12 +37,12 @@ html_context = {
     "conf_py_path": "/docs/",  # Path in the checkout to the docs root
 }
 
-html_favicon = "assets/f1_stickers_02.png"
+html_favicon = "assets/gym.svg"
 
 html_css_files = ["css/custom.css"]
 
 html_js_files = ["css/custom.js"]
-html_logo = "assets/f1tenth_gym.svg"
+html_logo = "assets/gym.svg"
 
 # -- Project information -----------------------------------------------------
 
