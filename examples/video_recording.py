@@ -15,7 +15,7 @@ def main():
     }
 
     env = gym.make(
-        "f1tenth_gym:f1tenth-v0",
+        "gymkhana:gymkhana-v0",
         config={
             "map": "Spielberg",
             "num_agents": 1,

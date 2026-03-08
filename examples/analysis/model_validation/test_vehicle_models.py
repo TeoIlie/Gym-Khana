@@ -1,7 +1,7 @@
 """
 Functions for testing different vehicle models (see examples in chap. 11 of documentation)
 Use:
-1. Choose a tire param for p from F110Env
+1. Choose a tire param for p from GKEnv
 2. Choose a function to uncomment in main
 3. Run the code and observe the plots
 """
@@ -13,12 +13,12 @@ import numpy as np
 from matplotlib.pyplot import legend, title
 from scipy.integrate import odeint
 
-from f1tenth_gym.envs.dynamic_models.multi_body import init_mb
-from f1tenth_gym.envs.dynamic_models.multi_body.multi_body import vehicle_dynamics_mb
-from f1tenth_gym.envs.dynamic_models.single_track import vehicle_dynamics_st
-from f1tenth_gym.envs.dynamic_models.single_track_drift import init_std
-from f1tenth_gym.envs.dynamic_models.single_track_drift.single_track_drift import vehicle_dynamics_std
-from f1tenth_gym.envs.f110_env import F110Env
+from gymkhana.envs.dynamic_models.multi_body import init_mb
+from gymkhana.envs.dynamic_models.multi_body.multi_body import vehicle_dynamics_mb
+from gymkhana.envs.dynamic_models.single_track import vehicle_dynamics_st
+from gymkhana.envs.dynamic_models.single_track_drift import init_std
+from gymkhana.envs.dynamic_models.single_track_drift.single_track_drift import vehicle_dynamics_std
+from gymkhana.envs.gymkhana_env import GKEnv
 
 
 def func_ST(x, t, u, p):
@@ -37,7 +37,7 @@ def func_STD(x, t, u, p):
 
 
 # load parameters
-p = F110Env.fullscale_vehicle_params()
+p = GKEnv.fullscale_vehicle_params()
 g = 9.81  # [m/s^2]
 
 # set options --------------------------------------------------------------

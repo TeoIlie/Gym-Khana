@@ -3,7 +3,7 @@ import unittest
 import gymnasium as gym
 import numpy as np
 
-from f1tenth_gym.envs.utils import deep_update
+from gymkhana.envs.utils import deep_update
 from train.config.env_config import get_drift_test_config, get_env_id
 
 
@@ -29,7 +29,7 @@ class TestEnvInterface(unittest.TestCase):
         conf = deep_update(conf, config)
 
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config=conf,
         )
         return env
@@ -166,7 +166,7 @@ class TestEnvInterface(unittest.TestCase):
             "observation_config": {"type": "kinematic_state"},
             "normalize_act": False,
         }
-        vec_env = gym.make_vec("f1tenth_gym:f1tenth-v0", asynchronous=False, config=config, num_envs=num_envs)
+        vec_env = gym.make_vec("gymkhana:gymkhana-v0", asynchronous=False, config=config, num_envs=num_envs)
 
         rnd_poses = np.random.random((2, 3))
         obss, infos = vec_env.reset(options={"poses": rnd_poses})
@@ -196,7 +196,7 @@ class TestEnvInterface(unittest.TestCase):
             "observation_config": {"type": "kinematic_state"},
             "normalize_act": False,
         }
-        vec_env = gym.make_vec("f1tenth_gym:f1tenth-v0", vectorization_mode="async", config=config, num_envs=num_envs)
+        vec_env = gym.make_vec("gymkhana:gymkhana-v0", vectorization_mode="async", config=config, num_envs=num_envs)
 
         rnd_poses = np.random.random((2, 3))
         obss, infos = vec_env.reset(options={"poses": rnd_poses})
@@ -227,7 +227,7 @@ class TestEnvInterface(unittest.TestCase):
             "reset_config": {"type": "rl_random_random"},
         }
         vec_env = gym.make_vec(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             vectorization_mode="sync",
             config=config,
             num_envs=num_envs,

@@ -4,19 +4,19 @@ import gymnasium as gym
 import numpy as np
 from gymnasium.spaces import Box
 
-from f1tenth_gym.envs import F110Env
-from f1tenth_gym.envs.observation import (
+from gymkhana.envs import GKEnv
+from gymkhana.envs.observation import (
     observation_factory,
     sample_lookahead_curvatures_fast,
     sample_lookahead_widths_fast,
 )
-from f1tenth_gym.envs.utils import deep_update
+from gymkhana.envs.utils import deep_update
 from train.config.env_config import get_drift_train_config, get_env_id
 
 
 class TestObservationInterface(unittest.TestCase):
     @staticmethod
-    def _make_env(config={}) -> F110Env:
+    def _make_env(config={}) -> GKEnv:
         conf = {
             "map": "Spielberg",
             "num_agents": 1,
@@ -27,7 +27,7 @@ class TestObservationInterface(unittest.TestCase):
         }
         conf = deep_update(conf, config)
 
-        env = gym.make("f1tenth_gym:f1tenth-v0", config=conf)
+        env = gym.make("gymkhana:gymkhana-v0", config=conf)
         return env
 
     def test_original_obs_space(self):

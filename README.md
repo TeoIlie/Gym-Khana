@@ -1,8 +1,8 @@
-![Python 3.10-3.12](https://github.com/TeoIlie/F1TENTH_Gym/actions/workflows/ci.yml/badge.svg)
-![Docker](https://github.com/TeoIlie/F1TENTH_Gym/actions/workflows/docker.yml/badge.svg)
-![Code Style](https://github.com/TeoIlie/F1TENTH_Gym/actions/workflows/lint.yml/badge.svg)
+![Python 3.10-3.12](https://github.com/TeoIlie/Gym-Khana/actions/workflows/ci.yml/badge.svg)
+![Docker](https://github.com/TeoIlie/Gym-Khana/actions/workflows/docker.yml/badge.svg)
+![Code Style](https://github.com/TeoIlie/Gym-Khana/actions/workflows/lint.yml/badge.svg)
 
-# The F1TENTH Gym environment
+# Gym-Khana
 
 This repository contains a custom gym environment for training Deep Reinforcement Learning policies to race and drift on 1/10 scale or full-size Ackermann vehicles. **SB3** and **wandb** integration included. Based on the f1tenth_gym simulator built by UPenn.
 
@@ -17,8 +17,8 @@ We recommend installing the simulation inside a virtualenv. You can install the 
 ```bash
 virtualenv gym_env
 source gym_env/bin/activate
-git clone --recurse-submodules https://github.com/TeoIlie/F1TENTH_Gym.git
-cd f1tenth_gym
+git clone --recurse-submodules https://github.com/TeoIlie/Gym-Khana.git
+cd Gym-Khana
 pip install -e .
 ```
 
@@ -45,8 +45,8 @@ python3 controller_example.py
 A Dockerfile is also provided with support for the GUI with nvidia-docker (nvidia GPU required):
 
 ```bash
-docker build -t f1tenth_gym_container -f Dockerfile .
-docker run --gpus all -it -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix f1tenth_gym_container
+docker build -t gymkhana -f Dockerfile .
+docker run --gpus all -it -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix gymkhana
 ````
 
 Then the same examples can be run.
@@ -134,7 +134,7 @@ Note that CL is only supported for recovery training, with the environment `trai
     2. `"recover"` is used by `train/ppo_recover.py` to train policies for stabilizing an out-of-control vehicle 
 2. Set `model` to `std` for drifting model with PAC2002 tire model
 3. Use `control_input` `["accl", "steering_angle"]` for best RL drift training
-4. Use parameter dictionary `params` as `F110Env.f1tenth_std_vehicle_params()` or `F110Env.f1tenth_std_drift_bias_params()` for drift parameters on 1/10 scale F1TENTH car
+4. Use parameter dictionary `params` as `GKEnv.f1tenth_std_vehicle_params()` or `GKEnv.f1tenth_std_drift_bias_params()` for drift parameters on 1/10 scale F1TENTH car
 5. Lookahead curvature/width observations can be configured with spacing and number parameters, and when `render_lookahead_curvatures": True` these will be reflected
     1. `lookahead_n_points` - Number of lookahead points (default: 10)
     2. `lookahead_ds` - Spacing between points in meters (default: 0.3m)
@@ -158,7 +158,7 @@ Note that CL is only supported for recovery training, with the environment `trai
 1. **Poses** and **States** can be used to initialize vehicles at specific configurations. Note:
    - Only one of `poses` or `states` can be used per reset call (not both)
    - All **[x, y, yaw]** values are in Cartesian coordinates
-   - To use Frenet coordinates, convert first using `frenet_to_cartesian()` in `f1tenth_gym/envs/track/track.py`
+   - To use Frenet coordinates, convert first using `frenet_to_cartesian()` in `gymkhana/envs/track/track.py`
 
 2. **Poses**: Reset agents at a specific pose
    ```python
@@ -195,23 +195,18 @@ Run formatting and auto-fixes manually with `ruff check --fix . && ruff format .
 
 ## Important files
 
-* `f1tenth_gym/envs/base_classes.py:503` defines the `step` method.
+* `gymkhana/envs/base_classes.py:503` defines the `step` method.
   * the action space is defined as an `ndarray` with
     1. the first element being desired **steering angle**
     2. second element is desired **velocity**.
-* dynamics models are defined in `f1tenth_gym/envs/dynamic_models`
+* dynamics models are defined in `gymkhana/envs/dynamic_models`
   * `single_track.py` models the single-track dynamics model, but only basic tire modelling
   * `single_track_drift.py` models the single-track dynamics model with PAC2002 tire model, ideal for drift training
   * `multi_body.py` models the car in greatest detail, but parameters are only available for a full-scale vehicle
 
-## Branches and the f1tenth_gym fork
-
-* The original `f1tenth_gym` project has branch `main` which in this project is renamed to `f1tenth_main_original`, and `rl_example`, which in this project is renamed to `main`
-* This is bc the `rl_example` contained all the base code I used to build this project
-
 ## Tire parameters
 
-* Parameters for the 1/10 scale f1tenth car to be used with the `STD` model are defined in `f110_env.py` as `f1tenth_std_vehicle_params`. They are created as a mix of existing f1tenth params and tire parameters adjusted from the fullscale car.
+* Parameters for the 1/10 scale f1tenth car to be used with the `STD` model are defined in `gymkhana/envs/gymkhana_env.py` as `f1tenth_std_vehicle_params`. They are created as a mix of existing f1tenth params and tire parameters adjusted from the fullscale car.
 * In future I may measure these parameters from real data for more accurate fitting
 * To maintain a history of parameter choices, and how they compare with the correct behaviour on the fullscale car, tests script `tests/model_validation/test_f1tenth_std_params.py` creates comparison figures along with parameter YAML file dump ordered by date created inside folder `figures/tire_params`
 

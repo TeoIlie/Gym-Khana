@@ -9,7 +9,7 @@ import numpy as np
 import scipy.optimize as so
 from scipy import interpolate
 
-from f1tenth_gym.envs.track.track_utils import nearest_point_on_trajectory
+from gymkhana.envs.track.track_utils import nearest_point_on_trajectory
 
 
 class CubicSpline2D:

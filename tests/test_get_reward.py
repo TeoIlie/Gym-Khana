@@ -1,5 +1,5 @@
 """
-Unit tests for _get_reward() function in F110Env.
+Unit tests for _get_reward() function in GKEnv.
 
 These tests expose the wraparound bug where completing a lap
 gives a large negative reward instead of a small positive reward.
@@ -17,7 +17,7 @@ class TestGetRewardWraparound:
     def env(self):
         """Create a basic F110 environment for testing"""
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
@@ -212,7 +212,7 @@ class TestGetRewardWraparound:
 
         # Create 2-agent environment
         wrapped_env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 2,
@@ -258,7 +258,7 @@ class TestCorrectWraparoundProg:
     def env(self):
         """Create environment for testing"""
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
@@ -436,7 +436,7 @@ class TestGetRewardEdgeCases:
     def env(self):
         """Create environment for testing"""
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={"map": "Spielberg", "num_agents": 1, "progress_gain": 1.0},
             render_mode=None,
         )
@@ -490,7 +490,7 @@ class TestRewardCalculation:
     def env(self):
         """Create F110 environment in Frenet mode (predictive_collision=False)"""
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,

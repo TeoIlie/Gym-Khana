@@ -10,7 +10,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
-from f1tenth_gym.envs.track.cubic_spline import CubicSpline2D
+from gymkhana.envs.track.cubic_spline import CubicSpline2D
 
 
 def test_straight_line():

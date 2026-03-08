@@ -40,7 +40,7 @@ def calculate_norm_bounds(env, features: list[str]):
 
     Parameters
     ----------
-    env : F110Env
+    env : GKEnv
         The environment to extract parameters from
     features : list[str]
         List of feature names that require normalization bounds

@@ -1,5 +1,5 @@
 """
-Unit tests for recovery training mode in F110Env.
+Unit tests for recovery training mode in GKEnv.
 
 Tests cover: config initialization, config validation, perturbed reset,
 recovery success checking, reward components, and done conditions.
@@ -11,14 +11,14 @@ from unittest.mock import patch
 import gymnasium as gym
 import numpy as np
 
-from f1tenth_gym.envs import F110Env
+from gymkhana.envs import GKEnv
 
 
 def _make_recovery_env(**overrides):
     """Create a recovery-mode environment with sensible test defaults."""
     config = {
         "model": "std",
-        "params": F110Env.f1tenth_std_vehicle_params(),
+        "params": GKEnv.f1tenth_std_vehicle_params(),
         "num_agents": 1,
         "timestep": 0.01,
         "training_mode": "recover",
@@ -26,7 +26,7 @@ def _make_recovery_env(**overrides):
         "observation_config": {"type": None},
     }
     config.update(overrides)
-    env = gym.make("f1tenth_gym:f1tenth-v0", config=config, render_mode=None)
+    env = gym.make("gymkhana:gymkhana-v0", config=config, render_mode=None)
     return env
 
 

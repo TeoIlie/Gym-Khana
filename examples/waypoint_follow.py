@@ -5,7 +5,7 @@ import gymnasium as gym
 import numpy as np
 from numba import njit
 
-from f1tenth_gym.envs.f110_env import F110Env
+from gymkhana.envs.gymkhana_env import GKEnv
 
 """
 Planner Helpers
@@ -279,7 +279,7 @@ def main():
 
     num_agents = 1
     env = gym.make(
-        "f1tenth_gym:f1tenth-v0",
+        "gymkhana:gymkhana-v0",
         config={
             "map": "Spielberg_blank",
             "num_agents": num_agents,
@@ -288,7 +288,7 @@ def main():
             "control_input": ["speed", "steering_angle"],
             "model": "mb",
             "observation_config": {"type": "kinematic_state"},
-            "params": F110Env.fullscale_vehicle_params(),
+            "params": GKEnv.fullscale_vehicle_params(),
             "reset_config": {"type": "rl_random_static"},
             "scale": 10.0,
         },
@@ -298,7 +298,7 @@ def main():
 
     planner = PurePursuitPlanner(
         track=track,
-        wb=(F110Env.fullscale_vehicle_params()["lf"] + F110Env.fullscale_vehicle_params()["lr"]),
+        wb=(GKEnv.fullscale_vehicle_params()["lf"] + GKEnv.fullscale_vehicle_params()["lr"]),
     )
 
     env.unwrapped.add_render_callback(track.raceline.render_waypoints)

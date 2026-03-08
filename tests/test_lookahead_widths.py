@@ -12,12 +12,12 @@ import time
 
 import numpy as np
 
-from f1tenth_gym.envs.observation import (
+from gymkhana.envs.observation import (
     sample_lookahead_widths,
     sample_lookahead_widths_fast,
 )
-from f1tenth_gym.envs.track.cubic_spline import CubicSpline2D
-from f1tenth_gym.envs.track.raceline import Raceline
+from gymkhana.envs.track.cubic_spline import CubicSpline2D
+from gymkhana.envs.track.raceline import Raceline
 
 
 class MockTrack:
@@ -340,7 +340,7 @@ def test_sparse_width_obs_observation_filtering():
     """
     from unittest.mock import Mock
 
-    from f1tenth_gym.envs.observation import VectorObservation
+    from gymkhana.envs.observation import VectorObservation
 
     # drift observation features
     drift_features = [

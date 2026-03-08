@@ -4,7 +4,7 @@ from unittest.mock import patch
 import gymnasium as gym
 import numpy as np
 
-from f1tenth_gym.envs import F110Env
+from gymkhana.envs import GKEnv
 
 
 class TestFrenetModeReset(unittest.TestCase):
@@ -17,7 +17,7 @@ class TestFrenetModeReset(unittest.TestCase):
     def setUp(self):
         """Create test environment with Frenet boundary checking enabled."""
         self.env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
@@ -93,7 +93,7 @@ class TestTerminatedTruncatedLogic(unittest.TestCase):
     def test_predictive_collision_mode_terminated_on_collision(self):
         """Test that terminated=True when predictive_collision=True and ego agent collides."""
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
@@ -119,7 +119,7 @@ class TestTerminatedTruncatedLogic(unittest.TestCase):
     def test_predictive_collision_mode_not_terminated_no_collision(self):
         """Test that terminated=False when predictive_collision=True and no collision."""
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
@@ -148,7 +148,7 @@ class TestTerminatedTruncatedLogic(unittest.TestCase):
     def test_predictive_collision_mode_terminated_on_lap_completion(self):
         """Test that terminated=True when predictive_collision=True and all agents complete 2 laps."""
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 2,
@@ -176,7 +176,7 @@ class TestTerminatedTruncatedLogic(unittest.TestCase):
     def test_frenet_mode_terminated_on_boundary_violation(self):
         """Test that terminated=True when predictive_collision=False and boundary is violated."""
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
@@ -210,7 +210,7 @@ class TestTerminatedTruncatedLogic(unittest.TestCase):
     def test_frenet_mode_not_terminated_within_boundaries(self):
         """Test that terminated=False when predictive_collision=False and within boundaries."""
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
@@ -249,7 +249,7 @@ class TestTerminatedTruncatedLogic(unittest.TestCase):
     def test_truncated_when_max_episode_steps_reached(self):
         """Test that truncated=True when current_step exceeds max_episode_steps."""
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
@@ -276,7 +276,7 @@ class TestTerminatedTruncatedLogic(unittest.TestCase):
     def test_truncated_when_at_max_episode_steps(self):
         """Test that truncated=False when current_step equals max_episode_steps (not exceeds)."""
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
@@ -304,7 +304,7 @@ class TestTerminatedTruncatedLogic(unittest.TestCase):
     def test_truncated_not_set_when_terminal_event_occurs(self):
         """Test that truncated remains False even if max_episode_steps is reached when terminal event occurs."""
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
@@ -331,7 +331,7 @@ class TestTerminatedTruncatedLogic(unittest.TestCase):
     def test_predictive_collision_multi_agent_only_ego_collision_matters(self):
         """Test that in predictive_collision mode, only ego agent collision triggers termination."""
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 2,
@@ -360,7 +360,7 @@ class TestTerminatedTruncatedLogic(unittest.TestCase):
     def test_frenet_collision_multi_agent_only_ego_boundary_matters(self):
         """Test that in Frenet mode, only ego agent boundary violation triggers termination."""
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 2,
@@ -397,12 +397,12 @@ class TestFullStateReset(unittest.TestCase):
     def setUp(self):
         """Create test environment with STD model."""
         self.env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
                 "model": "std",
-                "params": F110Env.f1tenth_std_vehicle_params(),
+                "params": GKEnv.f1tenth_std_vehicle_params(),
                 "observation_config": {"type": None},
                 "reset_config": {"type": "rl_random_static"},
             },
@@ -480,12 +480,12 @@ class TestFullStateReset(unittest.TestCase):
         """Test that wrong number of agents in states raises error."""
         # Create env with 2 agents but provide states for 1
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 2,
                 "model": "std",
-                "params": F110Env.f1tenth_std_vehicle_params(),
+                "params": GKEnv.f1tenth_std_vehicle_params(),
                 "observation_config": {"type": None},
             },
         )
@@ -500,7 +500,7 @@ class TestFullStateReset(unittest.TestCase):
     def test_non_std_model_states_error(self):
         """Test that using states with non-STD model raises error."""
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
@@ -524,12 +524,12 @@ class TestMultiAgentFullStateReset(unittest.TestCase):
     def test_multi_agent_full_state(self):
         """Test full state initialization with multiple agents."""
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 2,
                 "model": "std",
-                "params": F110Env.f1tenth_std_vehicle_params(),
+                "params": GKEnv.f1tenth_std_vehicle_params(),
                 "observation_config": {"type": None},
             },
         )
@@ -555,12 +555,12 @@ class TestStateConstraints(unittest.TestCase):
     def setUp(self):
         """Create test environment with STD model."""
         self.env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
                 "model": "std",
-                "params": F110Env.f1tenth_std_vehicle_params(),
+                "params": GKEnv.f1tenth_std_vehicle_params(),
                 "observation_config": {"type": None},
             },
         )
@@ -600,12 +600,12 @@ class TestSimulationContinuation(unittest.TestCase):
     def setUp(self):
         """Create test environment with STD model."""
         self.env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
                 "model": "std",
-                "params": F110Env.f1tenth_std_vehicle_params(),
+                "params": GKEnv.f1tenth_std_vehicle_params(),
                 "control_input": ["accl", "steering_angle"],
                 "observation_config": {"type": None},
             },
@@ -656,12 +656,12 @@ class TestInternalBookkeeping(unittest.TestCase):
     def setUp(self):
         """Create test environment with STD model."""
         self.env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
                 "model": "std",
-                "params": F110Env.f1tenth_std_vehicle_params(),
+                "params": GKEnv.f1tenth_std_vehicle_params(),
                 "observation_config": {"type": None},
             },
         )
@@ -688,12 +688,12 @@ class TestSkipIntegration(unittest.TestCase):
     def setUp(self):
         """Create test environment with STD model."""
         self.env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
                 "model": "std",
-                "params": F110Env.f1tenth_std_vehicle_params(),
+                "params": GKEnv.f1tenth_std_vehicle_params(),
                 "control_input": ["accl", "steering_angle"],
                 "observation_config": {"type": None},
                 "reset_config": {"type": "rl_random_static"},

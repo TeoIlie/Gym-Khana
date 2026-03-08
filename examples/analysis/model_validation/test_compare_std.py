@@ -11,9 +11,9 @@ from scipy.integrate import odeint
 from commonroad.vehiclemodels.init_std import init_std as init_std_cr
 from commonroad.vehiclemodels.parameters_vehicle1 import parameters_vehicle1
 from commonroad.vehiclemodels.vehicle_dynamics_std import vehicle_dynamics_std as cr_vehicle_dynamics_std
-from f1tenth_gym.envs.dynamic_models.single_track_drift import init_std
-from f1tenth_gym.envs.dynamic_models.single_track_drift.single_track_drift import vehicle_dynamics_std
-from f1tenth_gym.envs.f110_env import F110Env
+from gymkhana.envs.dynamic_models.single_track_drift import init_std
+from gymkhana.envs.dynamic_models.single_track_drift.single_track_drift import vehicle_dynamics_std
+from gymkhana.envs.gymkhana_env import GKEnv
 
 # ==================
 # SHARED
@@ -54,7 +54,7 @@ x0_STD_cr = init_std_cr(initialState, p_cr)
 # F1TENTH
 # ==================
 # f110 params
-p = F110Env.fullscale_vehicle_params()
+p = GKEnv.fullscale_vehicle_params()
 
 
 def func_STD(x, t, u, p):
