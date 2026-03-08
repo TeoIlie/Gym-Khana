@@ -1,11 +1,28 @@
 Base Classes
-=============
+============
 
-Base classes are the underlying classes that handles the physical simulation and interaction between vehicles.
+The base classes handle physical simulation and interaction between vehicles.
 
-The ``RaceCar`` class handles the simulation of the dynamics model and the generation of the laser scan.
+Source: ``gymkhana/envs/base_classes.py``
 
-The ``Simulator`` class handles the interaction between agents including collision checking.
+RaceCar
+-------
 
-.. doxygenfile:: base_classes.py
-    :project: f1tenth_gym
+Handles the simulation of a single vehicle's dynamics model and laser scan generation.
+
+Each ``RaceCar`` instance:
+
+- Maintains the vehicle's state (position, velocity, orientation, etc.)
+- Steps the selected dynamics model forward in time
+- Generates simulated LiDAR scans via the laser model
+
+Simulator
+---------
+
+Orchestrates the multi-agent simulation, including:
+
+- Managing multiple ``RaceCar`` instances
+- Collision checking between agents and with track boundaries
+- Stepping all agents simultaneously for deterministic simulation
+
+The ``step`` method (line 503) is the core simulation loop. All agents' physics are stepped simultaneously, and all randomness is seeded for reproducibility. The explicit stepping enables faster-than-real-time execution.

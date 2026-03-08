@@ -1,94 +1,58 @@
-.. image:: assets/f1_stickers_01.png
-  :width: 60
-  :align: left
+Gym-Khana Documentation
+========================
 
-F1TENTH Gym Documentation 
-================================================
+Gym-Khana is a fast, deterministic Gymnasium environment for training autonomous 1/10th scale racing agents to race, drift, and recover. It supports RL training with SB3 and wandb, as well as classical controllers like MPC and Pure Pursuit.
 
-Overview
----------
-The F1TENTH Gym environment is created for research that needs a asynchronous, realistic vehicle simulation with multiple vehicle instances in the same environment, with applications in reinforcement learning.
+Built on top of `f1tenth_gym <https://github.com/f1tenth/f1tenth_gym>`_ from UPenn (`original docs <https://f1tenth-gym.readthedocs.io>`_).
 
-The environment is designed with determinism in mind. All agents' physics simulation are stepped simultaneously, and all randomness are seeded and experiments can be reproduced. The explicit stepping also enables the physics engine to take advantage of faster than real-time execution (up to 30x realtime) and enable massively parallel applications.
+.. image:: assets/demo_drift.gif
+   :width: 400
+   :align: center
+   :alt: PPO agent drifting on the Spielberg circuit
 
-Github repo: https://github.com/f1tenth/f1tenth_gym
-
-Note that the GitHub will have more up to date documentation than this page. If you see a mistake, please contribute a fix!
-
-Example Usecases
-------------------
-
-1. The gym environment is used as the backend for the F1TENTH virtual racing online competition at IROS 2020:
-
-.. raw:: html
-
-  <iframe width="560" height="315" src="https://www.youtube.com/embed/VzrbRwhDw_c" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-
-
-2. The gym environment is used as the simulation engine for the FormulaZero project: https://github.com/travelbureau/f0_icml_code
-
-.. raw:: html
-
-    <iframe width="560" height="315" src="https://www.youtube.com/embed/7Yat9FZzE4g" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-
-3. The gym environment is used as the simulation engine for the TunerCar project: http://www.lewissoft.com/pdf/ICRA2020/1667.pdf
-
-.. raw:: html
-
-  <iframe width="560" height="315" src="https://www.youtube.com/embed/ay7L4VAfa_w" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-
-Citing
+Features
 --------
-If you find this Gym environment useful, please consider citing:
 
-.. code::
-  
-  @inproceedings{o2020textscf1tenth,
-    title={textscF1TENTH: An Open-source Evaluation Environment for Continuous Control and Reinforcement Learning},
-    author={O’Kelly, Matthew and Zheng, Hongrui and Karthik, Dhruv and Mangharam, Rahul},
-    booktitle={NeurIPS 2019 Competition and Demonstration Track},
-    pages={77--89},
-    year={2020},
-    organization={PMLR}
-  }
+- **Realistic vehicle dynamics**: Kinematic, single-track, multi-body, and single-track drift (PAC2002 tire) models
+- **Fast simulation**: Numba JIT-compiled dynamics for faster-than-real-time execution
+- **RL integration**: SB3 and wandb support with parallel training via SubprocVecEnv
+- **Drift training**: STD model with Pacejka tire physics for learning aggressive driving
+- **Recovery training**: Train policies to stabilize an out-of-control vehicle with curriculum learning
+- **Deterministic**: Seeded randomness and simultaneous agent stepping for reproducible experiments
+- **Multi-agent support**: Multiple competing vehicles in the same environment
+- **LiDAR simulation**: Accurate ray-casting for perception research
+- **Configurable observations & actions**: Multiple types with normalization support
+- **Visualization**: Real-time rendering with debug overlays (Frenet projection, lookahead curvatures, track lines)
 
-Physical Platform
--------------------
+GitHub: https://github.com/TeoIlie/Gym-Khana
 
-To build a physical 1/10th scale vehicle, following the guide here: https://f1tenth.org/build.html
-
-.. image:: assets/f110cover.png
-  :width: 400
-  :align: center
+See :doc:`installation` to get started.
 
 .. toctree::
-  :caption: INSTALLATION
-  :maxdepth: 2
+   :caption: GETTING STARTED
+   :maxdepth: 2
 
-  installation
-
-
-.. toctree::
-  :caption: USAGE
-  :maxdepth: 2
-
-  basic_usage
-  customized_usage
+   installation
+   quickstart
 
 .. toctree::
-  :caption: REPRODUCIBILITY
-  :maxdepth: 2
+   :caption: USER GUIDE
+   :maxdepth: 2
 
-  reproduce
+   configuration
+   training
+   architecture
+   controllers
+   analysis
+   known_issues
 
 .. toctree::
-  :caption: API REFERENCE
-  :maxdepth: 2
+   :caption: API REFERENCE
+   :maxdepth: 2
 
-  api/base_classes
-  api/dynamic_models
-  api/laser_models
-  api/collision_models
-  api/env
-  api/obv
-  api/rendering
+   api/env
+   api/base_classes
+   api/dynamic_models
+   api/observation
+   api/action
+   api/track
