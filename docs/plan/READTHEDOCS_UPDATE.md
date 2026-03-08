@@ -69,7 +69,7 @@ Each page rewritten from README.md content (see page structure above). API .rst 
 `documentation` URL → `"https://gym-khana.readthedocs.io/en/latest/"` (adjust slug after RTD registration)
 
 ### 8. Delete old files
-Remove `basic_usage.rst`, `customized_usage.rst`, `reproduce.rst`, `api/obv.rst`, `api/laser_models.rst`, `api/collision_models.rst`, `api/rendering.rst`, `docs/html/` (stale built output)
+Remove `basic_usage.rst`, `customized_usage.rst`, `reproduce.rst`, `api/obv.rst`, `api/laser_models.rst`, `api/collision_models.rst`, `api/rendering.rst`, `docs/html/` (stale built output), `docs/xml/` (stale Doxygen XML output)
 
 ## Verification
 1. `cd docs && make html` — build locally, check for warnings
@@ -81,4 +81,4 @@ Remove `basic_usage.rst`, `customized_usage.rst`, `reproduce.rst`, `api/obv.rst`
 - **Create**: `.readthedocs.yaml`, `docs/quickstart.rst`, `docs/training.rst`, `docs/architecture.rst`, `docs/known_issues.rst`, `docs/configuration.rst`, `docs/api/observation.rst`, `docs/api/action.rst`, `docs/api/track.rst`
 - **Rewrite**: `docs/index.rst`, `docs/installation.rst`, `docs/api/env.rst`, `docs/api/base_classes.rst`, `docs/api/dynamic_models.rst`
 - **Update**: `docs/conf.py`, `docs/requirements.txt`, `docs/Doxyfile`, `pyproject.toml`
-- **Delete**: `docs/basic_usage.rst`, `docs/customized_usage.rst`, `docs/reproduce.rst`, `docs/api/obv.rst`, `docs/api/laser_models.rst`, `docs/api/collision_models.rst`, `docs/api/rendering.rst`, `docs/html/` directory
+- **Delete**: `docs/basic_usage.rst`, `docs/customized_usage.rst`, `docs/reproduce.rst`, `docs/api/obv.rst`, `docs/api/laser_models.rst`, `docs/api/collision_models.rst`, `docs/api/rendering.rst`, `docs/html/` directory, `docs/xml/` directory
