@@ -45,6 +45,7 @@ from train.train_utils import (
     make_subprocvecenv,
     print_header,
     save_config,
+    save_full_gym_config,
 )
 
 
@@ -56,6 +57,13 @@ class TrainingProfile:
     test_config: dict  # from get_*_test_config()
     display_name: str  # "PPO Race" or "PPO Recover" (for print headers)
     model_prefix: str  # "ppo_race" or "ppo_recover" (for save paths)
+
+
+GYM_YAML = "gym_config.yaml"
+GYM_OVERRIDES_YAML = "gym_overrides_config.yaml"
+CURRICULUM_YAML = "curriculum_config.yaml"
+RL_YAML = "rl_config.yaml"
+TRANSFER_YAML = "transfer_config.yaml"
 
 
 def train(profile: TrainingProfile):
@@ -75,7 +83,8 @@ def train(profile: TrainingProfile):
     )
 
     tensorboard_dir, models_dir, config_dir = make_output_dirs(run.id, output_root)
-    save_config(profile.train_config, config_dir, "gym_config.yaml")
+    save_config(profile.train_config, config_dir, GYM_OVERRIDES_YAML)
+    save_full_gym_config(profile.train_config, config_dir, GYM_YAML)
 
     env = make_subprocvecenv(SEED, profile.train_config, N_ENVS, profile.track_pool)
     eval_env = make_eval_env(EVAL_SEED, profile.train_config)
@@ -94,10 +103,10 @@ def train(profile: TrainingProfile):
     )
 
     rl_config = extract_rl_config(model, TOTAL_TIMESTEPS, N_ENVS)
-    save_config(rl_config, config_dir, "rl_config.yaml")
+    save_config(rl_config, config_dir, RL_YAML)
 
     curriculum_config = get_curriculum_config()
-    save_config(curriculum_config, config_dir, "curriculum_config.yaml")
+    save_config(curriculum_config, config_dir, CURRICULUM_YAML)
 
     callbacks = [
         WandbCallback(gradient_save_freq=0, verbose=2),
@@ -217,13 +226,14 @@ def continue_training(profile: TrainingProfile, model_path: str, additional_time
     print("Model loaded successfully")
     print("Continuing from checkpoint's timestep count")
 
-    save_config(profile.train_config, config_dir, "gym_config.yaml")
+    save_config(profile.train_config, config_dir, GYM_OVERRIDES_YAML)
+    save_full_gym_config(profile.train_config, config_dir, GYM_YAML)
 
     rl_config = extract_rl_config(model, additional_timesteps, N_ENVS)
-    save_config(rl_config, config_dir, "rl_config.yaml")
+    save_config(rl_config, config_dir, RL_YAML)
 
     curriculum_config = get_curriculum_config()
-    save_config(curriculum_config, config_dir, "curriculum_config.yaml")
+    save_config(curriculum_config, config_dir, CURRICULUM_YAML)
 
     callbacks = [
         WandbCallback(gradient_save_freq=0, verbose=2),
@@ -359,10 +369,11 @@ def transfer_train(
 
     print("\nModel loaded successfully")
 
-    save_config(profile.train_config, config_dir, "gym_config.yaml")
+    save_config(profile.train_config, config_dir, GYM_OVERRIDES_YAML)
+    save_full_gym_config(profile.train_config, config_dir, GYM_YAML)
 
     rl_config = extract_rl_config(model, additional_timesteps, N_ENVS)
-    save_config(rl_config, config_dir, "rl_config.yaml")
+    save_config(rl_config, config_dir, RL_YAML)
 
     transfer_config = {
         "original_model_path": model_path,
@@ -370,10 +381,10 @@ def transfer_train(
         "reset_log_std": reset_log_std,
         "reset_critic": reset_critic,
     }
-    save_config(transfer_config, config_dir, "transfer_config.yaml")
+    save_config(transfer_config, config_dir, TRANSFER_YAML)
 
     curriculum_config = get_curriculum_config()
-    save_config(curriculum_config, config_dir, "curriculum_config.yaml")
+    save_config(curriculum_config, config_dir, CURRICULUM_YAML)
 
     callbacks = [
         WandbCallback(gradient_save_freq=0, verbose=2),
