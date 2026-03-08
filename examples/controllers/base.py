@@ -24,3 +24,9 @@ class Controller(ABC):
         Return environment configuration required by this controller.
         """
         pass
+
+    def initialize(self, env) -> None:
+        """Called once after gym.make(), for deferred init needing env state."""
+
+    def on_reset(self, obs) -> None:
+        """Called after every env.reset(), for syncing internal state."""

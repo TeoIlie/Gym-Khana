@@ -2,6 +2,7 @@
 
 from .base import Controller
 from .learned_controller import LearnedController
+from .mpc.stmpc_controller import STMPCController
 from .steer_controller import (
     BETA_GAIN,
     FRENET_N_GAIN,
@@ -62,6 +63,9 @@ def create_controller(
         case "stanley":
             return StanleyController(target_speed=target_speed, map=map)
 
+        case "stmpc":
+            return STMPCController(ref_speed=target_speed, map=map)
+
         case _:
             raise ValueError(f"Unknown controller_type: {controller_type}")
 
@@ -74,6 +78,7 @@ __all__ = [
     "PDStabilityController",
     "StanleyController",
     "LearnedController",
+    "STMPCController",
     # Factory
     "create_controller",
     # Configuration utilities

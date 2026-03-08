@@ -51,6 +51,27 @@ docker run --gpus all -it -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix f
 
 Then the same examples can be ran.
 
+## Additional Dependencies
+
+MPC controllers require dependencies that cannot be installed via pip alone.
+
+**acados** (build from source) — see the official [installation docs](https://docs.acados.org/installation/index.html) and [Python interface docs](https://docs.acados.org/python_interface/index.html):
+
+```bash
+# acados (build from source) - ~/software is only an example install directory
+git clone https://github.com/acados/acados.git --recurse-submodules ~/software/acados
+cd ~/software/acados && mkdir build && cd build
+cmake -DACADOS_WITH_QPOASES=ON ..
+make install -j$(nproc)
+
+# Environment variables (add to shell profile)
+export ACADOS_SOURCE_DIR=~/software/acados
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/software/acados/lib
+
+# Python interface
+pip install -e ~/software/acados/interfaces/acados_template
+```
+
 ## Training
 The main racing training script is at `train/ppo_race.py`. The recovery training script is at `train/ppo_recover.py`. Both include functionality for:
 1. **Train** (`--m t`): Train a new model with parallel environments using `SubprocVecEnv` and `train/config` params
