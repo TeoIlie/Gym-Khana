@@ -34,9 +34,9 @@ html_theme_options = {
 }
 html_context = {
     "display_github": not is_i18n,  # Integrate GitHub
-    "github_user": "f1tenth",  # Username
-    "github_repo": "f1tenth_gym",  # Repo name
-    "github_version": "exp_py",  # Version
+    "github_user": "TeoIlie",  # Username
+    "github_repo": "Gym-Khana",  # Repo name
+    "github_version": "main",  # Version
     "conf_py_path": "/docs/",  # Path in the checkout to the docs root
 }
 
@@ -49,9 +49,9 @@ html_logo = "assets/f1tenth_gym.svg"
 
 # -- Project information -----------------------------------------------------
 
-project = "f1tenth_gym"
-copyright = "2021, Hongrui Zheng, Matthew O'Kelly, Aman Sinha"
-author = "Hongrui Zheng"
+project = "Gym-Khana"
+copyright = "2021-2026, Teodor Ilie, Hongrui Zheng, Matthew O'Kelly, Aman Sinha"
+author = "Teodor Ilie"
 
 # The full version, including alpha/beta/rc tags
 release = "latest"
@@ -63,10 +63,7 @@ version = "latest"
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["breathe", "sphinx_rtd_theme", "sphinx.ext.autosectionlabel"]
-
-# Breathe configuration
-breathe_projects = {"f1tenth_gym": "./xml"}
+extensions = ["sphinx_rtd_theme", "sphinx.ext.autosectionlabel"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -74,7 +71,7 @@ templates_path = ["_templates"]
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "plan"]
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

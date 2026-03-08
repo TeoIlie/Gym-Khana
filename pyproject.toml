@@ -64,6 +64,10 @@ pytest = "^7.4.4"
 ipykernel = "^6.29.0"
 matplotlib = "^3.8.2"
 
+[tool.poetry.group.docs.dependencies]
+sphinx = ">=7.0"
+sphinx_rtd_theme = ">=2.0"
+
 [tool.ruff]
 line-length = 120
 target-version = "py310"

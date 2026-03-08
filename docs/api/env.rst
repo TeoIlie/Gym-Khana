@@ -3,5 +3,4 @@ Gym Environment
 
 This is the top level file that conforms to the OpenAI gym convention.
 
-.. doxygenfile:: f110_env.py
-    :project: f1tenth_gym
+See ``gymkhana/envs/gymkhana_env.py`` for the full source.
