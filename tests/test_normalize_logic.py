@@ -14,9 +14,9 @@ import gymnasium as gym
 import numpy as np
 import pytest
 
-from f1tenth_gym.envs.action import AcclAction, SpeedAction, SteeringAngleAction, SteeringSpeedAction
-from f1tenth_gym.envs.f110_env import F110Env
-from f1tenth_gym.envs.utils import (
+from gymkhana.envs.action import AcclAction, SpeedAction, SteeringAngleAction, SteeringSpeedAction
+from gymkhana.envs.gymkhana_env import GKEnv
+from gymkhana.envs.utils import (
     GLOBAL_MAX_CURVATURE,
     GLOBAL_MAX_WIDTH,
     GLOBAL_MIN_WIDTH,
@@ -32,13 +32,13 @@ class TestNormalizationBounds:
         """Verify calculate_norm_bounds() returns bounds for all drift features."""
         # Create environment with drift observation type
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
                 "model": "std",
                 "observation_config": {"type": "drift"},
-                "params": F110Env.f1tenth_std_vehicle_params(),
+                "params": GKEnv.f1tenth_std_vehicle_params(),
                 "normalize_obs": True,
             },
         )
@@ -79,13 +79,13 @@ class TestNormalizationBounds:
     def test_prev_steering_cmd_bounds_with_normalized_actions(self):
         """Verify prev_steering_cmd bounds are (-1, 1) when actions are normalized."""
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
                 "model": "std",
                 "observation_config": {"type": "drift"},
-                "params": F110Env.f1tenth_std_vehicle_params(),
+                "params": GKEnv.f1tenth_std_vehicle_params(),
                 "normalize_act": True,  # Actions normalized
                 "normalize_obs": True,
             },
@@ -104,20 +104,20 @@ class TestNormalizationBounds:
     def test_prev_steering_cmd_bounds_with_unnormalized_actions(self):
         """Verify prev_steering_cmd bounds are (s_min, s_max) when actions are unnormalized."""
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
                 "model": "std",
                 "observation_config": {"type": "drift"},
-                "params": F110Env.f1tenth_std_vehicle_params(),
+                "params": GKEnv.f1tenth_std_vehicle_params(),
                 "normalize_act": False,  # Actions NOT normalized
                 "normalize_obs": True,
             },
         )
 
         bounds = calculate_norm_bounds(env.unwrapped, ["prev_steering_cmd"])
-        params = F110Env.f1tenth_std_vehicle_params()
+        params = GKEnv.f1tenth_std_vehicle_params()
         s_min = params["s_min"]
         s_max = params["s_max"]
 
@@ -132,13 +132,13 @@ class TestNormalizationBounds:
     def test_beta_normalization_bounds(self):
         """Verify beta (slip angle) normalization with conservative ±π/3 bounds."""
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
                 "model": "std",
                 "observation_config": {"type": "drift"},
-                "params": F110Env.f1tenth_std_vehicle_params(),
+                "params": GKEnv.f1tenth_std_vehicle_params(),
                 "normalize_obs": True,
             },
         )
@@ -353,7 +353,7 @@ class TestNormalizeFeature:
     def test_prev_steering_cmd_normalization_with_physical_bounds(self):
         """Test normalize_feature with prev_steering_cmd when bounds are (s_min, s_max)."""
         # This case occurs when normalize_act=False
-        params = F110Env.f1tenth_std_vehicle_params()
+        params = GKEnv.f1tenth_std_vehicle_params()
         s_min = params["s_min"]
         s_max = params["s_max"]
         bounds = {"prev_steering_cmd": (s_min, s_max)}
@@ -379,13 +379,13 @@ class TestNormalizedObservation:
         """Validate complete observation pipeline with normalization enabled."""
         # Create environment with normalization enabled
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
                 "model": "std",
                 "observation_config": {"type": "drift"},
-                "params": F110Env.f1tenth_std_vehicle_params(),
+                "params": GKEnv.f1tenth_std_vehicle_params(),
                 "normalize_obs": True,
             },
         )
@@ -419,13 +419,13 @@ class TestNormalizedObservation:
         """Verify unnormalized observations can exceed [-1, 1] range."""
         # Create environment with normalization disabled
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
                 "model": "std",
                 "observation_config": {"type": "drift"},
-                "params": F110Env.f1tenth_std_vehicle_params(),
+                "params": GKEnv.f1tenth_std_vehicle_params(),
                 "normalize_obs": False,
             },
         )
@@ -459,37 +459,37 @@ class TestNormalizedObservation:
         """
         # Create environments with different tracks
         env_drift = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Drift",
                 "num_agents": 1,
                 "model": "std",
                 "observation_config": {"type": "drift"},
-                "params": F110Env.f1tenth_std_vehicle_params(),
+                "params": GKEnv.f1tenth_std_vehicle_params(),
                 "normalize_obs": True,
             },
         )
 
         env_spielberg = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
                 "model": "std",
                 "observation_config": {"type": "drift"},
-                "params": F110Env.f1tenth_std_vehicle_params(),
+                "params": GKEnv.f1tenth_std_vehicle_params(),
                 "normalize_obs": True,
             },
         )
 
         env_austin = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Austin",
                 "num_agents": 1,
                 "model": "std",
                 "observation_config": {"type": "drift"},
-                "params": F110Env.f1tenth_std_vehicle_params(),
+                "params": GKEnv.f1tenth_std_vehicle_params(),
                 "normalize_obs": True,
             },
         )
@@ -552,13 +552,13 @@ class TestNormalizedObservation:
 
         # Create environment with any track
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Drift",
                 "num_agents": 1,
                 "model": "std",
                 "observation_config": {"type": "drift"},
-                "params": F110Env.f1tenth_std_vehicle_params(),
+                "params": GKEnv.f1tenth_std_vehicle_params(),
                 "normalize_obs": True,
             },
         )
@@ -590,25 +590,25 @@ class TestNormalizedObservation:
         """Verify normalization preserves relative relationships between features."""
         # Create two identical environments with same seed
         env_normalized = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
                 "model": "std",
                 "observation_config": {"type": "drift"},
-                "params": F110Env.f1tenth_std_vehicle_params(),
+                "params": GKEnv.f1tenth_std_vehicle_params(),
                 "normalize_obs": True,
             },
         )
 
         env_unnormalized = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
                 "model": "std",
                 "observation_config": {"type": "drift"},
-                "params": F110Env.f1tenth_std_vehicle_params(),
+                "params": GKEnv.f1tenth_std_vehicle_params(),
                 "normalize_obs": False,
             },
         )
@@ -648,7 +648,7 @@ class TestNormalizedObservation:
 class TestNormalizedAction:
     def test_accl_action_normalization(self):
         """Test AcclAction with both normalized and unnormalized modes."""
-        params = F110Env.f1tenth_std_vehicle_params()
+        params = GKEnv.f1tenth_std_vehicle_params()
         a_max = params["a_max"]
 
         # Create dummy state (AcclAction doesn't use state, but we pass it for consistency)
@@ -693,7 +693,7 @@ class TestNormalizedAction:
 
     def test_speed_action_normalization(self):
         """Test SpeedAction with both normalized and unnormalized modes."""
-        params = F110Env.f1tenth_std_vehicle_params()
+        params = GKEnv.f1tenth_std_vehicle_params()
 
         # Override v_min and v_max to ensure v_min != v_max for thorough testing
         params["v_min"] = -1.0
@@ -750,7 +750,7 @@ class TestNormalizedAction:
 
     def test_steering_angle_action_normalization(self):
         """Test SteeringAngleAction with both normalized and unnormalized modes."""
-        params = F110Env.f1tenth_std_vehicle_params()
+        params = GKEnv.f1tenth_std_vehicle_params()
         s_max = params["s_max"]
         s_min = params["s_min"]
 
@@ -794,7 +794,7 @@ class TestNormalizedAction:
 
     def test_steering_speed_action_normalization(self):
         """Test SteeringSpeedAction with both normalized and unnormalized modes."""
-        params = F110Env.f1tenth_std_vehicle_params()
+        params = GKEnv.f1tenth_std_vehicle_params()
         sv_max = params["sv_max"]
         sv_min = params["sv_min"]
 
@@ -842,9 +842,9 @@ class TestActionIntegration:
 
     def test_car_action_space_composition(self):
         """Test CarAction properly composes action space from sub-actions."""
-        from f1tenth_gym.envs.action import CarAction
+        from gymkhana.envs.action import CarAction
 
-        params = F110Env.f1tenth_std_vehicle_params()
+        params = GKEnv.f1tenth_std_vehicle_params()
 
         # Test with normalize=True
         car_action_normalized = CarAction(["accl", "steering_angle"], params=params, normalize=True)
@@ -890,11 +890,11 @@ class TestActionIntegration:
     def test_env_step_with_normalized_actions(self):
         """End-to-end test: environment accepts normalized actions and steps correctly."""
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg_blank",
                 "num_agents": 1,
-                "params": F110Env.f1tenth_std_vehicle_params(),
+                "params": GKEnv.f1tenth_std_vehicle_params(),
                 "normalize_act": True,
             },
         )
@@ -935,11 +935,11 @@ class TestActionEdgeCases:
     def test_action_space_sampling(self):
         """Verify Gymnasium action space sampling works correctly."""
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
-                "params": F110Env.f1tenth_std_vehicle_params(),
+                "params": GKEnv.f1tenth_std_vehicle_params(),
                 "normalize_act": True,
             },
         )
@@ -973,11 +973,11 @@ class TestActionEdgeCases:
     def test_boundary_actions(self):
         """Test extreme boundary actions don't crash."""
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
-                "params": F110Env.f1tenth_std_vehicle_params(),
+                "params": GKEnv.f1tenth_std_vehicle_params(),
                 "normalize_act": True,
             },
         )
@@ -1029,13 +1029,13 @@ class TestPrevSteeringCmdNormalization:
     def test_end_to_end_with_normalized_actions(self):
         """Test prev_steering_cmd normalization when actions are normalized."""
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
                 "model": "std",
                 "observation_config": {"type": "drift"},
-                "params": F110Env.f1tenth_std_vehicle_params(),
+                "params": GKEnv.f1tenth_std_vehicle_params(),
                 "normalize_act": True,
                 "normalize_obs": True,
             },
@@ -1079,12 +1079,12 @@ class TestPrevSteeringCmdNormalization:
 
     def test_end_to_end_with_unnormalized_actions(self):
         """Test prev_steering_cmd normalization when actions are NOT normalized."""
-        params = F110Env.f1tenth_std_vehicle_params()
+        params = GKEnv.f1tenth_std_vehicle_params()
         s_min = params["s_min"]
         s_max = params["s_max"]
 
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,

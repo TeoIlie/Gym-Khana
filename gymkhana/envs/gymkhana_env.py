@@ -44,7 +44,7 @@ from .track import Track
 from .utils import deep_update
 
 
-class F110Env(gym.Env):
+class GKEnv(gym.Env):
     """
     Gymnasium environment for F1TENTH. For API specs, see https://gymnasium.farama.org/api/env/#
 

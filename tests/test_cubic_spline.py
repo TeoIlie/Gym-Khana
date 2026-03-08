@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from f1tenth_gym.envs.track import cubic_spline
+from gymkhana.envs.track import cubic_spline
 
 
 class TestCubicSpline(unittest.TestCase):

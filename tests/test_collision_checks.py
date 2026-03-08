@@ -6,7 +6,7 @@ from unittest.mock import patch
 import gymnasium as gym
 import numpy as np
 
-from f1tenth_gym.envs.collision_models import collision, get_vertices
+from gymkhana.envs.collision_models import collision, get_vertices
 
 # Copyright (c) 2020 Joseph Auckley, Matthew O'Kelly, Aman Sinha, Hongrui Zheng
 
@@ -96,7 +96,7 @@ class TestFrenetBoundaryChecking(unittest.TestCase):
     def setUp(self):
         """Create test environment with Frenet boundary checking enabled."""
         self.env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
@@ -229,7 +229,7 @@ class TestFrenetBoundaryChecking(unittest.TestCase):
         """Test that Frenet mode has exclusive penalty vs predictive's additive penalty."""
         # Create two environments: one with Frenet, one with predictive
         env_frenet = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
@@ -241,7 +241,7 @@ class TestFrenetBoundaryChecking(unittest.TestCase):
         )
 
         env_predictive = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
@@ -305,14 +305,14 @@ class TestWallDeflectionBehavior(unittest.TestCase):
     Tests for wall_deflection configuration parameter.
     """
 
-    @patch("f1tenth_gym.envs.base_classes.check_ttc_jit")
+    @patch("gymkhana.envs.base_classes.check_ttc_jit")
     def test_wall_deflection_false_no_velocity_change(self, mock_check_ttc_jit):
         """Test that wall_deflection=False does not change velocity on collision."""
         # Mock check_ttc_jit to return True (collision detected)
         mock_check_ttc_jit.return_value = True
 
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
@@ -342,14 +342,14 @@ class TestWallDeflectionBehavior(unittest.TestCase):
 
         env.close()
 
-    @patch("f1tenth_gym.envs.base_classes.check_ttc_jit")
+    @patch("gymkhana.envs.base_classes.check_ttc_jit")
     def test_wall_deflection_true_zeros_velocity(self, mock_check_ttc_jit):
         """Test that wall_deflection=True zeros velocity on collision."""
         # Mock check_ttc_jit to return True (collision detected)
         mock_check_ttc_jit.return_value = True
 
         env = gym.make(
-            "f1tenth_gym:f1tenth-v0",
+            "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,

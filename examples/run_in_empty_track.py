@@ -2,7 +2,7 @@ import gymnasium as gym
 import numpy as np
 from waypoint_follow import PurePursuitPlanner
 
-from f1tenth_gym.envs.track import Track
+from gymkhana.envs.track import Track
 
 
 def main():
@@ -20,7 +20,7 @@ def main():
 
     # env and planner
     env = gym.make(
-        "f1tenth_gym:f1tenth-v0",
+        "gymkhana:gymkhana-v0",
         config={
             "map": track,
             "num_agents": 1,

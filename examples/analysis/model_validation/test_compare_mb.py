@@ -9,9 +9,9 @@ from scipy.integrate import odeint
 from commonroad.vehiclemodels.init_mb import init_mb as init_mb_cr
 from commonroad.vehiclemodels.parameters_vehicle1 import parameters_vehicle1
 from commonroad.vehiclemodels.vehicle_dynamics_mb import vehicle_dynamics_mb as cr_vehicle_dynamics_mb
-from f1tenth_gym.envs.dynamic_models.multi_body import init_mb
-from f1tenth_gym.envs.dynamic_models.multi_body.multi_body import vehicle_dynamics_mb
-from f1tenth_gym.envs.f110_env import F110Env
+from gymkhana.envs.dynamic_models.multi_body import init_mb
+from gymkhana.envs.dynamic_models.multi_body.multi_body import vehicle_dynamics_mb
+from gymkhana.envs.gymkhana_env import GKEnv
 
 # ==================
 # SHARED
@@ -52,7 +52,7 @@ x0_MB_cr = init_mb_cr(initialState, p_cr)
 # F1TENTH
 # ==================
 # f110 params
-p = F110Env.fullscale_vehicle_params()
+p = GKEnv.fullscale_vehicle_params()
 
 
 def func_MB(x, t, u, p):

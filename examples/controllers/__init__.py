@@ -45,7 +45,7 @@ def create_controller(
     Example:
         >>> controller = create_controller("steer", target_speed=4.0, map="IMS")
         >>> config = controller.get_env_config()
-        >>> env = gym.make("f1tenth_gym:f1tenth-v0", config=config)
+        >>> env = gym.make("gymkhana:gymkhana-v0", config=config)
         >>> action = controller.get_action(obs)
     """
     match controller_type:

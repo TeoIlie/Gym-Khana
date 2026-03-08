@@ -2,9 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## About F1TENTH
+## About Gym-Khana
 
-This is the F1TENTH Gym environment - a high-fidelity simulation platform for 1/10th scale autonomous racing cars. F1TENTH is an international autonomous racing competition and research platform that provides a standardized testbed for autonomous vehicle algorithms at reduced scale and cost.
+Gym-Khana is a high-fidelity simulation platform for 1/10th scale autonomous racing cars, built as a Gymnasium RL environment. The name is a play on words: "Gym" for RL Gymnasium and "Khana" from Gymkhana (drift/precision driving motorsport). It is a fork of the original f1tenth_gym project by UPenn, extended with drift dynamics, recovery training, MPC controllers, and RL training infrastructure.
 
 ### Autonomous Racing Context
 The simulator models realistic vehicle dynamics, sensor data (LiDAR), and racing scenarios to enable development and testing of:
@@ -102,40 +102,40 @@ Configuration (`pyproject.toml` under `[tool.ruff]`):
 
 ### Docker Support
 ```bash
-docker build -t f1tenth_gym_container -f Dockerfile .
-docker run --gpus all -it -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix f1tenth_gym_container
+docker build -t gymkhana -f Dockerfile .
+docker run --gpus all -it -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix gymkhana
 ```
 
 ## Architecture Overview
 
 ### Core Autonomous Vehicle Components
 
-**F110Env** (`f1tenth_gym/envs/f110_env.py`): Main gymnasium environment implementing F1/10th vehicle simulation with realistic dynamics. This is the entry point for creating environments via `gym.make('f1tenth_gym:f1tenth-v0', config={...})`.
+**GKEnv** (`gymkhana/envs/gymkhana_env.py`): Main gymnasium environment implementing F1/10th vehicle simulation with realistic dynamics. This is the entry point for creating environments via `gym.make('gymkhana:gymkhana-v0', config={...})`.
 
-**Dynamic Models** (`f1tenth_gym/envs/dynamic_models/`): Four vehicle dynamics models:
+**Dynamic Models** (`gymkhana/envs/dynamic_models/`): Four vehicle dynamics models:
 - **KS (Kinematic Single Track)**: `kinematic.py` - Simplest model, pure kinematics without tire forces
 - **ST (Single Track)**: `single_track.py` - Single-track dynamics model without explicit tire model
 - **MB (Multi-Body)**: `multi_body/` - Most detailed model with full tire modeling, may be overkill for RL
 - **STD (Single Track Drift)**: `single_track_drift/` - Single-track dynamics + Pacejka PAC2002 tire model for drift simulation (recommended for RL drift training)
 
-**Observation System** (`f1tenth_gym/envs/observation.py`): Factory pattern for different observation types including "rl" and "drift" observations. Supports lookahead curvature sampling and normalization.
+**Observation System** (`gymkhana/envs/observation.py`): Factory pattern for different observation types including "rl" and "drift" observations. Supports lookahead curvature sampling and normalization.
 
-**Action System** (`f1tenth_gym/envs/action.py`): Handles different control input types like `["speed", "steering_angle"]` or `["accl", "steering_angle"]`.
+**Action System** (`gymkhana/envs/action.py`): Handles different control input types like `["speed", "steering_angle"]` or `["accl", "steering_angle"]`.
 
-**Laser Models** (`f1tenth_gym/envs/laser_models.py`): LiDAR simulation with ray-casting for autonomous perception. Includes TTC (Time-To-Collision) calculations.
+**Laser Models** (`gymkhana/envs/laser_models.py`): LiDAR simulation with ray-casting for autonomous perception. Includes TTC (Time-To-Collision) calculations.
 
-**Collision Models** (`f1tenth_gym/envs/collision_models.py`): Safety-critical collision detection systems with support for predictive TTC-based collision checking or Frenet-based collision checking.
+**Collision Models** (`gymkhana/envs/collision_models.py`): Safety-critical collision detection systems with support for predictive TTC-based collision checking or Frenet-based collision checking.
 
-**Base Classes** (`f1tenth_gym/envs/base_classes.py`): Core simulation infrastructure:
+**Base Classes** (`gymkhana/envs/base_classes.py`): Core simulation infrastructure:
 - `RaceCar`: Handles physics and laser scan of single vehicle
 - `Simulator`: Multi-agent simulation orchestrator
 - Step method at line 503 defines core simulation loop
 
-**Track System** (`f1tenth_gym/envs/track/`): Racing circuit definitions with centerline and raceline support. Includes cubic spline interpolation for smooth trajectories.
+**Track System** (`gymkhana/envs/track/`): Racing circuit definitions with centerline and raceline support. Includes cubic spline interpolation for smooth trajectories.
 
-**Reset System** (`f1tenth_gym/envs/reset/`): Different reset strategies for RL training including random static resets and map-based resets.
+**Reset System** (`gymkhana/envs/reset/`): Different reset strategies for RL training including random static resets and map-based resets.
 
-**Rendering** (`f1tenth_gym/envs/rendering/`): Visualization support using pygame and PyQt with debug visualization options.
+**Rendering** (`gymkhana/envs/rendering/`): Visualization support using pygame and PyQt with debug visualization options.
 
 ### RL Training Infrastructure
 
@@ -155,7 +155,7 @@ docker run --gpus all -it -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix f
 - `train_utils.py`: Shared utilities for output directory management, environment creation, and callbacks
 
 ### Package Structure
-- **f1tenth_gym/**: Main package following gymnasium RL environment interface
+- **gymkhana/**: Main package following gymnasium RL environment interface
 - **examples/**: Reference implementations of autonomous racing algorithms
 - **train/**: RL training scripts and configuration
 - **tests/**: Comprehensive test suite including model validation
@@ -174,10 +174,10 @@ docker run --gpus all -it -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix f
 
 ### Vehicle Models and Control
 ```python
-env = gym.make('f1tenth_gym:f1tenth-v0', config={
+env = gym.make('gymkhana:gymkhana-v0', config={
     'model': 'std',  # Use 'std' for drifting with PAC2002 tire model
     'control_input': ['accl', 'steering_angle'],  # Best for RL drift training
-    'params': F110Env.f1tenth_std_vehicle_params(),  # Drift parameters for 1/10 scale
+    'params': GKEnv.f1tenth_std_vehicle_params(),  # Drift parameters for 1/10 scale
 })
 ```
 
@@ -221,9 +221,17 @@ Debug with breakpoints by looping through environment steps (see `tests/drift_de
 
 ## Tire Parameters
 
-Parameters for the 1/10 scale F1TENTH car with STD model are defined in `f1tenth_gym/envs/f110_env.py::f1tenth_std_vehicle_params()`. These mix existing F1TENTH params with tire parameters adjusted from fullscale car.
+Parameters for the 1/10 scale F1TENTH car with STD model are defined in `gymkhana/envs/gymkhana_env.py::f1tenth_std_vehicle_params()`. These mix existing F1TENTH params with tire parameters adjusted from fullscale car.
 
 Test script `tests/model_validation/test_f1tenth_std_params.py` creates comparison figures and parameter YAML dumps in `figures/tire_params/` to maintain parameter history.
+
+## Map Management
+
+Maps are managed through a two-tier system:
+- **Local `maps/` directory**: git submodule from https://github.com/TeoIlie/F1TENTH_Racetracks — used for development
+- **User cache `~/.gymkhana/maps/`**: auto-downloaded from GitHub releases for pip-installed users
+
+The download URL is configured in `gymkhana/envs/track/track_utils.py::MAPS_URL`.
 
 ## Wandb Integration
 

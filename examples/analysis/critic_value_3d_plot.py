@@ -19,8 +19,8 @@ import numpy as np
 import torch
 from stable_baselines3 import PPO
 
-from f1tenth_gym.envs.observation import sample_lookahead_curvatures_fast, sample_lookahead_widths_fast
-from f1tenth_gym.envs.utils import normalize_feature
+from gymkhana.envs.observation import sample_lookahead_curvatures_fast, sample_lookahead_widths_fast
+from gymkhana.envs.utils import normalize_feature
 from train.config.env_config import get_drift_test_config, get_env_id
 
 # Constants

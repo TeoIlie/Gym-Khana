@@ -7,9 +7,9 @@ testpaths =[
 ]
 
 [tool.poetry]
-name = "f1tenth_gym"
+name = "gymkhana"
 version = "1.0.0dev"
-description = "Gym environment for F1TENTH"
+description = "Gym environment for racing, drift, and safety"
 license = "MIT"
 authors = [
     "Hongrui Zheng",
@@ -18,17 +18,18 @@ authors = [
     "Ahmad Amine",
     "Joseph Auckley",
     "Matthew O'Kelly",
-    "Aman Sinha"
+    "Aman Sinha",
+    "Teodor Ilie"
 ]
 maintainers = [
-    "Hongrui Zheng",
+    "Teodor Ilie",
 ]
 readme = "README.md"
-homepage = "https://f1tenth.org"
-repository = "https://github.com/f1tenth/f1tenth_gym"
+homepage = "https://teoilie.com/"
+repository = "https://github.com/TeoIlie/Gym-Khana"
 documentation = "https://f1tenth-gym.readthedocs.io/en/latest/"
 packages = [
-    {include = "f1tenth_gym"},
+    {include = "gymkhana"},
 ]
 
 [tool.poetry.dependencies]

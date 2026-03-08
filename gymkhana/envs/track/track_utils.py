@@ -14,7 +14,7 @@ def find_track_dir(track_name: str) -> pathlib.Path:
     Find the directory of the track map corresponding to the given track name.
 
     Searches for the track in the local maps directory (relative to the package root).
-    If not found, falls back to a user-level cache directory (~/.f1tenth_gym/maps/)
+    If not found, falls back to a user-level cache directory (~/.gymkhana/maps/)
     and downloads the track from GitHub releases if necessary.
 
     Parameters
@@ -38,7 +38,7 @@ def find_track_dir(track_name: str) -> pathlib.Path:
         return local_map_dir / track_name
 
     # Fall back to user cache directory
-    cache_map_dir = pathlib.Path.home() / ".f1tenth_gym" / "maps"
+    cache_map_dir = pathlib.Path.home() / ".gymkhana" / "maps"
     cache_map_dir.mkdir(parents=True, exist_ok=True)
 
     if not (cache_map_dir / track_name).exists():

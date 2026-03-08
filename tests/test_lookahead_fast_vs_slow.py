@@ -9,8 +9,8 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 
-from f1tenth_gym.envs.observation import sample_lookahead_curvatures, sample_lookahead_curvatures_fast
-from f1tenth_gym.envs.track.cubic_spline import CubicSpline2D
+from gymkhana.envs.observation import sample_lookahead_curvatures, sample_lookahead_curvatures_fast
+from gymkhana.envs.track.cubic_spline import CubicSpline2D
 
 
 class MockRaceline:

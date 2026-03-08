@@ -1,7 +1,7 @@
 import numpy as np
 from numba import njit
 
-from f1tenth_gym.envs.dynamic_models.utils import accl_constraints, steering_constraint
+from gymkhana.envs.dynamic_models.utils import accl_constraints, steering_constraint
 
 from ..kinematic import vehicle_dynamics_ks_cog
 from ..tire_model import (
