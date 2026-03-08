@@ -49,11 +49,11 @@ docker build -t f1tenth_gym_container -f Dockerfile .
 docker run --gpus all -it -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix f1tenth_gym_container
 ````
 
-Then the same examples can be ran.
+Then the same examples can be run.
 
 ## Additional Dependencies
 
-MPC controllers require dependencies that cannot be installed via pip alone.
+MPC controllers require dependencies that cannot be installed via pip alone. For the reference MPC implementation see the ForzaETH [race_stack](https://github.com/ForzaETH/race_stack)
 
 **acados** (build from source) — see the official [installation docs](https://docs.acados.org/installation/index.html) and [Python interface docs](https://docs.acados.org/python_interface/index.html):
 
@@ -68,6 +68,11 @@ make install -j$(nproc)
 export ACADOS_SOURCE_DIR=~/software/acados
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/software/acados/lib
 
+```
+
+Next, install the `acados_template` inside your virtual environment, with editable mode. For example, open a shell inside the virtual env with `poetry shell` and then run the following command:
+
+```bash
 # Python interface
 pip install -e ~/software/acados/interfaces/acados_template
 ```
@@ -176,7 +181,7 @@ Note that CL is only supported for recovery training, with the environment `trai
    # Front & rear angular wheel velocities are automatically initialized to form the full 9-d state for STD model type
    ```
 
-## Wanbd
+## Wandb
 
 The wandb models are available here: <https://wandb.ai/teo-altum-quinque-queen-s-university/projects>
 
