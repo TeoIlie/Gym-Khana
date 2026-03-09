@@ -21,10 +21,6 @@ Scripts in ``examples/analysis/`` provide tools for evaluating trained policies 
 ``beta_r_traj_IMS_plot.py``
    Tests controller stability by initializing the vehicle at four extreme beta-r states (one per quadrant) on the IMS straight and observing convergence trajectories toward equilibrium at the origin.
 
-.. image:: assets/analysis/beta_r_convergence.png
-   :width: 400
-   :align: center
-
 ``frenet_u_n_phase_plane.py``
    Runs multiple episodes and collects Frenet coordinate trajectories (heading error and lateral deviation), then visualizes phase plane vector fields showing the learned system dynamics with velocity-colored arrows.
 
@@ -37,18 +33,10 @@ Scripts in ``examples/analysis/`` provide tools for evaluating trained policies 
 ``run_all_beta_r.sh``
    Batch script that runs ``beta_r_avg_plot.py`` for multiple learned controller configurations (drift and recover models) to systematically compare their recovery performance.
 
-.. image:: assets/analysis/recover_heatmap.png
-   :width: 400
-   :align: center
 
 **Value function visualization**
 
 ``critic_value_3d_plot.py``
    Visualizes the PPO critic (value function) as a 3D surface over the track map. Creates a grid of positions and queries the trained model's value network to show expected returns. Usage: ``python3 critic_value_3d_plot.py --model-path /path/to/model.zip``
-
-
-.. image:: assets/analysis/critic.png
-   :width: 600
-   :align: center
 
 All analysis outputs are saved to ``figures/analysis/``.

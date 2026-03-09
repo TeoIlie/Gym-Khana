@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 """
-Author: Hongrui Zheng
+Authors: Hongrui Zheng, Teodor Ilie
 """
 
 # gym imports

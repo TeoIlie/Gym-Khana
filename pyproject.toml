@@ -12,14 +12,14 @@ version = "1.0.0dev"
 description = "Gym environment for racing, drift, and safety"
 license = "MIT"
 authors = [
+    "Teodor Ilie",
     "Hongrui Zheng",
     "Renukanandan Tumu",
     "Luigi Berducci",
     "Ahmad Amine",
     "Joseph Auckley",
     "Matthew O'Kelly",
-    "Aman Sinha",
-    "Teodor Ilie"
+    "Aman Sinha"
 ]
 maintainers = [
     "Teodor Ilie",

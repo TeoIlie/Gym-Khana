@@ -57,3 +57,10 @@ When ``normalize_act`` is ``True``, the action space is normalized to ``[-1, 1]`
 - **steering_speed**: ``[-1, 1]`` maps to ``[sv_min, sv_max]``
 
 Normalization is supported for all action types and is generally recommended for RL training.
+
+API reference
+-------------
+
+.. automodule:: gymkhana.envs.action
+   :members:
+   :undoc-members:

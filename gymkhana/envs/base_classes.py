@@ -24,7 +24,7 @@
 """
 Prototype of base classes
 Replacement of the old RaceCar, Simulator classes in C++
-Author: Hongrui Zheng
+Author: Hongrui Zheng, Teodor Ilie
 """
 
 from __future__ import annotations

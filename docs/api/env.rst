@@ -48,3 +48,10 @@ Step and reset
 
 ``env.update_params(params_dict, index=None)``
    Update vehicle parameters. If ``index`` is specified, updates only that vehicle; otherwise updates all vehicles.
+
+API reference
+-------------
+
+.. autoclass:: gymkhana.envs.gymkhana_env.GKEnv
+   :members:
+   :undoc-members:

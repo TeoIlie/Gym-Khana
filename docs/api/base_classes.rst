@@ -26,3 +26,10 @@ Orchestrates the multi-agent simulation, including:
 - Stepping all agents simultaneously for deterministic simulation
 
 The ``step`` method (line 503) is the core simulation loop. All agents' physics are stepped simultaneously, and all randomness is seeded for reproducibility. The explicit stepping enables faster-than-real-time execution.
+
+API reference
+-------------
+
+.. automodule:: gymkhana.envs.base_classes
+   :members:
+   :undoc-members:

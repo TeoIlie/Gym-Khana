@@ -4,11 +4,9 @@
 
 # Gym-Khana
 
-This repository contains a custom gym environment for training Deep Reinforcement Learning policies to race and drift on 1/10 scale or full-size Ackermann vehicles. **SB3** and **wandb** integration included. Based on the f1tenth_gym simulator built by UPenn.
+This repository contains a custom gym environment for training Deep Reinforcement Learning policies to race and drift on 1/10 scale or full-size Ackermann vehicles. **SB3** and **wandb** integration included. Based on the f1tenth_gym simulator built by UPenn. For detailed information see the [documentation](https://gym-khana.readthedocs.io/en/latest/)
 
 ![Demo](figures/F1TENTH_PPO_Drift.gif)
-
-You can find the original sim [documentation](https://f1tenth-gym.readthedocs.io/en/latest/) here.
 
 ## Quickstart
 
@@ -209,6 +207,17 @@ Run formatting and auto-fixes manually with `ruff check --fix . && ruff format .
 * Parameters for the 1/10 scale f1tenth car to be used with the `STD` model are defined in `gymkhana/envs/gymkhana_env.py` as `f1tenth_std_vehicle_params`. They are created as a mix of existing f1tenth params and tire parameters adjusted from the fullscale car.
 * In future I may measure these parameters from real data for more accurate fitting
 * To maintain a history of parameter choices, and how they compare with the correct behaviour on the fullscale car, tests script `tests/model_validation/test_f1tenth_std_params.py` creates comparison figures along with parameter YAML file dump ordered by date created inside folder `figures/tire_params`
+
+## Documentation
+
+* Documentation is supported through ReadTheDocs Sphinx template at https://gym-khana.readthedocs.io
+* To update documentation modify `/docs` folder files,and test locally, a rebuild will be triggered on push to default branch
+
+```bash
+cd docs
+make clean && make html && firefox _build/html/index.html
+```
+
 
 ## Known issues
 

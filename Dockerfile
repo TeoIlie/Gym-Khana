@@ -1,5 +1,6 @@
 # MIT License
 
+# Copyright (c) 2026 Teodor Ilie
 # Copyright (c) 2020 Joseph Auckley, Matthew O'Kelly, Aman Sinha, Hongrui Zheng
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy

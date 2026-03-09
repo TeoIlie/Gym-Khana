@@ -62,3 +62,22 @@ The dynamic model's physical parameters include:
 - **width** / **length**: vehicle dimensions [m]
 
 Parameters can be passed via the ``params`` key in the config dict, or updated at runtime with ``env.update_params()``.
+
+API reference
+-------------
+
+.. automodule:: gymkhana.envs.dynamic_models.kinematic
+   :members:
+   :undoc-members:
+
+.. automodule:: gymkhana.envs.dynamic_models.single_track
+   :members:
+   :undoc-members:
+
+.. automodule:: gymkhana.envs.dynamic_models.multi_body.multi_body
+   :members:
+   :undoc-members:
+
+.. automodule:: gymkhana.envs.dynamic_models.single_track_drift.single_track_drift
+   :members:
+   :undoc-members:

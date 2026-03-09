@@ -3,12 +3,14 @@ Gym-Khana Documentation
 
 Gym-Khana is a fast, deterministic Gymnasium environment for training autonomous 1/10th scale racing agents to race, drift, and recover. It supports RL training with SB3 and wandb, as well as classical controllers like MPC and Pure Pursuit.
 
-Built on top of `f1tenth_gym <https://github.com/f1tenth/f1tenth_gym>`_ from UPenn (`original docs <https://f1tenth-gym.readthedocs.io>`_).
+GitHub repository: https://github.com/TeoIlie/Gym-Khana
 
 .. image:: assets/demo_drift.gif
    :width: 400
    :align: center
    :alt: PPO agent drifting on the Spielberg circuit
+
+Built on top of `f1tenth_gym <https://github.com/f1tenth/f1tenth_gym>`_ from UPenn (`original docs <https://f1tenth-gym.readthedocs.io>`_).
 
 Features
 --------
@@ -23,8 +25,6 @@ Features
 - **LiDAR simulation**: Accurate ray-casting for perception research
 - **Configurable observations & actions**: Multiple types with normalization support
 - **Visualization**: Real-time rendering with debug overlays (Frenet projection, lookahead curvatures, track lines)
-
-GitHub: https://github.com/TeoIlie/Gym-Khana
 
 See :doc:`installation` to get started.
 

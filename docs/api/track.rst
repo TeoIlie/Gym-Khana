@@ -44,3 +44,14 @@ Each track includes:
 - **Raceline**: an optimized racing line (when available), rendered in red when ``render_track_lines`` is enabled
 
 Both use cubic spline interpolation for smooth trajectories.
+
+API reference
+-------------
+
+.. automodule:: gymkhana.envs.track.track
+   :members:
+   :undoc-members:
+
+.. automodule:: gymkhana.envs.track.raceline
+   :members:
+   :undoc-members:

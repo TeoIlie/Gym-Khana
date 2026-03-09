@@ -38,3 +38,10 @@ Normalization
 -------------
 
 When ``normalize_obs`` is ``True``, observation values are scaled to a bounded range. Normalization bounds are defined in the codebase and can be tuned by enabling ``record_obs_min_max`` in the config to record actual min/max values during training runs.
+
+API reference
+-------------
+
+.. automodule:: gymkhana.envs.observation
+   :members:
+   :undoc-members:
