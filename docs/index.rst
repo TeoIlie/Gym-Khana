@@ -30,14 +30,14 @@ See :doc:`installation` to get started.
 
 .. toctree::
    :caption: GETTING STARTED
-   :maxdepth: 2
+   :maxdepth: 1
 
    installation
    quickstart
 
 .. toctree::
    :caption: USER GUIDE
-   :maxdepth: 2
+   :maxdepth: 1
 
    configuration
    training
@@ -48,7 +48,7 @@ See :doc:`installation` to get started.
 
 .. toctree::
    :caption: API REFERENCE
-   :maxdepth: 2
+   :maxdepth: 1
 
    api/env
    api/base_classes

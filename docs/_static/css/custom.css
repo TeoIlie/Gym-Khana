@@ -58,11 +58,16 @@ a.icon.icon-home {
 }
 
 
-/* Docstring field list type styling */
-.field-list .xref.py.docutils, .field-list code.docutils,
-.field-list .docutils.literal.notranslate {
-    border: none;
-    padding-left: 0;
-    padding-right: 0;
-    color: #404040;
-}
+/* Admonitions */
+.rst-content .admonition .admonition-title { color: #fff; }
+.admonition.tip .admonition-title,
+.admonition.important .admonition-title    { background-color: #f4c621; }
+.admonition.tip, .admonition.important     { background-color: #fdf8e8; }
+.admonition.note .admonition-title,
+.admonition.seealso .admonition-title      { background-color: #3165aa; }
+.admonition.note, .admonition.seealso      { background-color: #eaf0f8; }
+.admonition.warning .admonition-title,
+.admonition.caution .admonition-title,
+.admonition.attention .admonition-title    { background-color: #e91c51; }
+.admonition.warning, .admonition.caution,
+.admonition.attention                      { background-color: #fdeef1; }

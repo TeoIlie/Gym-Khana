@@ -16,7 +16,11 @@ Running examples
 Environment basics
 ------------------
 
-An environment can be instantiated without extra arguments. By default it spawns two agents on the Spielberg map using the single-track model. The ego agent index is 0.
+.. tip::
+
+   An environment can be instantiated without extra arguments. By default it spawns two agents on the Spielberg map using the single-track model.
+
+The ego agent index is 0.
 
 ``reset(options)`` returns ``(obs, info)``. Pass ``"poses"`` as a ``(num_agents, 3)`` array of ``[x, y, yaw]`` per agent.
 

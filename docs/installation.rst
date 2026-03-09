@@ -1,7 +1,11 @@
 Installation
 ============
 
-Gym-Khana is a pure Python package. We recommend installing inside a virtual environment.
+Gym-Khana is a pure Python package.
+
+.. tip::
+
+   We recommend installing inside a virtual environment to avoid dependency conflicts.
 
 Using pip (recommended)
 -----------------------
@@ -37,7 +41,11 @@ A Dockerfile is provided with GUI support via nvidia-docker (NVIDIA GPU required
 Additional dependencies
 -----------------------
 
-MPC controllers require dependencies that cannot be installed via pip alone. For the reference MPC implementation see the ForzaETH `race_stack <https://github.com/ForzaETH/race_stack>`_.
+.. note::
+
+   MPC controllers require dependencies that cannot be installed via pip alone. These are optional — the core environment and RL training work without them.
+
+For the reference MPC implementation see the ForzaETH `race_stack <https://github.com/ForzaETH/race_stack>`_.
 
 **acados** (build from source) — see the official `installation docs <https://docs.acados.org/installation/index.html>`_ and `Python interface docs <https://docs.acados.org/python_interface/index.html>`_:
 

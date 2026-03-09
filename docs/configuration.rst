@@ -26,7 +26,9 @@ Vehicle model and control
        'params': GKEnv.f1tenth_std_vehicle_params(),  # Drift parameters for 1/10 scale
    })
 
-Available models: ``ks`` (kinematic), ``st`` (single-track), ``mb`` (multi-body), ``std`` (single-track drift). See :doc:`api/dynamic_models` for details.
+.. note::
+
+   Available models: ``ks`` (kinematic), ``st`` (single-track), ``mb`` (multi-body), ``std`` (single-track drift). Use ``std`` for drift training. See :doc:`api/dynamic_models` for details.
 
 For action space configuration (``control_input``, ``normalize_act``), see :doc:`api/action`.
 

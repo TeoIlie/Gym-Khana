@@ -4,27 +4,31 @@ Known Issues
 Windows
 -------
 
-Library support issues on Windows. You must use Python 3.8 as of 10-2021.
+.. warning::
+
+   Library support issues on Windows. You must use Python 3.8 as of 10-2021.
 
 macOS Big Sur and above
 -----------------------
 
-When rendering is turned on, you might encounter:
+.. warning::
 
-.. code::
+   When rendering is turned on, you might encounter:
 
-   ImportError: Can't find framework /System/Library/Frameworks/OpenGL.framework.
+   .. code::
 
-Fix by installing a newer version of pyglet:
+      ImportError: Can't find framework /System/Library/Frameworks/OpenGL.framework.
 
-.. code:: bash
+   Fix by installing a newer version of pyglet:
 
-   pip3 install pyglet==1.5.11
+   .. code:: bash
 
-You might see a warning like:
+      pip3 install pyglet==1.5.11
 
-.. code::
+   You might see a warning like:
 
-   gym 0.17.3 requires pyglet<=1.5.0,>=1.4.0, but you'll have pyglet 1.5.11 which is incompatible.
+   .. code::
 
-This can be safely ignored. The environment will still work without error.
+      gym 0.17.3 requires pyglet<=1.5.0,>=1.4.0, but you'll have pyglet 1.5.11 which is incompatible.
+
+   This can be safely ignored. The environment will still work without error.
