@@ -66,3 +66,10 @@ Install the ``acados_template`` Python interface inside your virtual environment
 .. code:: bash
 
    pip install -e ~/software/acados/interfaces/acados_template
+
+.. tip::
+
+   **VSCode debugging**: If your IDE reports ``ModuleNotFoundError`` for ``acados_template`` or ``casadi`` when debugging, ensure that:
+
+   1. Your virtual environment is selected as the Python interpreter (``Ctrl+Shift+P`` → *Python: Select Interpreter*).
+   2. ``acados_template`` is installed into that virtual environment with ``pip install -e`` as shown above (this lets acados use the virtualenv's ``casadi``).

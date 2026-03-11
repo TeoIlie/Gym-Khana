@@ -14,6 +14,9 @@
             "source.fixAll.markdownlint": "explicit"
         }
     },
+    "python.analysis.extraPaths": [
+        "~/software/acados/interfaces/acados_template"
+    ],
     "python.testing.pytestArgs": [
         "tests"
     ],
