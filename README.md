@@ -215,11 +215,27 @@ Run formatting and auto-fixes manually with `ruff check --fix . && ruff format .
 ## Documentation
 
 * Documentation is supported through ReadTheDocs Sphinx template at https://gym-khana.readthedocs.io
-* To update documentation modify `/docs` folder files,and test locally, a rebuild will be triggered on push to default branch
+* Tagged versions are available via the version selector in the docs (bottom-left flyout)
+* To update documentation modify `/docs` folder files and test locally, a rebuild will be triggered on push to default branch
 
 ```bash
 cd docs
 make clean && make html && firefox _build/html/index.html
+```
+
+## Versioning
+
+This project follows [Semantic Versioning](https://semver.org/): `MAJOR.MINOR.PATCH`
+
+* **MAJOR**: Breaking changes (incompatible API/config changes)
+* **MINOR**: New features (backward-compatible)
+* **PATCH**: Bug fixes (backward-compatible)
+
+To release a new version, update the `version` field in `pyproject.toml` and create a matching annotated git tag:
+
+```bash
+git tag -a v1.2.0 -m "description of release"
+git push origin v1.2.0
 ```
 
 

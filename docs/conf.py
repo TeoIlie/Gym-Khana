@@ -30,9 +30,14 @@ project = "Gym-Khana"
 copyright = "2021-2026, Teodor Ilie, Hongrui Zheng, Matthew O'Kelly, Aman Sinha"
 author = "Teodor Ilie"
 
-# The full version, including alpha/beta/rc tags
-release = "latest"
-version = "latest"
+# Pull version from pyproject.toml via installed package metadata
+try:
+    from importlib.metadata import version as get_version
+
+    release = get_version("gymkhana")
+except Exception:
+    release = os.environ.get("READTHEDOCS_VERSION", "latest")
+version = ".".join(release.split(".")[:2])
 
 
 # -- General configuration ---------------------------------------------------
