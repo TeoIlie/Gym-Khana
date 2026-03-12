@@ -35,7 +35,7 @@ a:hover {
 }
 
 a.icon.icon-home {
-    color: #b3b3b3;
+    color: var(--main-bg-color);
 }
 
 .version {
