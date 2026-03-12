@@ -21,8 +21,8 @@ html_context = {
     "conf_py_path": "/docs/",
 }
 
-html_favicon = "assets/gym.svg"
-html_logo = "assets/f1tenth_gym_color.svg"
+html_favicon = "assets/favicon.png"
+html_logo = "assets/gymkhana_flipped.svg"
 
 # -- Project information -----------------------------------------------------
 

@@ -1,3 +1,8 @@
+.. image:: assets/logo.png
+   :width: 20
+   :align: left
+   :alt: logo
+
 Known Issues
 ============
 

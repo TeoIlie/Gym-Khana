@@ -1,3 +1,8 @@
+.. image:: assets/logo.png
+   :width: 20
+   :align: left
+   :alt: logo
+
 Gym-Khana Documentation
 ========================
 
@@ -30,14 +35,14 @@ See :doc:`installation` to get started.
 
 .. toctree::
    :caption: GETTING STARTED
-   :maxdepth: 1
+   :maxdepth: 2
 
    installation
    quickstart
 
 .. toctree::
    :caption: USER GUIDE
-   :maxdepth: 1
+   :maxdepth: 2
 
    configuration
    training
@@ -48,7 +53,7 @@ See :doc:`installation` to get started.
 
 .. toctree::
    :caption: API REFERENCE
-   :maxdepth: 1
+   :maxdepth: 2
 
    api/env
    api/base_classes

@@ -4,9 +4,11 @@
 
 # Gym-Khana
 
-This repository contains a custom gym environment for training Deep Reinforcement Learning policies to race and drift on 1/10 scale or full-size Ackermann vehicles. **SB3** and **wandb** integration included. Based on the f1tenth_gym simulator built by UPenn. For detailed information see the [documentation](https://gym-khana.readthedocs.io/en/latest/)
+<a href="https://gym-khana.readthedocs.io/en/latest/">
+<img src="docs/assets/gymkhana.svg" alt="logo" align="right" width="40%" />
+</a>
 
-![Demo](figures/F1TENTH_PPO_Drift.gif)
+This repository contains a custom gym environment for training Deep Reinforcement Learning policies to race and drift on 1/10 scale or full-size Ackermann vehicles. **SB3** and **wandb** integration included. Based on the f1tenth_gym simulator built by UPenn. For detailed information see the [documentation](https://gym-khana.readthedocs.io/en/latest/)
 
 ## Quickstart
 
@@ -19,6 +21,8 @@ git clone --recurse-submodules https://github.com/TeoIlie/Gym-Khana.git
 cd Gym-Khana
 pip install -e .
 ```
+
+![Demo](figures/F1TENTH_PPO_Drift.gif)
 
 Alternatively, clone and then install using poetry:
 
