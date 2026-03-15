@@ -8,7 +8,7 @@ testpaths =[
 
 [tool.poetry]
 name = "gymkhana"
-version = "1.1.0"
+version = "1.1.1"
 description = "Gym environment for racing, drift, and safety"
 license = "MIT"
 authors = [
