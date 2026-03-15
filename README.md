@@ -13,26 +13,28 @@ This repository contains a custom gym environment for training Deep Reinforcemen
 
 ## Quickstart
 
-We recommend installing the simulation inside a virtualenv. You can install the environment by running:
+Gym-Khana is available as a PyPI package with only the gym environment, or as a full repository with additional functionality.
+
+Install the gym environment from PyPI with:
 
 ```bash
-virtualenv gym_env
-source gym_env/bin/activate
-git clone --recurse-submodules https://github.com/TeoIlie/Gym-Khana.git
-cd Gym-Khana
-pip install -e .
+pip install gymkhana
 ```
 
-![Demo](figures/F1TENTH_PPO_Drift.gif)
-
-Alternatively, clone and then install using poetry:
+Alternatively, to use all features, or for development (training, controllers, analysis, etc.), clone the full repo and install dependencies using `poetry`:
 
 ```bash
-poetry install
+git clone --recurse-submodules https://github.com/TeoIlie/Gym-Khana.git
+cd Gym-Khana
+poetry install --all-groups
 source $(poetry env info -p)/bin/activate # or instead of sourcing, prefix commands with `poetry run`
 ```
 
-Then you can run a quick waypoint follow example by:
+Then you're off to the races! 🏎️
+
+![Demo](figures/F1TENTH_PPO_Drift.gif)
+
+You can run a quick waypoint follow example:
 
 ```bash
 cd examples
@@ -232,12 +234,17 @@ This project follows [Semantic Versioning](https://semver.org/): `MAJOR.MINOR.PA
 * **MINOR**: New features (backward-compatible)
 * **PATCH**: Bug fixes (backward-compatible)
 
-To release a new version, update the `version` field in `pyproject.toml`, the `__version__` in `gymkhana/__init__.py`, and create a matching annotated git tag:
+To release a new version:
+
+1. Update `version` in `pyproject.toml` and `__version__` in `gymkhana/__init__.py`
+2. Create and push a matching annotated git tag:
 
 ```bash
 git tag -a v1.2.0 -m "description of release"
 git push origin v1.2.0
 ```
+
+Pushing the tag automatically publishes to TestPyPI and PyPI via the `publish.yml` GitHub Actions workflow.
 
 
 ## Known issues
