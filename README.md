@@ -231,7 +231,7 @@ This project follows [Semantic Versioning](https://semver.org/): `MAJOR.MINOR.PA
 * **MINOR**: New features (backward-compatible)
 * **PATCH**: Bug fixes (backward-compatible)
 
-To release a new version, update the `version` field in `pyproject.toml` and create a matching annotated git tag:
+To release a new version, update the `version` field in `pyproject.toml`, the `__version__` in `gymkhana/__init__.py`, and create a matching annotated git tag:
 
 ```bash
 git tag -a v1.2.0 -m "description of release"
