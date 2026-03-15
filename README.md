@@ -1,6 +1,7 @@
 ![Python 3.10-3.12](https://github.com/TeoIlie/Gym-Khana/actions/workflows/ci.yml/badge.svg)
 ![Docker](https://github.com/TeoIlie/Gym-Khana/actions/workflows/docker.yml/badge.svg)
 ![Code Style](https://github.com/TeoIlie/Gym-Khana/actions/workflows/lint.yml/badge.svg)
+[![Publish to PyPI](https://github.com/TeoIlie/Gym-Khana/actions/workflows/publish.yml/badge.svg)](https://github.com/TeoIlie/Gym-Khana/actions/workflows/publish.yml)
 
 # Gym-Khana
 
