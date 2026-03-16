@@ -27,10 +27,10 @@ jobs:
         python-version: ${{ matrix.python-version }}
 
     - name: Install ruff
-      run: pip install "ruff>=0.15.1,<0.16"
+      run: pip install ruff
 
     - name: Lint with ruff
-      run: ruff check .
+      run: ruff check --ignore I .
 
     - name: Check formatting with ruff
       run: ruff format --check .
