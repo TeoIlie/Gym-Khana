@@ -1,7 +1,8 @@
 import pathlib
+import tarfile
 import tempfile
-import time
 import unittest
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 
@@ -86,58 +87,74 @@ class TestTrack(unittest.TestCase):
                 # it will raise an assertion error if the file format are not valid
                 Raceline.from_centerline_file(file_centerline)
 
-    @unittest.skip("Skipping download test to avoid creating temporary directories")
-    def test_download_racetrack(self):
-        import shutil
+    def test_find_track_dir_downloads_when_not_cached(self):
+        """Test that find_track_dir downloads, extracts, and caches a track not found locally."""
+        fake_track = "FakeTestTrack"
 
-        track_name = "Spielberg"
-        track_backup = Track.from_track_name(track_name)
+        # Build a minimal tarball with the expected directory structure
+        with tempfile.TemporaryDirectory() as build_dir:
+            track_dir = pathlib.Path(build_dir) / fake_track
+            track_dir.mkdir()
+            (track_dir / f"{fake_track}_map.yaml").write_text("image: map.png\nresolution: 0.05\norigin: [0,0,0]")
+            (track_dir / "map.png").write_bytes(b"\x89PNG fake")
 
-        # rename the track dir
-        track_dir = find_track_dir(track_name)
-        tmp_dir = track_dir.parent / f"{track_name}_tmp{int(time.time())}"
-        track_dir.rename(tmp_dir)
+            tar_path = pathlib.Path(build_dir) / f"{fake_track}.tar.xz"
+            with tarfile.open(tar_path, "w:xz") as tar:
+                tar.add(track_dir, arcname=fake_track)
+            tar_bytes = tar_path.read_bytes()
 
-        # download the track
-        track = Track.from_track_name(track_name)
+        mock_resp = MagicMock(status_code=200, content=tar_bytes)
 
-        # check the two tracks' specs are the same
-        for spec_attr in [
-            "name",
-            "image",
-            "resolution",
-            "origin",
-            "negate",
-            "occupied_thresh",
-            "free_thresh",
-        ]:
-            self.assertEqual(getattr(track.spec, spec_attr), getattr(track_backup.spec, spec_attr))
+        with tempfile.TemporaryDirectory() as fake_home, tempfile.TemporaryDirectory() as fake_tmp:
+            with (
+                patch.object(pathlib.Path, "home", return_value=pathlib.Path(fake_home)),
+                patch("gymkhana.envs.track.track_utils.tempfile.gettempdir", return_value=fake_tmp),
+                patch("gymkhana.envs.track.track_utils.requests.get", return_value=mock_resp) as mock_get,
+            ):
+                # First call: should download and extract
+                result = find_track_dir(fake_track)
 
-        # check the two tracks' racelines are the same
-        for raceline_attr in ["ss", "xs", "ys", "yaws", "ks", "vxs", "axs"]:
-            self.assertTrue(
-                np.isclose(
-                    getattr(track.raceline, raceline_attr),
-                    getattr(track_backup.raceline, raceline_attr),
-                ).all()
-            )
+                from gymkhana.envs.track.track_utils import MAPS_URL
 
-        # check the two tracks' centerlines are the same
-        for centerline_attr in ["ss", "xs", "ys", "yaws", "ks", "vxs", "axs"]:
-            self.assertTrue(
-                np.isclose(
-                    getattr(track.centerline, centerline_attr),
-                    getattr(track_backup.centerline, centerline_attr),
-                ).all()
-            )
+                expected_url = f"{MAPS_URL}/{fake_track}.tar.xz"
+                mock_get.assert_called_once_with(url=expected_url, allow_redirects=True)
+                self.assertTrue(result.exists())
+                self.assertEqual(result.stem, fake_track)
+                self.assertTrue((result / f"{fake_track}_map.yaml").exists())
 
-        # remove the newly created track dir
-        track_dir = find_track_dir(track_name)
-        shutil.rmtree(track_dir, ignore_errors=True)
+                # Second call: should use cache, no additional download
+                mock_get.reset_mock()
+                result2 = find_track_dir(fake_track)
 
-        # rename the backup track dir to its original name
-        track_backup_dir = find_track_dir(tmp_dir.stem)
-        track_backup_dir.rename(track_dir)
+                mock_get.assert_not_called()
+                self.assertEqual(result, result2)
+
+    def test_find_track_dir_raises_on_404(self):
+        """Test that a 404 response raises FileNotFoundError."""
+        mock_resp = MagicMock(status_code=404)
+
+        with tempfile.TemporaryDirectory() as fake_home:
+            with patch.object(pathlib.Path, "home", return_value=pathlib.Path(fake_home)):
+                with patch("gymkhana.envs.track.track_utils.requests.get", return_value=mock_resp):
+                    with self.assertRaises(FileNotFoundError):
+                        find_track_dir("NonExistentTrack")
+
+    def test_find_track_dir_uses_cache(self):
+        """Test that a cached track is returned without downloading."""
+        fake_track = "CachedTestTrack"
+
+        with tempfile.TemporaryDirectory() as fake_home:
+            # Pre-populate the cache
+            cache_dir = pathlib.Path(fake_home) / ".gymkhana" / "maps" / fake_track
+            cache_dir.mkdir(parents=True)
+            (cache_dir / "dummy.txt").write_text("cached")
+
+            with patch.object(pathlib.Path, "home", return_value=pathlib.Path(fake_home)):
+                with patch("gymkhana.envs.track.track_utils.requests.get") as mock_get:
+                    result = find_track_dir(fake_track)
+
+                    mock_get.assert_not_called()
+                    self.assertEqual(result, cache_dir)
 
     def test_frenet_to_cartesian(self):
         track_name = "Spielberg"
