@@ -2,9 +2,9 @@
 [![python_version](https://img.shields.io/badge/Python-%3E=3.10-purple)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 [![Python 3.10-3.12](https://github.com/TeoIlie/Gym-Khana/actions/workflows/ci.yml/badge.svg)](https://github.com/TeoIlie/Gym-Khana/actions/workflows/ci.yml)
-[![Publish to PyPI](https://github.com/TeoIlie/Gym-Khana/actions/workflows/publish.yml/badge.svg)](https://github.com/TeoIlie/Gym-Khana/actions/workflows/publish.yml)
 [![Docker](https://github.com/TeoIlie/Gym-Khana/actions/workflows/docker.yml/badge.svg)](https://github.com/TeoIlie/Gym-Khana/actions/workflows/docker.yml)
 [![Code Style](https://github.com/TeoIlie/Gym-Khana/actions/workflows/lint.yml/badge.svg)](https://github.com/TeoIlie/Gym-Khana/actions/workflows/lint.yml)
+[![Documentation](https://readthedocs.org/projects/gym-khana/badge/?version=latest)](https://gym-khana.readthedocs.io/en/latest/)
 
 # Gym-Khana
 
