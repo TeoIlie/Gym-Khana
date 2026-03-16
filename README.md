@@ -9,7 +9,7 @@
 # Gym-Khana
 
 <a href="https://gym-khana.readthedocs.io/en/latest/">
-<img src="docs/assets/gymkhana.svg" alt="logo" align="right" width="40%" />
+<img src="https://raw.githubusercontent.com/TeoIlie/Gym-Khana/main/docs/assets/gymkhana.svg" alt="logo" align="right" width="40%" />
 </a>
 
 This repository contains a custom gym environment for training Deep Reinforcement Learning policies to race and drift on 1/10 scale or full-size Ackermann vehicles. **SB3** and **wandb** integration included. Based on the f1tenth_gym simulator built by UPenn. For detailed information see the [documentation](https://gym-khana.readthedocs.io/en/latest/)
@@ -35,7 +35,7 @@ source $(poetry env info -p)/bin/activate # or instead of sourcing, prefix comma
 
 Then you're off to the races! 🏎️
 
-![Demo](figures/F1TENTH_PPO_Drift.gif)
+![Demo](https://raw.githubusercontent.com/TeoIlie/Gym-Khana/main/figures/F1TENTH_PPO_Drift.gif)
 
 You can run a quick waypoint follow example:
 
