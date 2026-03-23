@@ -193,6 +193,20 @@ Note that CL is only supported for recovery training, with the environment `trai
 
 The wandb models are available here: <https://wandb.ai/teo-altum-quinque-queen-s-university/projects>
 
+## ONNX Policy Conversion
+
+To use policies in other packages, such as a ROS2 package for sim-to-real transfer, we provide support for converting an SB3 model to ONNX type. Use `train/export_onnx.py` for conversion:
+
+```bash
+python3 train/export_onnx.py --path <SB3 model path>
+```
+
+Run the policy with ONNX using `OnnxPolicyRunner` defined in `gymkhana/inference/onnx_runner.py`. For example for a racing policy:
+
+```bash
+python3 train/ppo_race.py --m x --path <ONNX model path>
+```
+
 ## Custom Maps
 
 Custom maps can be created using the git submodule <https://github.com/TeoIlie/F1TENTH_Racetracks> stored in folder `/maps`. Once updated, pull the update submodule with `git pull --recurse-submodules`

@@ -168,9 +168,6 @@ def evaluate(profile: TrainingProfile, model_path: str = ""):
         total_reward += reward
         eval_env.render()
 
-        # VecEnv resets automatically
-        # if done:
-        #   obs = env.reset()
     eval_env.close()
     print(f"Total reward: {total_reward}")
 
@@ -424,6 +421,35 @@ def transfer_train(
     run.finish()
 
 
+def evaluate_onnx(profile: TrainingProfile, onnx_path: str):
+    """Evaluate an ONNX-exported policy in the simulation environment."""
+    from gymkhana.inference import OnnxPolicyRunner
+
+    print_header(profile.display_name + " ONNX Evaluation")
+
+    runner = OnnxPolicyRunner(onnx_path)
+    print(f"Loaded ONNX model from {onnx_path}")
+
+    eval_env = gym.make(
+        get_env_id(),
+        config=profile.test_config,
+        render_mode="human",
+    )
+    np.random.seed()
+    obs, info = eval_env.reset()
+    done, trunc = False, False
+    total_reward = 0.0
+
+    while not (done or trunc):
+        action = runner.predict(obs)
+        obs, reward, done, trunc, info = eval_env.step(np.array([action]))
+        total_reward += reward
+        eval_env.render()
+
+    eval_env.close()
+    print(f"Total reward: {total_reward}")
+
+
 def download_and_evaluate(profile: TrainingProfile, run_id: str):
     """Download model from wandb and evaluate it."""
     print_header("Downloading and Evaluating Model from WandB")
@@ -448,9 +474,9 @@ def main(profile: TrainingProfile):
     parser = argparse.ArgumentParser(description="Train or evaluate a model")
     parser.add_argument(
         "--m",
-        choices=["t", "e", "d", "c", "f"],
+        choices=["t", "e", "d", "c", "f", "x"],
         default="t",
-        help="Run mode: 't' train, 'e' evaluate, 'd' download+evaluate, 'c' continue training, 'f' transfer/fine-tune",
+        help="Run mode: 't' train, 'e' evaluate, 'd' download+evaluate, 'c' continue, 'f' transfer, 'x' evaluate ONNX",
     )
     parser.add_argument(
         "--path",
@@ -482,3 +508,7 @@ def main(profile: TrainingProfile):
         if not args.path:
             parser.error("--path is required when using mode 'f' (transfer/fine-tune)")
         transfer_train(profile=profile, model_path=args.path)
+    elif args.m == "x":
+        if not args.path:
+            parser.error("--path is required when using mode 'x' (evaluate ONNX)")
+        evaluate_onnx(profile=profile, onnx_path=args.path)
