@@ -1,35 +1,43 @@
-![Python 3.10-3.12](https://github.com/TeoIlie/Gym-Khana/actions/workflows/ci.yml/badge.svg)
-![Docker](https://github.com/TeoIlie/Gym-Khana/actions/workflows/docker.yml/badge.svg)
-![Code Style](https://github.com/TeoIlie/Gym-Khana/actions/workflows/lint.yml/badge.svg)
+[![gymkhana](https://img.shields.io/pypi/v/gymkhana)](https://pypi.org/project/gymkhana/)
+[![python_version](https://img.shields.io/badge/Python-%3E=3.10-purple)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
+[![Python 3.10-3.12](https://github.com/TeoIlie/Gym-Khana/actions/workflows/ci.yml/badge.svg)](https://github.com/TeoIlie/Gym-Khana/actions/workflows/ci.yml)
+[![Docker](https://github.com/TeoIlie/Gym-Khana/actions/workflows/docker.yml/badge.svg)](https://github.com/TeoIlie/Gym-Khana/actions/workflows/docker.yml)
+[![Code Style](https://github.com/TeoIlie/Gym-Khana/actions/workflows/lint.yml/badge.svg)](https://github.com/TeoIlie/Gym-Khana/actions/workflows/lint.yml)
+[![Documentation](https://readthedocs.org/projects/gym-khana/badge/?version=latest)](https://gym-khana.readthedocs.io/en/latest/)
 
 # Gym-Khana
 
-This repository contains a custom gym environment for training Deep Reinforcement Learning policies to race and drift on 1/10 scale or full-size Ackermann vehicles. **SB3** and **wandb** integration included. Based on the f1tenth_gym simulator built by UPenn.
+<a href="https://gym-khana.readthedocs.io/en/latest/">
+<img src="https://raw.githubusercontent.com/TeoIlie/Gym-Khana/main/docs/assets/gymkhana.svg" alt="logo" align="right" width="40%" />
+</a>
 
-![Demo](figures/F1TENTH_PPO_Drift.gif)
-
-You can find the original sim [documentation](https://f1tenth-gym.readthedocs.io/en/latest/) here.
+This repository contains a custom gym environment for training Deep Reinforcement Learning policies to race and drift on 1/10 scale or full-size Ackermann vehicles. **SB3** and **wandb** integration included. Based on the f1tenth_gym simulator built by UPenn. For detailed information see the [documentation](https://gym-khana.readthedocs.io/en/latest/)
 
 ## Quickstart
 
-We recommend installing the simulation inside a virtualenv. You can install the environment by running:
+Gym-Khana is available as a PyPI package with only the gym environment, or as a full repository with additional functionality.
+
+Install the gym environment from PyPI with:
 
 ```bash
-virtualenv gym_env
-source gym_env/bin/activate
-git clone --recurse-submodules https://github.com/TeoIlie/Gym-Khana.git
-cd Gym-Khana
-pip install -e .
+pip install gymkhana
 ```
 
-Alternatively, clone and then install using poetry:
+Alternatively, to use all features, or for development (training, controllers, analysis, etc.), clone the full repo and install dependencies using `poetry`:
 
 ```bash
-poetry install
+git clone --recurse-submodules https://github.com/TeoIlie/Gym-Khana.git
+cd Gym-Khana
+poetry install --all-groups
 source $(poetry env info -p)/bin/activate # or instead of sourcing, prefix commands with `poetry run`
 ```
 
-Then you can run a quick waypoint follow example by:
+Then you're off to the races! 🏎️
+
+![Demo](https://raw.githubusercontent.com/TeoIlie/Gym-Khana/main/figures/F1TENTH_PPO_Drift.gif)
+
+You can run a quick waypoint follow example:
 
 ```bash
 cd examples
@@ -185,6 +193,20 @@ Note that CL is only supported for recovery training, with the environment `trai
 
 The wandb models are available here: <https://wandb.ai/teo-altum-quinque-queen-s-university/projects>
 
+## ONNX Policy Conversion
+
+To use policies in other packages, such as a ROS2 package for sim-to-real transfer, we provide support for converting an SB3 model to ONNX type. Use `train/export_onnx.py` for conversion:
+
+```bash
+python3 train/export_onnx.py --path <SB3 model path>
+```
+
+Run the policy with ONNX using `OnnxPolicyRunner` defined in `gymkhana/inference/onnx_runner.py`. For example for a racing policy:
+
+```bash
+python3 train/ppo_race.py --m x --path <ONNX model path>
+```
+
 ## Custom Maps
 
 Custom maps can be created using the git submodule <https://github.com/TeoIlie/F1TENTH_Racetracks> stored in folder `/maps`. Once updated, pull the update submodule with `git pull --recurse-submodules`
@@ -209,6 +231,38 @@ Run formatting and auto-fixes manually with `ruff check --fix . && ruff format .
 * Parameters for the 1/10 scale f1tenth car to be used with the `STD` model are defined in `gymkhana/envs/gymkhana_env.py` as `f1tenth_std_vehicle_params`. They are created as a mix of existing f1tenth params and tire parameters adjusted from the fullscale car.
 * In future I may measure these parameters from real data for more accurate fitting
 * To maintain a history of parameter choices, and how they compare with the correct behaviour on the fullscale car, tests script `tests/model_validation/test_f1tenth_std_params.py` creates comparison figures along with parameter YAML file dump ordered by date created inside folder `figures/tire_params`
+
+## Documentation
+
+* Documentation is supported through ReadTheDocs Sphinx template at https://gym-khana.readthedocs.io
+* Tagged versions are available via the version selector in the docs (bottom-left flyout)
+* To update documentation modify `/docs` folder files and test locally, a rebuild will be triggered on push to default branch
+
+```bash
+cd docs
+make clean && make html && firefox _build/html/index.html
+```
+
+## Versioning
+
+This project follows [Semantic Versioning](https://semver.org/): `MAJOR.MINOR.PATCH`
+
+* **MAJOR**: Breaking changes (incompatible API/config changes)
+* **MINOR**: New features (backward-compatible)
+* **PATCH**: Bug fixes (backward-compatible)
+
+To release a new version:
+
+1. Update `version` in `pyproject.toml` and `__version__` in `gymkhana/__init__.py`
+2. Create and push a matching annotated git tag:
+
+```bash
+git tag -a v1.2.0 -m "description of release"
+git push origin v1.2.0
+```
+
+Pushing the tag automatically publishes to TestPyPI and PyPI via the `publish.yml` GitHub Actions workflow.
+
 
 ## Known issues
 

@@ -192,3 +192,6 @@ st_c_generated_code/
 st_acados_ocp.json
 
 mpc-ref/
+
+# Analysis figures
+figures/analysis/

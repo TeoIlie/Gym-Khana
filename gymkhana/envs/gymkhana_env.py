@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 """
-Author: Hongrui Zheng
+Authors: Hongrui Zheng, Teodor Ilie
 """
 
 # gym imports
@@ -46,7 +46,7 @@ from .utils import deep_update
 
 class GKEnv(gym.Env):
     """
-    Gymnasium environment for F1TENTH. For API specs, see https://gymnasium.farama.org/api/env/#
+    Gymnasium environment for Gym-Khana. For API specs, see https://gymnasium.farama.org/api/env/#
 
     Args:
         kwargs:

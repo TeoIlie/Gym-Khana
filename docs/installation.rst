@@ -1,42 +1,80 @@
-.. raw:: html
-
-   <style>
-   .rst-content .section>img {
-       width: 30px;
-       margin-bottom: 0;
-       margin-top: 0;
-       margin-right: 15px;
-       margin-left: 15px;
-       float: left;
-   }
-   </style>
+.. image:: assets/logo.png
+   :width: 20
+   :align: left
+   :alt: logo
 
 Installation
-=================
-``f1tenth_gym`` is a pure Python library. We provide two ways to set up the environment.
+============
 
-.. image:: assets/docker_logo.png
+Gym-Khana is a pure Python package.
 
-Using docker
-----------------
+.. tip::
 
-A Dockerfile is provided. A container can be created by running the following commands. Note that ``sudo`` might be needed depending on how you've set up your Docker engine.
+   We recommend installing inside a virtual environment to avoid dependency conflicts.
 
-.. code:: bash
-
-    $ git clone https://github.com/f1tenth/f1tenth_gym.git
-    $ cd f1tenth_gym
-    $ git checkout exp_py
-    $ docker build -t f1tenth_gym -f Dockerfile .
-    $ docker run -it --name=f1tenth_gym_container --rm f1tenth_gym
-
-.. image:: assets/pip_logo.svg
-
-Using pip
----------------
-
-The environment is a Python package, and only depends on ``numpy``, ``scipy``, ``numba``, ``Pillow``, ``gym``, ``pyyaml``, and ``pyglet``. You can install the package via pip:
+Using pip (recommended)
+-----------------------
 
 .. code:: bash
 
-    $ pip3 install git+https://github.com/f1tenth/f1tenth_gym.git
+   virtualenv gym_env
+   source gym_env/bin/activate
+   git clone --recurse-submodules https://github.com/TeoIlie/Gym-Khana.git
+   cd Gym-Khana
+   pip install -e .
+
+Using poetry
+------------
+
+.. code:: bash
+
+   poetry install
+   source $(poetry env info -p)/bin/activate  # or prefix commands with `poetry run`
+
+Using Docker
+------------
+
+A Dockerfile is provided with GUI support via nvidia-docker (NVIDIA GPU required):
+
+.. code:: bash
+
+   docker build -t gymkhana -f Dockerfile .
+   docker run --gpus all -it -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix gymkhana
+
+.. _additional-dependencies:
+
+Additional dependencies
+-----------------------
+
+.. note::
+
+   MPC controllers require dependencies that cannot be installed via pip alone. These are optional — the core environment and RL training work without them.
+
+For the reference MPC implementation see the ForzaETH `race_stack <https://github.com/ForzaETH/race_stack>`_.
+
+**acados** (build from source) — see the official `installation docs <https://docs.acados.org/installation/index.html>`_ and `Python interface docs <https://docs.acados.org/python_interface/index.html>`_:
+
+.. code:: bash
+
+   # Clone and build (~/software is only an example install directory)
+   git clone https://github.com/acados/acados.git --recurse-submodules ~/software/acados
+   cd ~/software/acados && mkdir build && cd build
+   cmake -DACADOS_WITH_QPOASES=ON ..
+   make install -j$(nproc)
+
+   # Environment variables (add to shell profile)
+   export ACADOS_SOURCE_DIR=~/software/acados
+   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/software/acados/lib
+
+Install the ``acados_template`` Python interface inside your virtual environment:
+
+.. code:: bash
+
+   pip install -e ~/software/acados/interfaces/acados_template
+
+.. tip::
+
+   **VSCode debugging**: If your IDE reports ``ModuleNotFoundError`` for ``acados_template`` or ``casadi`` when debugging, ensure that:
+
+   1. Your virtual environment is selected as the Python interpreter (``Ctrl+Shift+P`` → *Python: Select Interpreter*).
+   2. ``acados_template`` is installed into that virtual environment with ``pip install -e`` as shown above (this lets acados use the virtualenv's ``casadi``).
