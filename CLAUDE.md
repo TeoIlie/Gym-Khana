@@ -100,12 +100,6 @@ Configuration (`pyproject.toml` under `[tool.ruff]`):
 - Target: Python 3.10+
 - Lint rules: E (pycodestyle), F (pyflakes/unused imports), W (warnings), I (isort)
 
-### Docker Support
-```bash
-docker build -t gymkhana -f Dockerfile .
-docker run --gpus all -it -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix gymkhana
-```
-
 ## Architecture Overview
 
 ### Core Autonomous Vehicle Components

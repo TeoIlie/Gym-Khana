@@ -2,7 +2,6 @@
 [![python_version](https://img.shields.io/badge/Python-%3E=3.10-purple)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 [![Python 3.10-3.12](https://github.com/TeoIlie/Gym-Khana/actions/workflows/ci.yml/badge.svg)](https://github.com/TeoIlie/Gym-Khana/actions/workflows/ci.yml)
-[![Docker](https://github.com/TeoIlie/Gym-Khana/actions/workflows/docker.yml/badge.svg)](https://github.com/TeoIlie/Gym-Khana/actions/workflows/docker.yml)
 [![Code Style](https://github.com/TeoIlie/Gym-Khana/actions/workflows/lint.yml/badge.svg)](https://github.com/TeoIlie/Gym-Khana/actions/workflows/lint.yml)
 [![Documentation](https://readthedocs.org/projects/gym-khana/badge/?version=latest)](https://gym-khana.readthedocs.io/en/latest/)
 
@@ -49,15 +48,6 @@ Or a simple centerline follow example:
 cd examples
 python3 controller_example.py
 ```
-
-A Dockerfile is also provided with support for the GUI with nvidia-docker (nvidia GPU required):
-
-```bash
-docker build -t gymkhana -f Dockerfile .
-docker run --gpus all -it -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix gymkhana
-````
-
-Then the same examples can be run.
 
 ## Additional Dependencies
 
