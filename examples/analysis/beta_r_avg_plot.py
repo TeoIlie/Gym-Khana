@@ -49,9 +49,17 @@ from train.train_utils import get_output_dirs, print_header
 
 CONTROLLER_TYPE = "learned"
 
-LEARNED_TYPE = "recover"
-RUN_ID = "zv45r303"
-DESC = "transfer model - drift model bsoh5xyb retrained with Fine-Tuning with Fresh Optimizer + LR Reset + log_std reset with --m f. No curriculum learning, small beta-r initial ranges, no Euclidean reward"
+LEARNED_TYPE = "drift"
+RUN_ID = "wx0w5eqr"
+DESC = "drift model - CW & CCW on track pool of [Drift_large, Drift_large_mirror, Drift2, Drift2mirror], with `sparse_width_obs` = True"
+
+# LEARNED_TYPE = "recover"
+# RUN_ID = "3y11m6mk"
+# DESC = "drift model - CW & CCW on track pool of [Drift_large, Drift_large_mirror], with `sparse_width_obs` = True"
+
+# LEARNED_TYPE = "recover"
+# RUN_ID = "zv45r303"
+# DESC = "transfer model - drift model bsoh5xyb retrained with Fine-Tuning with Fresh Optimizer + LR Reset + log_std reset with --m f. No curriculum learning, small beta-r initial ranges, no Euclidean reward"
 
 # LEARNED_TYPE = "drift"
 # RUN_ID = "8ncsx1rk"
