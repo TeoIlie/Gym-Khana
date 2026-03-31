@@ -142,7 +142,6 @@ class GKEnv(gym.Env):
                 self.recovery_r_range = self.config["recovery_r_range"]
 
                 # set reward parameters
-                self.recovery_euclid_gain = self.config["recovery_euclid_gain"]
                 self.recovery_timestep_penalty = self.config["recovery_timestep_penalty"]
                 self.recovery_success_reward = self.config["recovery_success_reward"]
                 self.recovery_collision_penalty = self.config["recovery_collision_penalty"]
@@ -771,7 +770,6 @@ class GKEnv(gym.Env):
             "recovery_beta_range": [-0.349, 0.349],
             "recovery_r_range": [-0.785, 0.785],
             "recovery_yaw_range": [-0.785, 0.785],
-            "recovery_euclid_gain": 1.0,
             "recovery_timestep_penalty": 1.0,
             "recovery_success_reward": 100,
             "recovery_collision_penalty": -50,
@@ -1103,13 +1101,6 @@ class GKEnv(gym.Env):
         Returns:
             float: Total reward for this step
         """
-        std_state = self.sim.agents[0].standard_state
-        beta = std_state["slip"]
-        r = std_state["yaw_rate"]
-
-        # Euclidean distance from current (beta, r) to (0, 0)
-        r_euclid = -self.recovery_euclid_gain * np.sqrt(beta**2 + r**2)
-
         # collision penalty
         r_col = self.recovery_collision_penalty if self.boundary_exceeded[0] else 0.0
 
@@ -1119,7 +1110,7 @@ class GKEnv(gym.Env):
         # constant timestep penalty
         r_const = self.recovery_timestep_penalty * self.timestep
 
-        return r_euclid + r_col + r_rec - r_const
+        return r_col + r_rec - r_const
 
     def set_recovery_ranges(self, v_range, beta_range, r_range, yaw_range):
         """Set recovery initial state sampling ranges (used by curriculum learning)."""

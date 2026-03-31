@@ -61,7 +61,6 @@ class TestRecoveryConfig(unittest.TestCase):
         self.assertIsInstance(self.uw.recovery_yaw_range, list)
 
         # reward gains
-        self.assertEqual(self.uw.recovery_euclid_gain, 1.0)
         self.assertEqual(self.uw.recovery_timestep_penalty, 1.0)
         self.assertEqual(self.uw.recovery_success_reward, 100)
         self.assertEqual(self.uw.recovery_collision_penalty, -50)
@@ -194,11 +193,7 @@ class TestRecoveryReward(unittest.TestCase):
         self.env.close()
 
     def test_recovery_reward_components(self):
-        """Verify euclidean, collision, success, and timestep penalty components."""
-        agent = self.uw.sim.agents[0]
-        std = agent.standard_state
-        beta = std["slip"]
-        r = std["yaw_rate"]
+        """Verify collision, success, and timestep penalty components."""
         dt = self.uw.timestep
 
         # Case 1: normal step (no collision, no success)
@@ -206,7 +201,7 @@ class TestRecoveryReward(unittest.TestCase):
         self.uw.recovery_succeeded = False
         reward = self.uw._get_reward()
 
-        expected = -self.uw.recovery_euclid_gain * np.sqrt(beta**2 + r**2) - self.uw.recovery_timestep_penalty * dt
+        expected = -self.uw.recovery_timestep_penalty * dt
         self.assertAlmostEqual(reward, expected, places=6, msg="Normal step reward mismatch")
 
         # Case 2: boundary crash

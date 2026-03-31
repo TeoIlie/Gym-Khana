@@ -344,6 +344,18 @@ def extract_rl_config(model: object, total_timesteps: int, n_envs: int) -> dict:
     return config
 
 
+def extract_norm_bounds(eval_env) -> dict | None:
+    """Extract normalization bounds from eval env's observation type, if available.
+
+    Returns a serializable dict of {feature: {min, max}} or None if normalization is disabled.
+    """
+    env = eval_env.unwrapped
+    if not env.normalize_obs:
+        return None
+    bounds = env.observation_type.bounds
+    return {name: {"min": float(lo), "max": float(hi)} for name, (lo, hi) in bounds.items()}
+
+
 def download_model_from_wandb(run_id: str, download_dir: str, model_prefix: str, project_name: str) -> str:
     """
     Download model from wandb and return the path to cached model.
