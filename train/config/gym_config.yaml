@@ -21,9 +21,9 @@ map: "Drift_large"
 # See /train/training_utils.py make_subprocvecenv
 track_pool:
   - "Drift_large"
-  - "Drift_large"
-  - "Austin"
-  - "Monza"
+  - "Drift_large_mirror"
+  # - "Drift2"
+  # - "Drift2_mirror"
 # For single-map training, set to null or comment out:
 # track_pool: null
 
@@ -67,7 +67,7 @@ recovery_track_pool: null # train only on IMS
 # Curriculum learning - gradually expand recovery state ranges
 curriculum:
   # see train/callbacks.py for more details about parameter uses
-  enabled: true
+  enabled: false
   n_stages: 6
   window_size: 500
   success_threshold: 0.8
