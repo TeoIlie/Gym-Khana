@@ -22,8 +22,10 @@ from gymkhana.envs.track.track_utils import get_min_max_curvature, get_min_max_t
 from gymkhana.envs.utils import deep_update
 from train.config.env_config import (
     ACT_FUNC_NEG_SLOPE,
+    ACTOR_LAYER_SIZE,
     BEST_MODEL,
     CKPT_SAVE_FREQ,
+    CRITIC_LAYER_SIZE,
     N_EVAL_EPISODES,
     get_env_id,
 )
@@ -340,6 +342,9 @@ def extract_rl_config(model: object, total_timesteps: int, n_envs: int) -> dict:
         config["end_learning_rate"] = float(model.learning_rate(0.0))
     else:
         config["learning_rate"] = float(model.learning_rate)
+
+    config["actor_layer_size"] = ACTOR_LAYER_SIZE
+    config["critic_layer_size"] = CRITIC_LAYER_SIZE
 
     return config
 
