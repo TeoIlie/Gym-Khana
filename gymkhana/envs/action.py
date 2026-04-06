@@ -250,8 +250,8 @@ class CarAction:
 
     @abstractmethod
     def act(self, action: Any, **kwargs) -> Tuple[float, float]:
-        longitudinal_action = self._longitudinal_action.act(action[0], **kwargs)
-        steer_action = self._steer_action.act(action[1], **kwargs)
+        steer_action = self._steer_action.act(action[0], **kwargs)
+        longitudinal_action = self._longitudinal_action.act(action[1], **kwargs)
         return longitudinal_action, steer_action
 
     @property
