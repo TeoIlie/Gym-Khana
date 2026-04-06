@@ -177,6 +177,7 @@ cython_debug/
 # Other
 scratch
 .python-version
+.codex
 
 # Training outputs (models, videos, logs) from tensorboard, wandb
 
@@ -195,3 +196,6 @@ mpc-ref/
 
 # Analysis figures
 figures/analysis/
+
+# ROS2 bags for analysis
+examples/analysis/bags
