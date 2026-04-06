@@ -170,7 +170,7 @@ Configuration (`pyproject.toml` under `[tool.ruff]`):
 ```python
 env = gym.make('gymkhana:gymkhana-v0', config={
     'model': 'std',  # Use 'std' for drifting with PAC2002 tire model
-    'control_input': ['accl', 'steering_angle'],  # Best for RL drift training
+    'control_input': ['accl', 'steering_angle'],  # Order-independent; action array is always [steer, longitudinal]
     'params': GKEnv.f1tenth_std_vehicle_params(),  # Drift parameters for 1/10 scale
 })
 ```

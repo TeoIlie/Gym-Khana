@@ -356,7 +356,7 @@ class RaceCar(object):
         if self.action_type.type is None:
             raise ValueError("No Control Action Type Specified.")
 
-        accl, sv = self.action_type.act(action=(raw_throttle, steer), state=self.state, params=self.params)
+        accl, sv = self.action_type.act(action=(steer, raw_throttle), state=self.state, params=self.params)
 
         # acceleration: update prev to curr, and current to new throttle cmd accl
         self.prev_accl_cmd = self.curr_accl_cmd
