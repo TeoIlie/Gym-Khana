@@ -194,8 +194,9 @@ st_acados_ocp.json
 
 mpc-ref/
 
-# Analysis figures
+# Analysis and test figures 
 figures/analysis/
+figures/tests/
 
 # ROS2 bags for analysis
 examples/analysis/bags
