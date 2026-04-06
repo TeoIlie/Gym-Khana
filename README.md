@@ -123,6 +123,16 @@ Note that CL is only supported for recovery training, with the environment `trai
 5. Set `"debug_frenet_projection" = True` to visualize the Frenet coordinates are correct
 6. Set `"record_obs_min_max"` to `True/False` to record min/max observation values during training, and tweak normalization bounds if necessary, defined in `utils.py::calculate_norm_bounds`
 
+#### Control debug panel
+
+Set `show_ctr_debug: True` in `gymkhana/envs/rendering/rendering.yaml` to enable a real-time control debug panel below the map (PyQt6 renderer only). The panel shows:
+
+- **Actual vehicle state**: current steering angle (`delta`) and longitudinal velocity (`v_x`) in white
+- **Control commands**: raw steering and throttle commands with their bounds, colour-coded to match their bars (steering in blue, throttle in green)
+- **Two zero-centered horizontal bar gauges**: each bar spans the command's full range with the fill extending from zero toward the current value, making the sign and magnitude of each command instantly visible
+
+The panel tracks the currently followed agent (switched via mouse click), defaulting to the ego agent in map view. It is disabled by default to avoid overhead during training.
+
 ### Important configuration options
 
 `gym.make()` configurations:

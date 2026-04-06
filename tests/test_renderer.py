@@ -1,8 +1,10 @@
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 
 from gymkhana.envs import GKEnv
+from gymkhana.envs.rendering.renderer import RenderSpec
 from gymkhana.envs.utils import deep_update
 
 
@@ -209,5 +211,49 @@ class TestRenderer(unittest.TestCase):
             env.unwrapped.track.arc_annotation_points_render,
             "Arc annotations should be rendered",
         )
+
+        env.close()
+
+    def test_control_debug_panel_rgb_array(self):
+        """Test that the control debug panel renders without crashing in rgb_array mode."""
+        original_from_yaml = RenderSpec.from_yaml
+
+        def from_yaml_with_debug(yaml_file):
+            spec = original_from_yaml(yaml_file)
+            spec.show_ctr_debug = True
+            return spec
+
+        with patch.object(RenderSpec, "from_yaml", side_effect=from_yaml_with_debug):
+            env = self._make_env(render_mode="rgb_array")
+
+        env.reset()
+        for _ in range(50):
+            action = env.action_space.sample()
+            env.step(action)
+            frame = env.render()
+            self.assertIsInstance(frame, np.ndarray)
+            self.assertEqual(len(frame.shape), 3)
+
+        # Verify debug data is present in render_obs
+        render_obs = env.unwrapped.render_obs
+        self.assertIn("steering_cmds", render_obs)
+        self.assertIn("throttle_cmds", render_obs)
+        self.assertIn("v_x", render_obs)
+        self.assertIn("delta", render_obs)
+        self.assertIn("steer_bounds", render_obs)
+        self.assertIn("throttle_bounds", render_obs)
+
+        env.close()
+
+    def test_control_debug_panel_disabled_by_default(self):
+        """Test that debug data is not in render_obs when show_ctr_debug is False."""
+        env = self._make_env(render_mode="rgb_array")
+        env.reset()
+        action = env.action_space.sample()
+        env.step(action)
+        env.render()
+
+        render_obs = env.unwrapped.render_obs
+        self.assertNotIn("steering_cmds", render_obs)
 
         env.close()

@@ -141,6 +141,17 @@ Debugging and visualization
 
 Debug with breakpoints by looping through environment steps (see ``tests/drift_debug.py``).
 
+Control debug panel
+^^^^^^^^^^^^^^^^^^^
+
+Set ``show_ctr_debug: True`` in ``gymkhana/envs/rendering/rendering.yaml`` to enable a real-time control debug panel below the map (PyQt6 renderer only). The panel displays:
+
+- **Actual vehicle state** (white text): current steering angle (``delta``) and longitudinal velocity (``v_x``)
+- **Control commands** (colour-coded text): raw steering command in blue, throttle command in green, each with their bounds
+- **Zero-centered bar gauges**: two horizontal bars (one per command) spanning the full command range, with the fill extending from zero toward the current value
+
+The panel tracks whichever agent the camera is following (switched via mouse click), defaulting to the ego agent in map view. Disabled by default to avoid overhead during RL training.
+
 Custom maps
 -----------
 
