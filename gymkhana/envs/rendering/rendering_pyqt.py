@@ -8,7 +8,6 @@ import numpy as np
 import pyqtgraph as pg
 from PIL import ImageColor
 from PyQt6 import QtCore, QtGui, QtWidgets
-from pyqtgraph.exporters import ImageExporter
 
 from ..track import Track
 from .pyqt_objects import (
@@ -421,7 +420,7 @@ class PyQtEnvRenderer(EnvRenderer):
             signal.signal(signal.SIGINT, signal.SIG_DFL)
             self.window.show()
         elif self.render_mode == "rgb_array":
-            self.exporter = ImageExporter(self.canvas)
+            pass  # rgb_array captured via QWidget.grab() in render()
 
     def update(self, state: dict) -> None:
         """
@@ -566,15 +565,16 @@ class PyQtEnvRenderer(EnvRenderer):
             assert self.window is not None
 
         else:
-            # rgb_array mode => extract the frame from the canvas
-            qImage = self.exporter.export(toBytes=True)
+            # rgb_array mode => grab the whole window so debug widgets are included
+            pixmap = self.window.grab()
+            qImage = pixmap.toImage().convertToFormat(QtGui.QImage.Format.Format_RGBA8888)
 
             width = qImage.width()
             height = qImage.height()
 
             ptr = qImage.bits()
             ptr.setsize(height * width * 4)
-            frame = np.array(ptr).reshape(height, width, 4)  #  Copies the data
+            frame = np.array(ptr).reshape(height, width, 4)  # Copies the data
 
             return frame[:, :, :3]  # remove alpha channel
 
