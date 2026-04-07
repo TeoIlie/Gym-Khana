@@ -1,10 +1,12 @@
 """Sim2Real trajectory comparison.
 
 Replays control commands from a real car recording (100Hz NPZ) through the
-gymkhana KS simulator and produces comparison plots.
+gymkhana simulator and produces comparison plots.
 
 Usage:
-    python examples/analysis/traj_compare.py --path /path/to/bag_100Hz.npz
+    python examples/analysis/traj_compare.py --path /path/to/bag_100Hz.npz --model ks
+    python examples/analysis/traj_compare.py --path /path/to/bag_100Hz.npz --model st
+    python examples/analysis/traj_compare.py --path /path/to/bag_100Hz.npz --model std
 """
 
 import argparse
@@ -18,10 +20,13 @@ import gymnasium as gym
 import matplotlib.pyplot as plt
 import numpy as np
 
+from gymkhana.envs.gymkhana_env import GKEnv
+
 
 def main():
     parser = argparse.ArgumentParser(description="Sim2Real trajectory comparison")
     parser.add_argument("--path", required=True, help="Path to 100Hz resampled NPZ file")
+    parser.add_argument("--model", required=True, choices=["ks", "st", "std"], help="Vehicle dynamics model")
     args = parser.parse_args()
 
     # Load real data
@@ -34,14 +39,20 @@ def main():
     vicon_yaw = data["vicon_yaw"]
     vicon_body_vx = data["vicon_body_vx"]
 
-    # Output directory
+    # Output directory includes model name
     stem = Path(args.path).stem
-    out_dir = os.path.join("figures", "analysis", "traj_compare", stem)
+    out_dir = os.path.join("figures", "analysis", "traj_compare", stem, args.model)
     os.makedirs(out_dir, exist_ok=True)
+
+    # Select params based on model
+    if args.model == "ks":
+        params = GKEnv.f1tenth_vehicle_params()
+    else:
+        params = GKEnv.f1tenth_std_drift_bias_params()
 
     # Create environment
     config = {
-        "model": "ks",
+        "model": args.model,
         "num_agents": 1,
         "timestep": 0.01,
         "map": "Spielberg_blank",
@@ -49,6 +60,7 @@ def main():
         "observation_config": {"type": "kinematic_state"},
         "normalize_obs": False,
         "normalize_act": False,
+        "params": params,
     }
     env = gym.make("gymkhana:gymkhana-v0", config=config)
     obs, _ = env.reset(options={"poses": np.array([[vicon_x[0], vicon_y[0], vicon_yaw[0]]])})
@@ -85,20 +97,17 @@ def main():
     sim_cmd_speed = np.array(sim_cmd_speed)
     sim_cmd_steer = np.array(sim_cmd_steer)
 
-    # Time axis for sim: initial state at t=0, then one point per step
+    # Time axis: sim has n points starting from t=0 with 0.01 spacing
     n = len(sim_x)
-    if n <= len(t):
-        sim_t = np.concatenate([[0.0], t[: n - 1] + 0.01]) if n > 1 else np.array([0.0])
-    else:
-        sim_t = t[:n]
-    # Simpler: sim has n points starting from t=0 with 0.01 spacing
     sim_t = np.arange(n) * 0.01
 
     # Trim real data to match sim duration
     n_real = min(len(t), n)
 
     # Summary
+    model_label = args.model.upper()
     final_err = np.hypot(vicon_x[n_real - 1] - sim_x[n_real - 1], vicon_y[n_real - 1] - sim_y[n_real - 1])
+    print(f"Model: {model_label}")
     print(f"Steps simulated: {n - 1}")
     print(f"Duration: {sim_t[-1]:.2f}s")
     print(f"Final position error (real vs sim): {final_err:.4f} m")
@@ -106,11 +115,11 @@ def main():
     # --- Plot 1: XY Trajectory ---
     fig, ax = plt.subplots(figsize=(10, 8))
     ax.plot(vicon_x[:n_real], vicon_y[:n_real], label="Real (Vicon)", linewidth=1.5)
-    ax.plot(sim_x[:n_real], sim_y[:n_real], label="Sim (KS model)", linewidth=1.5, linestyle="--")
+    ax.plot(sim_x[:n_real], sim_y[:n_real], label=f"Sim ({model_label} model)", linewidth=1.5, linestyle="--")
     ax.plot(vicon_x[0], vicon_y[0], "ko", markersize=8, label="Start")
     ax.set_xlabel("X (m)")
     ax.set_ylabel("Y (m)")
-    ax.set_title("XY Trajectory — Real vs Sim")
+    ax.set_title(f"XY Trajectory — Real vs Sim ({model_label})")
     ax.set_aspect("equal")
     ax.legend()
     ax.grid(True, alpha=0.3)
@@ -126,7 +135,7 @@ def main():
     ax.plot(sim_t[:n_real], sim_vx[:n_real], label="Sim actual velocity", linewidth=1.5)
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Velocity (m/s)")
-    ax.set_title("Velocity — Command vs Actual")
+    ax.set_title(f"Velocity — Command vs Actual ({model_label})")
     ax.legend()
     ax.grid(True, alpha=0.3)
     fig.tight_layout()
@@ -140,7 +149,7 @@ def main():
     ax.plot(sim_t[:n_real], sim_delta[:n_real], label="Sim actual delta", linewidth=1.5)
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Steering (rad)")
-    ax.set_title("Steering — Command vs Actual")
+    ax.set_title(f"Steering — Command vs Actual ({model_label})")
     ax.legend()
     ax.grid(True, alpha=0.3)
     fig.tight_layout()
