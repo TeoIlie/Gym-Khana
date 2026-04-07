@@ -152,6 +152,17 @@ Set ``show_ctr_debug: True`` in ``gymkhana/envs/rendering/rendering.yaml`` to en
 
 The panel tracks whichever agent the camera is following (switched via mouse click), defaulting to the ego agent in map view. Disabled by default to avoid overhead during RL training.
 
+Observation debug overlay
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Set ``show_obs_debug: True`` in ``gymkhana/envs/rendering/rendering.yaml`` to overlay all observation values on top of the map in the top-left corner (PyQt6 renderer only). The overlay displays:
+
+- **Feature names and values**: each observation feature as a key-value pair (e.g., ``linear_vel_x: 2.3451``)
+- **Array summaries**: large arrays like LiDAR scans show count, min, max, and mean; small arrays (e.g., lookahead curvatures) show all values
+- **Normalization indicator**: shows ``[norm: on]`` when observation normalization is active; values are always displayed in raw physical units regardless of normalization
+
+Works with all observation types (``OriginalObservation``, ``FeaturesObservation``, ``VectorObservation``). For multi-agent environments, the overlay shows the followed agent's observations. Disabled by default to avoid overhead during RL training.
+
 Custom maps
 -----------
 

@@ -1232,6 +1232,15 @@ class GKEnv(gym.Env):
                     "throttle_bounds": self.action_type.throttle_bounds,
                     "steer_type": steer_type,
                     "throttle_type": throttle_type,
+                    "delta_bounds": (self.params["s_min"], self.params["s_max"]),
+                    "vx_bounds": (self.params["v_min"], self.params["v_max"]),
+                }
+            )
+        if self.render_spec is not None and self.render_spec.show_obs_debug:
+            self.render_obs.update(
+                {
+                    "obs_debug_getter": self.observation_type.get_debug_features,
+                    "obs_debug_normalize": getattr(self, "normalize_obs", False),
                 }
             )
 

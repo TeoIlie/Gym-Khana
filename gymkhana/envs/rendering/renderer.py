@@ -18,6 +18,7 @@ class RenderSpec:
     show_wheels: bool
     show_info: Optional[bool] = True
     show_ctr_debug: Optional[bool] = False
+    show_obs_debug: Optional[bool] = False
     vehicle_palette: Optional[list[str]] = None
     render_type: Optional[str] = "pygame"
 
@@ -30,6 +31,7 @@ class RenderSpec:
         show_wheels: bool = False,
         show_info: bool = True,
         show_ctr_debug: bool = False,
+        show_obs_debug: bool = False,
         vehicle_palette: list[str] = None,
         render_type: str = "pygame",
     ) -> None:
@@ -60,6 +62,7 @@ class RenderSpec:
         self.show_wheels = show_wheels
         self.show_info = show_info
         self.show_ctr_debug = show_ctr_debug
+        self.show_obs_debug = show_obs_debug
         self.vehicle_palette = vehicle_palette or ["#984ea3"]
         self.render_type = render_type
 

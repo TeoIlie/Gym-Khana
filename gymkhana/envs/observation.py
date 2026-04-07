@@ -479,6 +479,16 @@ class Observation:
         """
         raise NotImplementedError()
 
+    def get_debug_features(self, agent_idx: int) -> dict:
+        """
+        Return a flat dict of {feature_name: value} for a single agent,
+        suitable for debug overlay display. Subclasses override to handle
+        their specific _last_raw_features format.
+        """
+        if self._last_raw_features is None:
+            return {}
+        return self._last_raw_features
+
 
 class OriginalObservation(Observation):
     def __init__(self, env):
@@ -591,7 +601,21 @@ class OriginalObservation(Observation):
             if isinstance(observations[key], np.ndarray) or isinstance(observations[key], list):
                 observations[key] = np.array(observations[key], dtype=np.float32)
 
+        # Store raw features for debug overlay
+        self._last_raw_features = {k: observations[k] for k in observations if k != "ego_idx"}
+
         return observations
+
+    def get_debug_features(self, agent_idx: int) -> dict:
+        if self._last_raw_features is None:
+            return {}
+        result = {}
+        for k, v in self._last_raw_features.items():
+            if isinstance(v, np.ndarray) and v.ndim >= 1 and v.shape[0] > agent_idx:
+                result[k] = v[agent_idx]
+            else:
+                result[k] = v
+        return result
 
 
 class FeaturesObservation(Observation):
@@ -671,7 +695,18 @@ class FeaturesObservation(Observation):
                 ):
                     obs[agent_id][key] = np.array(obs[agent_id][key], dtype=np.float32)
 
+        # Store raw features for debug overlay
+        self._last_raw_features = obs
+
         return obs
+
+    def get_debug_features(self, agent_idx: int) -> dict:
+        if self._last_raw_features is None:
+            return {}
+        agent_ids = list(self._last_raw_features.keys())
+        if agent_idx < len(agent_ids):
+            return self._last_raw_features[agent_ids[agent_idx]]
+        return self._last_raw_features[agent_ids[0]] if agent_ids else {}
 
 
 class VectorObservation(Observation):
