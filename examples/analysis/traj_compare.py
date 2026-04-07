@@ -1,12 +1,16 @@
 """Sim2Real trajectory comparison.
 
 Replays control commands from a real car recording (100Hz NPZ) through the
-gymkhana simulator and produces comparison plots.
+gymkhana simulator and produces a side-by-side comparison plot (XY trajectory,
+velocity, steering) saved as a single image.
 
 Usage:
     python examples/analysis/traj_compare.py --path /path/to/bag_100Hz.npz --model ks
     python examples/analysis/traj_compare.py --path /path/to/bag_100Hz.npz --model st
     python examples/analysis/traj_compare.py --path /path/to/bag_100Hz.npz --model std
+
+Output:
+    figures/analysis/traj_compare/<bag_stem>/plt_<model>.png
 """
 
 import argparse
@@ -39,10 +43,11 @@ def main():
     vicon_yaw = data["vicon_yaw"]
     vicon_body_vx = data["vicon_body_vx"]
 
-    # Output directory includes model name
+    # Output path
     stem = Path(args.path).stem
-    out_dir = os.path.join("figures", "analysis", "traj_compare", stem, args.model)
+    out_dir = os.path.join("figures", "analysis", "traj_compare", stem)
     os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(out_dir, f"plt_{args.model}.png")
 
     # Select params based on model
     if args.model == "ks":
@@ -112,51 +117,49 @@ def main():
     print(f"Duration: {sim_t[-1]:.2f}s")
     print(f"Final position error (real vs sim): {final_err:.4f} m")
 
+    fig, axes = plt.subplots(1, 3, figsize=(24, 7))
+    fig.suptitle(f"Sim2Real Comparison — {model_label} model ({stem})", fontsize=14)
+
     # --- Plot 1: XY Trajectory ---
-    fig, ax = plt.subplots(figsize=(10, 8))
+    ax = axes[0]
     ax.plot(vicon_x[:n_real], vicon_y[:n_real], label="Real (Vicon)", linewidth=1.5)
-    ax.plot(sim_x[:n_real], sim_y[:n_real], label=f"Sim ({model_label} model)", linewidth=1.5, linestyle="--")
+    ax.plot(sim_x[:n_real], sim_y[:n_real], label=f"Sim ({model_label})", linewidth=1.5, linestyle="--")
     ax.plot(vicon_x[0], vicon_y[0], "ko", markersize=8, label="Start")
     ax.set_xlabel("X (m)")
     ax.set_ylabel("Y (m)")
-    ax.set_title(f"XY Trajectory — Real vs Sim ({model_label})")
+    ax.set_title("XY Trajectory")
     ax.set_aspect("equal")
     ax.legend()
     ax.grid(True, alpha=0.3)
-    fig.tight_layout()
-    fig.savefig(os.path.join(out_dir, "xy_trajectory.png"), dpi=150, bbox_inches="tight")
-    plt.close(fig)
 
     # --- Plot 2: Velocity ---
-    fig, ax = plt.subplots(figsize=(12, 6))
+    ax = axes[1]
     ax.plot(t[:n_real], cmd_speed[:n_real], label="Commanded speed", linewidth=1, alpha=0.7)
     ax.plot(t[:n_real], vicon_body_vx[:n_real], label="Real velocity (Vicon)", linewidth=1)
     ax.plot(sim_t[:n_real], sim_cmd_speed[:n_real], label="Sim commanded speed", linewidth=1, linestyle="--")
     ax.plot(sim_t[:n_real], sim_vx[:n_real], label="Sim actual velocity", linewidth=1.5)
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Velocity (m/s)")
-    ax.set_title(f"Velocity — Command vs Actual ({model_label})")
+    ax.set_title("Velocity — Command vs Actual")
     ax.legend()
     ax.grid(True, alpha=0.3)
-    fig.tight_layout()
-    fig.savefig(os.path.join(out_dir, "velocity.png"), dpi=150, bbox_inches="tight")
-    plt.close(fig)
 
     # --- Plot 3: Steering ---
-    fig, ax = plt.subplots(figsize=(12, 6))
+    ax = axes[2]
     ax.plot(t[:n_real], cmd_steer[:n_real], label="Commanded steering", linewidth=1, alpha=0.7)
     ax.plot(sim_t[:n_real], sim_cmd_steer[:n_real], label="Sim commanded steering", linewidth=1, linestyle="--")
     ax.plot(sim_t[:n_real], sim_delta[:n_real], label="Sim actual delta", linewidth=1.5)
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Steering (rad)")
-    ax.set_title(f"Steering — Command vs Actual ({model_label})")
+    ax.set_title("Steering — Command vs Actual")
     ax.legend()
     ax.grid(True, alpha=0.3)
+
     fig.tight_layout()
-    fig.savefig(os.path.join(out_dir, "steering.png"), dpi=150, bbox_inches="tight")
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
 
-    print(f"\nPlots saved to {out_dir}/")
+    print(f"\nPlot saved to {out_path}")
 
 
 if __name__ == "__main__":
