@@ -1219,6 +1219,30 @@ class GKEnv(gym.Env):
             "collisions": self.sim.collisions,
             "sim_time": self.current_time,
         }
+        if self.render_spec is not None and self.render_spec.show_ctr_debug:
+            states = [a.standard_state for a in self.sim.agents]
+            steer_type, throttle_type = self.action_type.type
+            self.render_obs.update(
+                {
+                    "steering_cmds": np.array([a.curr_steering_cmd for a in self.sim.agents]),
+                    "throttle_cmds": np.array([a.curr_throttle_cmd for a in self.sim.agents]),
+                    "v_x": np.array([s["v_x"] for s in states]),
+                    "delta": np.array([s["delta"] for s in states]),
+                    "steer_bounds": self.action_type.steer_bounds,
+                    "throttle_bounds": self.action_type.throttle_bounds,
+                    "steer_type": steer_type,
+                    "throttle_type": throttle_type,
+                    "delta_bounds": (self.params["s_min"], self.params["s_max"]),
+                    "vx_bounds": (self.params["v_min"], self.params["v_max"]),
+                }
+            )
+        if self.render_spec is not None and self.render_spec.show_obs_debug:
+            self.render_obs.update(
+                {
+                    "obs_debug_getter": self.observation_type.get_debug_features,
+                    "obs_debug_normalize": getattr(self, "normalize_obs", False),
+                }
+            )
 
         # check done
         terminated, truncated, toggle_list = self._check_done()

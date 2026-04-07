@@ -284,6 +284,14 @@ class CarAction:
         return (self._steer_action.type, self._longitudinal_action.type)
 
     @property
+    def steer_bounds(self) -> Tuple[float, float]:
+        return (self._steer_action.lower_limit, self._steer_action.upper_limit)
+
+    @property
+    def throttle_bounds(self) -> Tuple[float, float]:
+        return (self._longitudinal_action.lower_limit, self._longitudinal_action.upper_limit)
+
+    @property
     def space(self) -> gym.Space:
         low = np.array([self._steer_action.lower_limit, self._longitudinal_action.lower_limit]).astype(np.float32)
         high = np.array([self._steer_action.upper_limit, self._longitudinal_action.upper_limit]).astype(np.float32)
