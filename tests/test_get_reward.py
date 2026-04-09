@@ -13,9 +13,9 @@ import pytest
 class TestGetRewardWraparound:
     """Test suite for reward calculation wraparound handling"""
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def env(self):
-        """Create a basic F110 environment for testing"""
+        """Shared env for reward wraparound tests. Each test fully overwrites state."""
         env = gym.make(
             "gymkhana:gymkhana-v0",
             config={
@@ -28,8 +28,8 @@ class TestGetRewardWraparound:
             render_mode=None,
         )
         env.reset()
-        # Unwrap to access private methods like _get_reward()
-        return env.unwrapped
+        yield env.unwrapped
+        env.close()
 
     def test_normal_forward_progress(self, env):
         """Test that normal forward progress gives positive reward"""
@@ -206,11 +206,9 @@ class TestGetRewardWraparound:
 
         assert np.isclose(reward, expected_reward), f"Expected reward {expected_reward}, got {reward}"
 
-    def test_multi_agent_collaborative(self, env):
+    def test_multi_agent_collaborative(self):
         """Test that multi-agent rewards are summed correctly"""
-        env.close()
-
-        # Create 2-agent environment
+        # Create 2-agent environment (separate from shared single-agent env)
         wrapped_env = gym.make(
             "gymkhana:gymkhana-v0",
             config={
@@ -250,13 +248,15 @@ class TestGetRewardWraparound:
 
         assert np.isclose(reward, expected_reward), f"Expected reward {expected_reward}, got {reward}"
 
+        wrapped_env.close()
+
 
 class TestCorrectWraparoundProg:
     """Test suite for _correct_wraparound_prog() method"""
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def env(self):
-        """Create environment for testing"""
+        """Shared env for wraparound prog tests. Tests only call _correct_wraparound_prog (read-only)."""
         env = gym.make(
             "gymkhana:gymkhana-v0",
             config={
@@ -267,7 +267,8 @@ class TestCorrectWraparoundProg:
             render_mode=None,
         )
         env.reset()
-        return env.unwrapped
+        yield env.unwrapped
+        env.close()
 
     def test_forward_wraparound_correction(self, env):
         """
@@ -432,16 +433,17 @@ class TestCorrectWraparoundProg:
 class TestGetRewardEdgeCases:
     """Test edge cases in reward calculation"""
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def env(self):
-        """Create environment for testing"""
+        """Shared env for edge case tests. Each test fully overwrites state."""
         env = gym.make(
             "gymkhana:gymkhana-v0",
             config={"map": "Spielberg", "num_agents": 1, "progress_gain": 1.0},
             render_mode=None,
         )
         env.reset()
-        return env.unwrapped
+        yield env.unwrapped
+        env.close()
 
     def test_zero_progress(self, env):
         """Test that standing still gives zero reward"""
@@ -486,9 +488,9 @@ class TestGetRewardEdgeCases:
 class TestRewardCalculation:
     """Test suite validating core reward calculation components in Frenet mode"""
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def env(self):
-        """Create F110 environment in Frenet mode (predictive_collision=False)"""
+        """Shared Frenet mode env. Each test fully overwrites state before calling _get_reward."""
         env = gym.make(
             "gymkhana:gymkhana-v0",
             config={
@@ -503,7 +505,8 @@ class TestRewardCalculation:
             render_mode=None,
         )
         env.reset()
-        return env.unwrapped
+        yield env.unwrapped
+        env.close()
 
     def test_out_of_bounds_penalty_applied_frenet_boundary(self, env):
         """Test that out_of_bounds_penalty is applied when boundary_exceeded is True"""
@@ -536,33 +539,37 @@ class TestRewardCalculation:
 
     def test_progress_gain_multiplier_application(self, env):
         """Test that forward progress is multiplied by progress_gain before reward calculation"""
-        env.progress_gain = 2.0  # Custom multiplier
-        last_s = 50.0
-        env.last_s = [last_s]
-        env.boundary_exceeded = np.array([False])  # No boundary violation
-        env.poses_x = [env.track.centerline.xs[0]]
-        env.poses_y = [env.track.centerline.ys[0]]
+        original_progress_gain = env.progress_gain
+        try:
+            env.progress_gain = 2.0  # Custom multiplier
+            last_s = 50.0
+            env.last_s = [last_s]
+            env.boundary_exceeded = np.array([False])  # No boundary violation
+            env.poses_x = [env.track.centerline.xs[0]]
+            env.poses_y = [env.track.centerline.ys[0]]
 
-        # Mock position 1.0m ahead
-        env.track.centerline.spline.calc_arclength_inaccurate = lambda x, y: (51.0, 0)
+            # Mock position 1.0m ahead
+            env.track.centerline.spline.calc_arclength_inaccurate = lambda x, y: (51.0, 0)
 
-        # Set agent velocity (state[3] = v_x for ST model)
-        env.sim.agents[0].state[3] = 5.0
+            # Set agent velocity (state[3] = v_x for ST model)
+            env.sim.agents[0].state[3] = 5.0
 
-        reward = env._get_reward()
+            reward = env._get_reward()
 
-        # Expected: progress (1.0m) * progress_gain (2.0) = 2.0
-        expected_reward = 1.0 * env.progress_gain
+            # Expected: progress (1.0m) * progress_gain (2.0) = 2.0
+            expected_reward = 1.0 * env.progress_gain
 
-        print("\n✓ Progress gain multiplier:")
-        print("  Raw progress: 1.0m")
-        print(f"  Progress gain: {env.progress_gain}")
-        print(f"  Expected reward: {expected_reward:.2f}")
-        print(f"  Actual reward: {reward:.2f}")
+            print("\n✓ Progress gain multiplier:")
+            print("  Raw progress: 1.0m")
+            print(f"  Progress gain: {env.progress_gain}")
+            print(f"  Expected reward: {expected_reward:.2f}")
+            print(f"  Actual reward: {reward:.2f}")
 
-        assert np.isclose(reward, expected_reward, atol=0.01), (
-            f"Expected progress gain reward {expected_reward:.2f}, got {reward:.2f}"
-        )
+            assert np.isclose(reward, expected_reward, atol=0.01), (
+                f"Expected progress gain reward {expected_reward:.2f}, got {reward:.2f}"
+            )
+        finally:
+            env.progress_gain = original_progress_gain
 
     def test_negative_velocity_penalty_application(self, env):
         """Test that negative_vel_penalty is applied when longitudinal velocity is negative"""

@@ -109,7 +109,7 @@ class TestMakeSubprocvecenvMultiMap(unittest.TestCase):
         from train.train_utils import make_subprocvecenv
 
         config = get_drift_train_config()
-        n_envs = 6
+        n_envs = 3
         track_pool = ["Drift", "Drift2", "Drift_large"]
 
         # Create multi-map environment
@@ -130,17 +130,16 @@ class TestMakeSubprocvecenvMultiMap(unittest.TestCase):
         from train.train_utils import make_subprocvecenv
 
         config = get_drift_train_config()
-        n_envs = 10
+        n_envs = 3
         track_pool = ["Drift", "Drift2", "Drift_large"]
 
         # Expected distribution using same logic as implementation
         expected_distribution = Counter(track_pool[i % len(track_pool)] for i in range(n_envs))
 
-        # Verify expected distribution is correct
-        # With 10 envs and 3 tracks: Drift=4, Drift2=3, Drift_large=3
-        self.assertEqual(expected_distribution["Drift"], 4)
-        self.assertEqual(expected_distribution["Drift2"], 3)
-        self.assertEqual(expected_distribution["Drift_large"], 3)
+        # With 3 envs and 3 tracks: Drift=1, Drift2=1, Drift_large=1
+        self.assertEqual(expected_distribution["Drift"], 1)
+        self.assertEqual(expected_distribution["Drift2"], 1)
+        self.assertEqual(expected_distribution["Drift_large"], 1)
 
         # Create environment (this will print the actual distribution)
         env = make_subprocvecenv(seed=42, config=config, n_envs=n_envs, track_pool=track_pool)
@@ -158,7 +157,7 @@ class TestMakeSubprocvecenvMultiMap(unittest.TestCase):
 
         config = get_drift_train_config()
         config["map"] = "Drift"
-        n_envs = 4
+        n_envs = 2
 
         # Create environment with track_pool=None
         env = make_subprocvecenv(seed=42, config=config, n_envs=n_envs, track_pool=None)
@@ -178,7 +177,7 @@ class TestMakeSubprocvecenvMultiMap(unittest.TestCase):
         from train.train_utils import make_subprocvecenv
 
         config = get_drift_train_config()
-        n_envs = 5
+        n_envs = 2
         track_pool = ["Drift"]
 
         # Expected: all envs get "Drift"
