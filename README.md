@@ -15,9 +15,12 @@ This repository contains a custom gym environment for training Deep Reinforcemen
 
 ## Table of Contents
 
-- [Quickstart](#quickstart)
-- [Additional Dependencies](#additional-dependencies)
+- [Installation](#installation)
+  - [Quickstart](#quickstart)
+  - [Additional Dependencies](#additional-dependencies)
 - [Training](#training)
+  - [Wandb](#wandb)
+  - [ONNX Policy Conversion](#onnx-policy-conversion)
 - [Configuration](#configuration)
   - [Default Gym/RL configurations](#default-gymrl-configurations)
   - [Callback and Curriculum Learning (CL) configuration](#callback-and-curriculum-learning-cl-configuration)
@@ -26,17 +29,18 @@ This repository contains a custom gym environment for training Deep Reinforcemen
     - [Observation debug overlay](#observation-debug-overlay)
   - [`gym.make()` Options](#gymmake-options)
   - [`env.reset()` Options](#envreset-options)
-- [Wandb](#wandb)
-- [ONNX Policy Conversion](#onnx-policy-conversion)
-- [Custom Maps](#custom-maps)
-- [Formatting/Linting](#formattinglinting)
-- [Important files](#important-files)
-- [Tire parameters](#tire-parameters)
-- [Documentation](#documentation)
-- [Versioning](#versioning)
-- [Known issues](#known-issues)
+- [Customization](#customization)
+  - [Custom Maps](#custom-maps)
+  - [Tire Parameters](#tire-parameters)
+- [Development](#development)
+  - [Formatting/Linting](#formattinglinting)
+  - [Documentation](#documentation)
+  - [Versioning](#versioning)
+- [Known Issues](#known-issues)
 
-## Quickstart
+## Installation
+
+### Quickstart
 
 Gym-Khana is available as a PyPI package with only the gym environment, or as a full repository with additional functionality.
 
@@ -72,7 +76,7 @@ cd examples
 python3 controller_example.py
 ```
 
-## Additional Dependencies
+### Additional Dependencies
 
 MPC controllers require dependencies that cannot be installed via pip alone. For the reference MPC implementation see the ForzaETH [race_stack](https://github.com/ForzaETH/race_stack)
 
@@ -99,6 +103,7 @@ pip install -e ~/software/acados/interfaces/acados_template
 ```
 
 ## Training
+
 The main racing training script is at `train/ppo_race.py`. The recovery training script is at `train/ppo_recover.py`. Both include functionality for:
 1. **Train** (`--m t`): Train a new model with parallel environments using `SubprocVecEnv` and `train/config` params
 2. **Evaluate** (`--m e`): Evaluate a trained model with visualization
@@ -113,6 +118,26 @@ python3 train/ppo_race.py --m t
 ```
 
 Detailed usage guidelines are at the top of the training script files.
+
+### Wandb
+
+By default, all training models are synced to **wandb**, with training data for runs saved to `/wandb` folder.
+
+To login to your account, use `wandb login`. To create an account, visit <https://wandb.ai>
+
+### ONNX Policy Conversion
+
+To use policies in other packages, such as a ROS2 package for sim-to-real transfer, we provide support for converting an SB3 model to ONNX type. Use `train/export_onnx.py` for conversion:
+
+```bash
+python3 train/export_onnx.py --path <SB3 model path>
+```
+
+Run the policy with ONNX using `OnnxPolicyRunner` defined in `gymkhana/inference/onnx_runner.py`. For example for a racing policy:
+
+```bash
+python3 train/ppo_race.py --m x --path <ONNX model path>
+```
 
 ## Configuration
 
@@ -220,41 +245,25 @@ Works with all observation types (`OriginalObservation`, `FeaturesObservation`, 
    # Front & rear angular wheel velocities are automatically initialized to form the full 9-d state for STD model type
    ```
 
-## Wandb
+## Customization
 
-By default, all training models are synced to **wandb**, with training data for runs saved to `/wandb` folder. 
-
-To login to your account, use `wandb login`. To create an account, visit <https://wandb.ai>
-
-## ONNX Policy Conversion
-
-To use policies in other packages, such as a ROS2 package for sim-to-real transfer, we provide support for converting an SB3 model to ONNX type. Use `train/export_onnx.py` for conversion:
-
-```bash
-python3 train/export_onnx.py --path <SB3 model path>
-```
-
-Run the policy with ONNX using `OnnxPolicyRunner` defined in `gymkhana/inference/onnx_runner.py`. For example for a racing policy:
-
-```bash
-python3 train/ppo_race.py --m x --path <ONNX model path>
-```
-
-## Custom Maps
+### Custom Maps
 
 Custom maps can be created using the git submodule <https://github.com/TeoIlie/F1TENTH_Racetracks> stored in folder `/maps`. Once updated, pull the update submodule with `git pull --recurse-submodules`
 
-## Formatting/Linting
-
-Run formatting and auto-fixes manually with `ruff check --fix . && ruff format .` Fixes also are applied before commits due to `.pre-commit-config.yaml` file, with `pre-commit` dependency.
-
-## Tire parameters
+### Tire Parameters
 
 * Parameters for the 1/10 scale f1tenth car to be used with the `STD` model are defined in `gymkhana/envs/gymkhana_env.py` as `f1tenth_std_vehicle_params`. They are created as a mix of existing f1tenth params and tire parameters adjusted from the fullscale car.
 * In future I may measure these parameters from real data for more accurate fitting
 * To maintain a history of parameter choices, and how they compare with the correct behaviour on the fullscale car, tests script `tests/model_validation/test_f1tenth_std_params.py` creates comparison figures along with parameter YAML file dump ordered by date created inside folder `figures/tire_params`
 
-## Documentation
+## Development
+
+### Formatting/Linting
+
+Run formatting and auto-fixes manually with `ruff check --fix . && ruff format .` Fixes also are applied before commits due to `.pre-commit-config.yaml` file, with `pre-commit` dependency.
+
+### Documentation
 
 * Documentation is supported through ReadTheDocs Sphinx template at https://gym-khana.readthedocs.io
 * Tagged versions are available via the version selector in the docs (bottom-left flyout)
@@ -265,7 +274,7 @@ cd docs
 make clean && make html && firefox _build/html/index.html
 ```
 
-## Versioning
+### Versioning
 
 This project follows [Semantic Versioning](https://semver.org/): `MAJOR.MINOR.PATCH`
 
@@ -286,7 +295,7 @@ git push origin v1.2.0
 Pushing the tag automatically publishes to TestPyPI and PyPI via the `publish.yml` GitHub Actions workflow.
 
 
-## Known issues
+## Known Issues
 
 * Library support issues on Windows. You must use Python 3.8 as of 10-2021
 
