@@ -16,9 +16,11 @@ from wandb.integration.sb3 import WandbCallback
 import wandb
 from train.callbacks import make_curriculum_callback
 from train.config.env_config import (
+    ACTOR_LAYER_SIZE,
     ADDITIONAL_TIMESTEPS,
     BEST_MODEL,
     CKPT_SAVE_FREQ,
+    CRITIC_LAYER_SIZE,
     END_LEARNING_RATE,
     EVAL_SEED,
     N_ENVS,
@@ -28,10 +30,12 @@ from train.config.env_config import (
     TOTAL_TIMESTEPS,
     TRANSFER_RESET_CRITIC,
     TRANSFER_RESET_LOG_STD,
+    USE_CUSTOM_RELU,
     get_curriculum_config,
     get_env_id,
 )
 from train.train_utils import (
+    CustomLeakyReLU,
     download_model_from_wandb,
     extract_norm_bounds,
     extract_rl_config,
@@ -93,6 +97,12 @@ def train(profile: TrainingProfile):
 
     learning_rate = linear_schedule(START_LEARNING_RATE, END_LEARNING_RATE)
 
+    policy_kwargs = dict(
+        net_arch=dict(pi=[ACTOR_LAYER_SIZE, ACTOR_LAYER_SIZE], vf=[CRITIC_LAYER_SIZE, CRITIC_LAYER_SIZE]),
+    )
+    if USE_CUSTOM_RELU:
+        policy_kwargs["activation_fn"] = CustomLeakyReLU
+
     model = PPO(
         policy="MlpPolicy",
         env=env,
@@ -102,6 +112,7 @@ def train(profile: TrainingProfile):
         device="cpu",
         seed=SEED,
         learning_rate=learning_rate,
+        policy_kwargs=policy_kwargs,
     )
 
     rl_config = extract_rl_config(model, TOTAL_TIMESTEPS, N_ENVS)

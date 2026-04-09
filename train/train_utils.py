@@ -341,6 +341,16 @@ def extract_rl_config(model: object, total_timesteps: int, n_envs: int) -> dict:
     else:
         config["learning_rate"] = float(model.learning_rate)
 
+    # Read layer sizes from the model's policy
+    net_arch = model.policy.net_arch
+    if isinstance(net_arch, dict):
+        config["actor_layer_size"] = net_arch.get("pi", [])
+        config["critic_layer_size"] = net_arch.get("vf", [])
+    else:
+        # Shared architecture (list) — same for actor and critic
+        config["actor_layer_size"] = net_arch
+        config["critic_layer_size"] = net_arch
+
     return config
 
 

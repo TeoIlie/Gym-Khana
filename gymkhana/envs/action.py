@@ -22,6 +22,10 @@ class LongitudinalActionEnum(Enum):
         else:
             raise ValueError(f"Unknown action type {action}")
 
+    @staticmethod
+    def is_valid(action: str) -> bool:
+        return action in ("accl", "speed")
+
 
 class LongitudinalAction:
     def __init__(self, normalize: bool) -> None:
@@ -199,6 +203,10 @@ class SteerActionEnum(Enum):
         else:
             raise ValueError(f"Unknown action type {action}")
 
+    @staticmethod
+    def is_valid(action: str) -> bool:
+        return action in ("steering_angle", "steering_speed")
+
 
 class CarAction:
     def __init__(self, control_mode: list[str, str], params: Dict, normalize: bool) -> None:
@@ -236,8 +244,25 @@ class CarAction:
                     steer_act_type_fn = SteerActionEnum.from_string("steering_angle")
 
         elif type(control_mode) == list:
-            long_act_type_fn = LongitudinalActionEnum.from_string(control_mode[0])
-            steer_act_type_fn = SteerActionEnum.from_string(control_mode[1])
+            if len(control_mode) != 2:
+                raise ValueError(f"control_input must have exactly 2 elements, got {len(control_mode)}")
+            for mode in control_mode:
+                if LongitudinalActionEnum.is_valid(mode):
+                    if long_act_type_fn is not None:
+                        raise ValueError(f"control_input has two longitudinal types: {control_mode}")
+                    long_act_type_fn = LongitudinalActionEnum.from_string(mode)
+                elif SteerActionEnum.is_valid(mode):
+                    if steer_act_type_fn is not None:
+                        raise ValueError(f"control_input has two steering types: {control_mode}")
+                    steer_act_type_fn = SteerActionEnum.from_string(mode)
+                else:
+                    raise ValueError(
+                        f"Unknown control mode '{mode}'. Valid: 'accl', 'speed', 'steering_angle', 'steering_speed'"
+                    )
+            if long_act_type_fn is None:
+                raise ValueError("control_input must include a longitudinal type ('accl' or 'speed')")
+            if steer_act_type_fn is None:
+                raise ValueError("control_input must include a steering type ('steering_angle' or 'steering_speed')")
         else:
             raise ValueError(f"Unknown control mode {control_mode}")
 
@@ -250,13 +275,21 @@ class CarAction:
 
     @abstractmethod
     def act(self, action: Any, **kwargs) -> Tuple[float, float]:
-        longitudinal_action = self._longitudinal_action.act(action[0], **kwargs)
-        steer_action = self._steer_action.act(action[1], **kwargs)
+        steer_action = self._steer_action.act(action[0], **kwargs)
+        longitudinal_action = self._longitudinal_action.act(action[1], **kwargs)
         return longitudinal_action, steer_action
 
     @property
     def type(self) -> Tuple[str, str]:
         return (self._steer_action.type, self._longitudinal_action.type)
+
+    @property
+    def steer_bounds(self) -> Tuple[float, float]:
+        return (self._steer_action.lower_limit, self._steer_action.upper_limit)
+
+    @property
+    def throttle_bounds(self) -> Tuple[float, float]:
+        return (self._longitudinal_action.lower_limit, self._longitudinal_action.upper_limit)
 
     @property
     def space(self) -> gym.Space:
