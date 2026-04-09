@@ -222,7 +222,9 @@ Works with all observation types (`OriginalObservation`, `FeaturesObservation`, 
 
 ## Wandb
 
-The wandb models are available here: <https://wandb.ai/teo-altum-quinque-queen-s-university/projects>
+By default, all training models are synced to **wandb**, with training data for runs saved to `/wandb` folder. 
+
+To login to your account, use `wandb login`. To create an account, visit <https://wandb.ai>
 
 ## ONNX Policy Conversion
 
