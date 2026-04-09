@@ -93,9 +93,10 @@ class TestFrenetBoundaryChecking(unittest.TestCase):
     predictive TTC-based collision detection.
     """
 
-    def setUp(self):
-        """Create test environment with Frenet boundary checking enabled."""
-        self.env = gym.make(
+    @classmethod
+    def setUpClass(cls):
+        """Create shared test environment with Frenet boundary checking enabled."""
+        cls.env = gym.make(
             "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
@@ -106,11 +107,12 @@ class TestFrenetBoundaryChecking(unittest.TestCase):
                 "progress_gain": 1.0,
             },
         )
-        self.env.reset()
+        cls.env.reset()
 
-    def tearDown(self):
+    @classmethod
+    def tearDownClass(cls):
         """Clean up environment."""
-        self.env.close()
+        cls.env.close()
 
     def test_frenet_boundary_agent_within_bounds(self):
         """Test that agent within track boundaries is not detected as collision."""

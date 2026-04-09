@@ -28,9 +28,9 @@ from gymkhana.envs.utils import (
 class TestNormalizationBounds:
     """Test calculate_norm_bounds() completeness and validity."""
 
-    def test_complete_feature_coverage(self):
-        """Verify calculate_norm_bounds() returns bounds for all drift features."""
-        # Create environment with drift observation type
+    @pytest.fixture(scope="class")
+    def normalized_env(self):
+        """Shared normalized drift env for bounds tests."""
         env = gym.make(
             "gymkhana:gymkhana-v0",
             config={
@@ -39,11 +39,33 @@ class TestNormalizationBounds:
                 "model": "std",
                 "observation_config": {"type": "drift"},
                 "params": GKEnv.f1tenth_std_vehicle_params(),
+                "normalize_act": True,
                 "normalize_obs": True,
             },
         )
+        yield env
+        env.close()
 
-        # Expected drift features from observation.py lines 874-887
+    @pytest.fixture(scope="class")
+    def unnormalized_act_env(self):
+        """Shared env with unnormalized actions for steering bounds test."""
+        env = gym.make(
+            "gymkhana:gymkhana-v0",
+            config={
+                "map": "Spielberg",
+                "num_agents": 1,
+                "model": "std",
+                "observation_config": {"type": "drift"},
+                "params": GKEnv.f1tenth_std_vehicle_params(),
+                "normalize_act": False,
+                "normalize_obs": True,
+            },
+        )
+        yield env
+        env.close()
+
+    def test_complete_feature_coverage(self, normalized_env):
+        """Verify calculate_norm_bounds() returns bounds for all drift features."""
         expected_features = [
             "linear_vel_x",
             "linear_vel_y",
@@ -60,92 +82,41 @@ class TestNormalizationBounds:
             "lookahead_widths",
         ]
 
-        # Get normalization bounds
-        bounds = calculate_norm_bounds(env.unwrapped, expected_features)
+        bounds = calculate_norm_bounds(normalized_env.unwrapped, expected_features)
 
-        # Assert all drift features exist as keys
         for feature in expected_features:
             assert feature in bounds, f"Missing bounds for feature: {feature}"
 
-        # Assert all bounds are valid tuples (min, max)
         for feature, (min_val, max_val) in bounds.items():
             assert min_val is not None, f"Feature '{feature}' has None min value"
             assert max_val is not None, f"Feature '{feature}' has None max value"
-            # Allow min == max for constant features (e.g., constant track width)
             assert min_val <= max_val, f"Feature '{feature}' has invalid bounds: min={min_val} > max={max_val}"
 
-        env.close()
-
-    def test_prev_steering_cmd_bounds_with_normalized_actions(self):
+    def test_prev_steering_cmd_bounds_with_normalized_actions(self, normalized_env):
         """Verify prev_steering_cmd bounds are (-1, 1) when actions are normalized."""
-        env = gym.make(
-            "gymkhana:gymkhana-v0",
-            config={
-                "map": "Spielberg",
-                "num_agents": 1,
-                "model": "std",
-                "observation_config": {"type": "drift"},
-                "params": GKEnv.f1tenth_std_vehicle_params(),
-                "normalize_act": True,  # Actions normalized
-                "normalize_obs": True,
-            },
-        )
+        bounds = calculate_norm_bounds(normalized_env.unwrapped, ["prev_steering_cmd"])
 
-        bounds = calculate_norm_bounds(env.unwrapped, ["prev_steering_cmd"])
-
-        # When actions are normalized, raw steering is in [-1, 1]
         assert bounds["prev_steering_cmd"] == (
             -1,
             1,
         ), f"Expected (-1, 1), got {bounds['prev_steering_cmd']}"
 
-        env.close()
-
-    def test_prev_steering_cmd_bounds_with_unnormalized_actions(self):
+    def test_prev_steering_cmd_bounds_with_unnormalized_actions(self, unnormalized_act_env):
         """Verify prev_steering_cmd bounds are (s_min, s_max) when actions are unnormalized."""
-        env = gym.make(
-            "gymkhana:gymkhana-v0",
-            config={
-                "map": "Spielberg",
-                "num_agents": 1,
-                "model": "std",
-                "observation_config": {"type": "drift"},
-                "params": GKEnv.f1tenth_std_vehicle_params(),
-                "normalize_act": False,  # Actions NOT normalized
-                "normalize_obs": True,
-            },
-        )
-
-        bounds = calculate_norm_bounds(env.unwrapped, ["prev_steering_cmd"])
+        bounds = calculate_norm_bounds(unnormalized_act_env.unwrapped, ["prev_steering_cmd"])
         params = GKEnv.f1tenth_std_vehicle_params()
         s_min = params["s_min"]
         s_max = params["s_max"]
 
-        # When actions are unnormalized, raw steering is in [s_min, s_max]
         assert bounds["prev_steering_cmd"] == (
             s_min,
             s_max,
         ), f"Expected ({s_min}, {s_max}), got {bounds['prev_steering_cmd']}"
 
-        env.close()
-
-    def test_beta_normalization_bounds(self):
+    def test_beta_normalization_bounds(self, normalized_env):
         """Verify beta (slip angle) normalization with conservative ±π/3 bounds."""
-        env = gym.make(
-            "gymkhana:gymkhana-v0",
-            config={
-                "map": "Spielberg",
-                "num_agents": 1,
-                "model": "std",
-                "observation_config": {"type": "drift"},
-                "params": GKEnv.f1tenth_std_vehicle_params(),
-                "normalize_obs": True,
-            },
-        )
+        bounds = calculate_norm_bounds(normalized_env.unwrapped, ["beta"])
 
-        bounds = calculate_norm_bounds(env.unwrapped, ["beta"])
-
-        # Verify bounds are (-π/3, π/3)
         expected_min = -np.pi / 3
         expected_max = np.pi / 3
 
@@ -153,28 +124,21 @@ class TestNormalizationBounds:
         assert np.isclose(bounds["beta"][1], expected_max), f"Expected beta max={expected_max}, got {bounds['beta'][1]}"
 
         # Test normalization at key points
-        # Min: -π/3 → -1.0
         result = normalize_feature("beta", np.float32(-np.pi / 3), bounds)
         assert np.isclose(result, -1.0), f"Expected -1.0, got {result}"
 
-        # Zero: 0 → 0.0
         result = normalize_feature("beta", np.float32(0.0), bounds)
         assert np.isclose(result, 0.0), f"Expected 0.0, got {result}"
 
-        # Max: π/3 → 1.0
         result = normalize_feature("beta", np.float32(np.pi / 3), bounds)
         assert np.isclose(result, 1.0), f"Expected 1.0, got {result}"
 
         # Test clipping for extreme values beyond ±π/3
-        # -π/2 (extreme drift) → clips to -1.0
         result = normalize_feature("beta", np.float32(-np.pi / 2), bounds)
         assert np.isclose(result, -1.0), f"Expected -1.0 (clipped), got {result}"
 
-        # π/2 (extreme drift) → clips to 1.0
         result = normalize_feature("beta", np.float32(np.pi / 2), bounds)
         assert np.isclose(result, 1.0), f"Expected 1.0 (clipped), got {result}"
-
-        env.close()
 
 
 class TestNormalizeFeature:
@@ -542,29 +506,15 @@ class TestNormalizedObservation:
         env_spielberg.close()
         env_austin.close()
 
-    def test_global_constants_used_for_track_features(self):
+    def test_global_constants_used_for_track_features(self, spielberg_std_env):
         """Test that GLOBAL_* constants are actually being used for normalization.
 
         Verifies that lookahead_curvatures and lookahead_widths use the hard-coded
         global constants GLOBAL_MAX_CURVATURE, GLOBAL_MIN_WIDTH, GLOBAL_MAX_WIDTH
         instead of per-track computation.
         """
-
-        # Create environment with any track
-        env = gym.make(
-            "gymkhana:gymkhana-v0",
-            config={
-                "map": "Drift",
-                "num_agents": 1,
-                "model": "std",
-                "observation_config": {"type": "drift"},
-                "params": GKEnv.f1tenth_std_vehicle_params(),
-                "normalize_obs": True,
-            },
-        )
-
         features = ["lookahead_curvatures", "lookahead_widths", "frenet_n"]
-        bounds = calculate_norm_bounds(env.unwrapped, features)
+        bounds = calculate_norm_bounds(spielberg_std_env.unwrapped, features)
 
         # Verify lookahead_curvatures uses global bounds
         expected_curv_bounds = (-GLOBAL_MAX_CURVATURE, GLOBAL_MAX_CURVATURE)
@@ -583,8 +533,6 @@ class TestNormalizedObservation:
         assert bounds["frenet_n"] == expected_frenet_n_bounds, (
             f"Expected frenet_n bounds {expected_frenet_n_bounds}, got {bounds['frenet_n']}"
         )
-
-        env.close()
 
     def test_normalized_observation_preserves_relative_ordering(self):
         """Verify normalization preserves relative relationships between features."""
@@ -932,8 +880,9 @@ class TestActionIntegration:
 class TestActionEdgeCases:
     """Edge case tests for action normalization."""
 
-    def test_action_space_sampling(self):
-        """Verify Gymnasium action space sampling works correctly."""
+    @pytest.fixture(scope="class")
+    def env(self):
+        """Shared env for action edge case tests."""
         env = gym.make(
             "gymkhana:gymkhana-v0",
             config={
@@ -943,49 +892,32 @@ class TestActionEdgeCases:
                 "normalize_act": True,
             },
         )
+        yield env
+        env.close()
 
-        # Reset environment
+    def test_action_space_sampling(self, env):
+        """Verify Gymnasium action space sampling works correctly."""
         env.reset()
 
-        # Sample from action space
         for _ in range(10):
             sampled_action = env.action_space.sample()
 
-            # Verify sampled action is in [-1, 1]²
             assert sampled_action.shape == (1, 2), f"Expected shape (1, 2), got {sampled_action.shape}"
             assert np.all(sampled_action >= -1.0), f"Sampled action has values < -1: {sampled_action}"
             assert np.all(sampled_action <= 1.0), f"Sampled action has values > 1: {sampled_action}"
 
-            # Verify action space contains the sampled action
             assert env.action_space.contains(sampled_action), (
                 f"Action space should contain sampled action: {sampled_action}"
             )
 
-            # Step with sampled action (should not crash)
             obs, reward, terminated, truncated, info = env.step(sampled_action)
             assert obs is not None, "Step should return valid observation"
 
             if terminated or truncated:
                 env.reset()
 
-        env.close()
-
-    def test_boundary_actions(self):
+    def test_boundary_actions(self, env):
         """Test extreme boundary actions don't crash."""
-        env = gym.make(
-            "gymkhana:gymkhana-v0",
-            config={
-                "map": "Spielberg",
-                "num_agents": 1,
-                "params": GKEnv.f1tenth_std_vehicle_params(),
-                "normalize_act": True,
-            },
-        )
-
-        # Reset environment
-        obs, info = env.reset()
-
-        # Test boundary actions
         boundary_actions = [
             np.array([[-1.0, -1.0]], dtype=np.float32),  # Full left, full brake
             np.array([[1.0, 1.0]], dtype=np.float32),  # Full right, full throttle
@@ -995,32 +927,24 @@ class TestActionEdgeCases:
         ]
 
         for action in boundary_actions:
-            # Reset before each boundary test
             obs, info = env.reset()
 
-            # Take a few steps with the boundary action
             for _ in range(3):
                 obs, reward, terminated, truncated, info = env.step(action)
 
-                # Verify no crashes
                 assert obs is not None, f"Step with action {action} should return observation"
 
-                # Handle both array and dict observations
                 if isinstance(obs, dict):
-                    # For dict observations, check each component
                     for key, value in obs.items():
                         if isinstance(value, np.ndarray):
                             assert not np.any(np.isnan(value)), f"Observation[{key}] contains NaN with action {action}"
                             assert not np.any(np.isinf(value)), f"Observation[{key}] contains Inf with action {action}"
                 else:
-                    # For array observations
                     assert not np.any(np.isnan(obs)), f"Observation contains NaN with action {action}"
                     assert not np.any(np.isinf(obs)), f"Observation contains Inf with action {action}"
 
                 if terminated or truncated:
                     break
-
-        env.close()
 
 
 class TestPrevSteeringCmdNormalization:

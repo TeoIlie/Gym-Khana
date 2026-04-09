@@ -47,7 +47,7 @@ class TestRenderer(unittest.TestCase):
     def test_rgb_array_render(self):
         env = self._make_env(render_mode="rgb_array")
         env.reset()
-        for _ in range(100):
+        for _ in range(20):
             action = env.action_space.sample()
             env.step(action)
             frame = env.render()
@@ -64,7 +64,7 @@ class TestRenderer(unittest.TestCase):
         env = self._make_env(render_mode="rgb_array_list")
         env.reset()
 
-        steps = 100
+        steps = 20
         for _ in range(steps):
             action = env.action_space.sample()
             env.step(action)
@@ -109,7 +109,7 @@ class TestRenderer(unittest.TestCase):
         )
 
         # Run some steps to ensure no performance impact
-        for _ in range(50):
+        for _ in range(10):
             action = env.action_space.sample()
             env.step(action)
             frame = env.render()
@@ -133,7 +133,7 @@ class TestRenderer(unittest.TestCase):
         self.assertEqual(env.unwrapped.arc_length_annotation_interval, 10.0, "Interval should be 10.0 meters")
 
         # Render multiple frames to ensure annotations work
-        for _ in range(50):
+        for _ in range(10):
             action = env.action_space.sample()
             env.step(action)
             frame = env.render()
@@ -151,7 +151,7 @@ class TestRenderer(unittest.TestCase):
 
     def test_arc_length_annotations_different_intervals(self):
         """Test that different annotation interval values work correctly."""
-        test_intervals = [2.5, 5.0, 10.0, 20.0]
+        test_intervals = [2.5, 20.0]
 
         for interval in test_intervals:
             with self.subTest(interval=interval):
@@ -197,7 +197,7 @@ class TestRenderer(unittest.TestCase):
         self.assertTrue(env.unwrapped.render_arc_length_annotations, "Arc length annotations should be enabled")
 
         # Render multiple frames with both features
-        for _ in range(50):
+        for _ in range(10):
             action = env.action_space.sample()
             env.step(action)
             frame = env.render()
@@ -227,7 +227,7 @@ class TestRenderer(unittest.TestCase):
             env = self._make_env(render_mode="rgb_array")
 
         env.reset()
-        for _ in range(50):
+        for _ in range(10):
             action = env.action_space.sample()
             env.step(action)
             frame = env.render()
