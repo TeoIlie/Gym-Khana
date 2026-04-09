@@ -13,6 +13,29 @@
 
 This repository contains a custom gym environment for training Deep Reinforcement Learning policies to race and drift on 1/10 scale or full-size Ackermann vehicles. **SB3** and **wandb** integration included. Based on the f1tenth_gym simulator built by UPenn. For detailed information see the [documentation](https://gym-khana.readthedocs.io/en/latest/)
 
+## Table of Contents
+
+- [Quickstart](#quickstart)
+- [Additional Dependencies](#additional-dependencies)
+- [Training](#training)
+- [Configuration](#configuration)
+  - [Default Gym/RL configurations](#default-gymrl-configurations)
+  - [Callback and Curriculum Learning (CL) configuration](#callback-and-curriculum-learning-cl-configuration)
+  - [Debugging configuration](#debugging-configuration)
+    - [Control debug panel](#control-debug-panel)
+    - [Observation debug overlay](#observation-debug-overlay)
+  - [`gym.make()` Options](#gymmake-options)
+  - [`env.reset()` Options](#envreset-options)
+- [Wandb](#wandb)
+- [ONNX Policy Conversion](#onnx-policy-conversion)
+- [Custom Maps](#custom-maps)
+- [Formatting/Linting](#formattinglinting)
+- [Important files](#important-files)
+- [Tire parameters](#tire-parameters)
+- [Documentation](#documentation)
+- [Versioning](#versioning)
+- [Known issues](#known-issues)
+
 ## Quickstart
 
 Gym-Khana is available as a PyPI package with only the gym environment, or as a full repository with additional functionality.
@@ -143,9 +166,7 @@ Set `show_obs_debug: True` in `gymkhana/envs/rendering/rendering.yaml` to overla
 
 Works with all observation types (`OriginalObservation`, `FeaturesObservation`, `VectorObservation`). For multi-agent environments, the overlay shows the followed agent's observations. Disabled by default to avoid overhead during training.
 
-### Important configuration options
-
-`gym.make()` configurations:
+### `gym.make()` Options
 
 1. Set `training_mode` to define the training goal. This modifies the reset, initialization, track, and reward settings:
     1. `"race"` (default) is used by `train/ppo_race.py` for training racing policies 
@@ -171,7 +192,7 @@ Works with all observation types (`OriginalObservation`, `FeaturesObservation`, 
     2. `reverse`: drive around in the opposite direction (For ex, CW instead of CCW)
     3. `random`: randomly drive in the 'regular' or 'reverse' direction at each reset with a 50% chance, to learn left and right cornering equally when training a policy with RL
 
-`env.reset()` configurations:
+### `env.reset()` Options
 
 1. **Poses** and **States** can be used to initialize vehicles at specific configurations. Note:
    - Only one of `poses` or `states` can be used per reset call (not both)
@@ -224,17 +245,6 @@ Custom maps can be created using the git submodule <https://github.com/TeoIlie/F
 ## Formatting/Linting
 
 Run formatting and auto-fixes manually with `ruff check --fix . && ruff format .` Fixes also are applied before commits due to `.pre-commit-config.yaml` file, with `pre-commit` dependency.
-
-## Important files
-
-* `gymkhana/envs/base_classes.py:503` defines the `step` method.
-  * the action space is defined as an `ndarray` with
-    1. the first element being desired **steering angle**
-    2. second element is desired **velocity**.
-* dynamics models are defined in `gymkhana/envs/dynamic_models`
-  * `single_track.py` models the single-track dynamics model, but only basic tire modelling
-  * `single_track_drift.py` models the single-track dynamics model with PAC2002 tire model, ideal for drift training
-  * `multi_body.py` models the car in greatest detail, but parameters are only available for a full-scale vehicle
 
 ## Tire parameters
 
