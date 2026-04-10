@@ -1,3 +1,5 @@
+"""Single Track Drift (STD) vehicle dynamics model with PAC2002 tire model."""
+
 import numpy as np
 from numba import njit
 
@@ -7,35 +9,43 @@ from ..utils import accl_constraints, steering_constraint
 
 
 def vehicle_dynamics_std(x: np.ndarray, u_init: np.ndarray, params: dict):
+    """Compute Single Track Drift vehicle dynamics.
+
+    Extends the ST model with a PAC2002 (Pacejka Magic Formula) tire model
+    to capture tire force saturation and slip needed for drifting.
+
+    Reference: CommonRoad STD model (vehicle_dynamics_std.py).
+
+    Author: Teodor Ilie (18-October-2025).
+
+    Args:
+        x: State vector of shape ``(9,)``:
+            ``[x_pos, y_pos, steering_angle, velocity, yaw_angle,
+            yaw_rate, slip_angle, front_wheel_omega, rear_wheel_omega]``.
+        u_init: Control input ``[steering_velocity, acceleration]``.
+        params: Vehicle parameters dict. Uses base params plus STD-specific
+            keys ``h_s``, ``R_w``, ``I_z``, ``I_y_w``, ``T_sb``, ``T_se``,
+            and PAC2002 tyre coefficients. See :mod:`gymkhana.envs.dynamic_models`
+            for full parameter descriptions.
+
+    Returns:
+        Time derivatives of the state vector, shape ``(9,)``.
     """
-    Single Track Drift model.
-    From: https://gitlab.lrz.de/tum-cps/commonroad-vehicle-models/-/blob/master/PYTHON/vehiclemodels/vehicle_dynamics_std.py?ref_type=heads
+    # State vector index map:
+    #   x[0]: X  — x position in Cartesian global coordinates
+    #   x[1]: Y  — y position in Cartesian global coordinates
+    #   x[2]: DELTA     — steering angle of front wheels
+    #   x[3]: V         — velocity (speed at CoG)
+    #   x[4]: PSI       — yaw angle in Cartesian global coordinates
+    #   x[5]: PSI_DOT   — yaw rate
+    #   x[6]: BETA      — slip angle at vehicle centre
+    #   x[7]: ANG_FRONT — angular speed of the front wheel (rad/s)
+    #   x[8]: ANG_REAR  — angular speed of the rear wheel (rad/s)
+    #
+    # Control input:
+    #   u_init[0]: steering angle velocity of front wheels (rad/s)
+    #   u_init[1]: longitudinal acceleration (m/s²)
 
-    Syntax:
-        f = vehicle_dynamics_std(x,u,p)
-
-    Inputs:
-        :param x: (numpy.ndarray (9,)): vehicle state vector (x0, x1, x2, x3, x4, x5, x6, x7, x8)
-                x[0]: x position in Cartesian global coordinates
-                x[1]: y position in Cartesian global coordinates
-                x[2]: steering angle of front wheels
-                x[3]: velocity in x direction
-                x[4]: yaw angle in Cartesian global coordinates
-                x[5]: yaw rate
-                x[6]: slip angle at vehicle center
-                x[7]: angular speed of the front wheel
-                x[8]: angular speed of the rear wheel
-        :param u_init: (numpy.ndarray (2,)): control input vector (u1, u2)
-                u_init[0]: steering angle velocity of front wheels
-                u_init[1]: longitudinal acceleration
-        :param params: (dict): dictionary containing necessary parameters:
-
-    Outputs:
-        :return f: (numpy.ndarray): right hand side of differential equations
-
-    Author: Teodor Ilie
-    Written: 18-October-2025
-    """
     # Get states from state vector
     X = x[0]
     Y = x[1]
@@ -212,22 +222,15 @@ def vehicle_dynamics_std(x: np.ndarray, u_init: np.ndarray, params: dict):
 
 @njit(cache=True)
 def get_standardized_state_std(x: np.ndarray) -> dict:
-    """
-    The standard state is fetched to use for calculating observations.
-        Args:
-            x: current state vector
-        Returns:
-            Return the standard state for the STD model
-            [
-                x - global coords
-                y - global coords
-                delt - steering angle
-                v_x - velocity in x
-                v_y - velocity in y
-                yaw - yaw phi
-                yaw_rate - phi dot
-                slip - beta
-            ]
+    """Extract standardized state dict from STD model state vector.
+
+    Args:
+        x: STD state vector ``[x_pos, y_pos, steering_angle, velocity,
+           yaw_angle, yaw_rate, slip_angle, omega_front, omega_rear]``.
+
+    Returns:
+        Dict with keys: ``x``, ``y``, ``delta``, ``v_x``, ``v_y``,
+        ``yaw``, ``yaw_rate``, ``slip``.
     """
     d = dict()
     d["x"] = x[0]

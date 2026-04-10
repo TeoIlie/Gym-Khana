@@ -45,10 +45,16 @@ version = ".".join(release.split(".")[:2])
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["sphinx_rtd_theme", "sphinx.ext.autosectionlabel", "sphinx.ext.autodoc"]
+extensions = ["sphinx_rtd_theme", "sphinx.ext.autosectionlabel", "sphinx.ext.autodoc", "sphinx.ext.napoleon"]
 pygments_style = "emacs"
 autodoc_member_order = "bysource"
 autosectionlabel_prefix_document = True
+
+# Napoleon settings
+napoleon_google_docstring = True
+napoleon_numpy_docstring = False
+napoleon_use_param = True
+napoleon_use_rtype = True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]

@@ -1,3 +1,5 @@
+"""Kinematic Single Track (KS) vehicle dynamics model."""
+
 import numpy as np
 from numba import njit
 
@@ -5,40 +7,21 @@ from .utils import accl_constraints, steering_constraint
 
 
 def vehicle_dynamics_ks(x: np.ndarray, u_init: np.ndarray, params: dict):
-    """
-    Single Track Kinematic Vehicle Dynamics.
-    Follows https://gitlab.lrz.de/tum-cps/commonroad-vehicle-models/-/blob/master/vehicleModels_commonRoad.pdf, section 5
+    """Compute Kinematic Single Track vehicle dynamics.
 
-        Args:
-            x (numpy.ndarray (5, )): vehicle state vector (x0, x1, x2, x3, x4)
-                x0: x position in global coordinates
-                x1: y position in global coordinates
-                x2: steering angle of front wheels
-                x3: velocity in x direction
-                x4: yaw angle
-            u (numpy.ndarray (2, )): control input vector (u1, u2)
-                u1: steering angle velocity of front wheels
-                u2: longitudinal acceleration
-            params (dict): dictionary containing the following parameters:
-                mu (float): friction coefficient
-                C_Sf (float): cornering stiffness of front wheels
-                C_Sr (float): cornering stiffness of rear wheels
-                lf (float): distance from center of gravity to front axle
-                lr (float): distance from center of gravity to rear axle
-                h (float): height of center of gravity
-                m (float): mass of vehicle
-                I (float): moment of inertia of vehicle, about Z axis
-                s_min (float): minimum steering angle
-                s_max (float): maximum steering angle
-                sv_min (float): minimum steering velocity
-                sv_max (float): maximum steering velocity
-                v_switch (float): velocity above which the acceleration is no longer able to create wheel slip
-                a_max (float): maximum allowed acceleration
-                v_min (float): minimum allowed velocity
-                v_max (float): maximum allowed velocity
+    Reference: CommonRoad vehicle models, section 5.
 
-        Returns:
-            f (numpy.ndarray): right hand side of differential equations
+    Args:
+        x: State vector of shape ``(5,)``:
+            ``[x_pos, y_pos, steering_angle, velocity, yaw_angle]``.
+        u_init: Control input ``[steering_velocity, acceleration]``.
+        params: Vehicle parameters dict. Uses ``lf``, ``lr``, ``s_min``,
+            ``s_max``, ``sv_min``, ``sv_max``, ``v_switch``, ``a_max``,
+            ``v_min``, ``v_max``. See :mod:`gymkhana.envs.dynamic_models`
+            for full parameter descriptions.
+
+    Returns:
+        Time derivatives of the state vector, shape ``(5,)``.
     """
     # Controls
     X = x[0]
@@ -91,40 +74,26 @@ def vehicle_dynamics_ks(x: np.ndarray, u_init: np.ndarray, params: dict):
 
 
 def vehicle_dynamics_ks_cog(x: np.ndarray, u_init: np.ndarray, params: dict):
-    """
-    Single Track Kinematic Vehicle Dynamics.
-    Follows https://gitlab.lrz.de/tum-cps/commonroad-vehicle-models/-/blob/master/vehicleModels_commonRoad.pdf, section 5
+    """Compute Kinematic Single Track dynamics referenced at the centre of gravity.
 
-        Args:
-            x (numpy.ndarray (5, )): vehicle state vector (x0, x1, x2, x3, x4)
-                x0: x position in global coordinates
-                x1: y position in global coordinates
-                x2: steering angle of front wheels
-                x3: velocity in x direction
-                x4: yaw angle
-            u (numpy.ndarray (2, )): control input vector (u1, u2)
-                u1: steering angle velocity of front wheels
-                u2: longitudinal acceleration
-            params (dict): dictionary containing the following parameters:
-                mu (float): friction coefficient
-                C_Sf (float): cornering stiffness of front wheels
-                C_Sr (float): cornering stiffness of rear wheels
-                lf (float): distance from center of gravity to front axle
-                lr (float): distance from center of gravity to rear axle
-                h (float): height of center of gravity
-                m (float): mass of vehicle
-                I (float): moment of inertia of vehicle, about Z axis
-                s_min (float): minimum steering angle
-                s_max (float): maximum steering angle
-                sv_min (float): minimum steering velocity
-                sv_max (float): maximum steering velocity
-                v_switch (float): velocity above which the acceleration is no longer able to create wheel slip
-                a_max (float): maximum allowed acceleration
-                v_min (float): minimum allowed velocity
-                v_max (float): maximum allowed velocity
+    Unlike :func:`vehicle_dynamics_ks` (which references the rear axle), this
+    variant computes position derivatives at the vehicle's centre of gravity by
+    incorporating the kinematic slip angle ``beta``. Used internally by the STD
+    model for the low-speed kinematic blending regime.
 
-        Returns:
-            f (numpy.ndarray): right hand side of differential equations
+    Reference: CommonRoad vehicle models, section 5.
+
+    Args:
+        x: State vector of shape ``(5,)``:
+            ``[x_pos, y_pos, steering_angle, velocity, yaw_angle]``.
+        u_init: Control input ``[steering_velocity, acceleration]``.
+        params: Vehicle parameters dict. Uses ``lf``, ``lr``, ``s_min``,
+            ``s_max``, ``sv_min``, ``sv_max``, ``v_switch``, ``a_max``,
+            ``v_min``, ``v_max``. See :mod:`gymkhana.envs.dynamic_models`
+            for full parameter descriptions.
+
+    Returns:
+        Time derivatives of the state vector, shape ``(5,)``.
     """
     # Controls
     X = x[0]
@@ -175,7 +144,16 @@ def vehicle_dynamics_ks_cog(x: np.ndarray, u_init: np.ndarray, params: dict):
 
 @njit(cache=True)
 def get_standardized_state_ks(x: np.ndarray) -> dict:
-    """[X,Y,DELTA,V_X, V_Y,YAW,YAW_RATE,SLIP]"""
+    """Extract standardized state dict from KS model state vector.
+
+    Args:
+        x: KS state vector ``[x_pos, y_pos, steering_angle, velocity, yaw_angle]``.
+
+    Returns:
+        Dict with keys: ``x``, ``y``, ``delta``, ``v_x``, ``v_y``,
+        ``yaw``, ``yaw_rate``, ``slip``.
+        ``v_y``, ``yaw_rate``, and ``slip`` are zero (kinematic model).
+    """
     d = dict()
     d["x"] = x[0]
     d["y"] = x[1]

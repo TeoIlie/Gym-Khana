@@ -1,3 +1,5 @@
+"""Multi-Body (MB) vehicle dynamics model."""
+
 import numpy as np
 from numba import njit
 
@@ -13,20 +15,19 @@ from ..tire_model import (
 
 
 def vehicle_dynamics_mb(x: np.ndarray, u_init: np.ndarray, params: dict):
-    """
-    vehicleDynamics_mb - multi-body vehicle dynamics based on the DoT (department of transportation) vehicle dynamics
-    reference point: center of mass
+    """Compute Multi-Body vehicle dynamics.
 
-    Syntax:
-        f = vehicleDynamics_mb(x,u,p)
+    DoT (Department of Transportation) based multi-body model. Reference point
+    is the center of mass. State vector is 29-dimensional; use
+    :meth:`DynamicModel.get_initial_state` to initialize correctly.
 
-    Inputs:
-        :param x: vehicle state vector
-        :param uInit: vehicle input vector
-        :param params: vehicle parameter vector
+    Args:
+        x: State vector of shape ``(29,)`` (see source for component index map).
+        u_init: Control input ``[steering_velocity, acceleration]``.
+        params: Vehicle parameters dict (see :mod:`gymkhana.envs.dynamic_models`).
 
-    Outputs:
-        :return f: right-hand side of differential equations
+    Returns:
+        Time derivatives of the state vector, shape ``(29,)``.
     """
 
     # ------------- BEGIN CODE --------------
