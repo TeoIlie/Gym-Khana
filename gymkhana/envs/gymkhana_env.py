@@ -20,7 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-"""
+"""Main Gymnasium environment for Gym-Khana autonomous racing simulation.
+
 Authors: Hongrui Zheng, Teodor Ilie
 """
 
@@ -45,39 +46,35 @@ from .utils import deep_update
 
 
 class GKEnv(gym.Env):
-    """
-    Gymnasium environment for Gym-Khana. For API specs, see https://gymnasium.farama.org/api/env/#
+    """Gymnasium environment for Gym-Khana autonomous racing.
+
+    Implements the standard Gymnasium ``Env`` interface. Create via::
+
+        env = gym.make('gymkhana:gymkhana-v0', config={...})
+
+    Configuration is passed as a dict to ``__init__`` and merged with defaults
+    from :meth:`default_config`. See that method for all available keys and
+    their defaults. Vehicle physics parameters are documented in
+    :mod:`gymkhana.envs.dynamic_models`; preset parameter dicts are available
+    via :meth:`f1tenth_vehicle_params`, :meth:`f1tenth_std_vehicle_params`, etc.
 
     Args:
-        kwargs:
-            seed (int, default=12345): seed for random state and reproducibility
-            map (str, default='vegas'): name of the map used for the environment.
+        config: Configuration dict merged with :meth:`default_config`.
+            Key configuration options:
 
-            params (dict, default={'mu': 1.0489, 'C_Sf':, 'C_Sr':, 'lf': 0.15875, 'lr': 0.17145, 'h': 0.074, 'm': 3.74, 'I': 0.04712, 's_min': -0.4189, 's_max': 0.4189, 'sv_min': -3.2, 'sv_max': 3.2, 'v_switch':7.319, 'a_max': 9.51, 'v_min':-5.0, 'v_max': 20.0, 'width': 0.31, 'length': 0.58}): dictionary of vehicle parameters.
-            mu: surface friction coefficient
-            C_Sf: Cornering stiffness coefficient, front
-            C_Sr: Cornering stiffness coefficient, rear
-            lf: Distance from center of gravity to front axle
-            lr: Distance from center of gravity to rear axle
-            h: Height of center of gravity
-            m: Total mass of the vehicle
-            I: Moment of inertial of the entire vehicle about the z axis
-            s_min: Minimum steering angle constraint
-            s_max: Maximum steering angle constraint
-            sv_min: Minimum steering velocity constraint
-            sv_max: Maximum steering velocity constraint
-            v_switch: Switching velocity (velocity at which the acceleration is no longer able to create wheel spin)
-            a_max: Maximum longitudinal acceleration
-            v_min: Minimum longitudinal velocity
-            v_max: Maximum longitudinal velocity
-            width: width of the vehicle in meters
-            length: length of the vehicle in meters
-
-            num_agents (int, default=2): number of agents in the environment
-
-            timestep (float, default=0.01): physics timestep
-
-            ego_idx (int, default=0): ego's index in list of agents
+            - ``map`` (str): Track name (default ``"Spielberg"``).
+            - ``params`` (dict): Vehicle parameters (default F1TENTH ST params).
+            - ``model`` (str): Dynamics model — ``"ks"``, ``"st"``, ``"mb"``, ``"std"`` (default ``"st"``).
+            - ``num_agents`` (int): Number of agents (default ``2``).
+            - ``timestep`` (float): Physics timestep in seconds (default ``0.01``).
+            - ``ego_idx`` (int): Index of the ego agent (default ``0``).
+            - ``control_input`` (list): Action types, e.g. ``["speed", "steering_angle"]``.
+            - ``observation_config`` (dict): Observation type config, e.g. ``{"type": "drift"}``.
+            - ``normalize_obs`` (bool | None): Observation normalisation; ``None`` = auto.
+            - ``normalize_act`` (bool): Action normalisation (default ``True``).
+            - ``training_mode`` (str): ``"race"`` or ``"recover"`` (default ``"race"``).
+            - ``predictive_collision`` (bool): TTC-based (True) or Frenet-based (False) collision.
+        render_mode: Gymnasium render mode (``"human"``, ``"human_fast"``, ``"rgb_array"``).
     """
 
     # NOTE: change matadata with default rendering-modes, add definition of render_fps
@@ -383,24 +380,15 @@ class GKEnv(gym.Env):
             self.add_render_callback(self.track.render_frenet_projection)
 
     def _render_lookahead_curvatures_callback(self, e) -> None:
-        """
-        Render callback for lookahead curvature visualization.
+        """Render callback for lookahead curvature visualisation.
 
-        This method is called during rendering to display the lookahead
-        curvature sampling points ahead of the ego vehicle on the centerline.
-        Visualizes the points where curvature is sampled for drift control.
+        Called during :meth:`render` to display the lookahead curvature
+        sampling points ahead of the ego vehicle on the centerline.
+        Uses ``lookahead_n_points`` and ``lookahead_ds`` from config.
+        Silently skips on errors to avoid breaking rendering.
 
-        Parameters
-        ----------
-        e : EnvRenderer
-            Environment renderer object
-
-        Notes
-        -----
-        - Only executed when env.render() is called, not during env.step() - confirmed this!
-        - Silently skips on errors to avoid breaking rendering
-        - Uses config parameters: lookahead_n_points, lookahead_ds
-        - Maintains its own s_guess cache for accurate Frenet conversion
+        Args:
+            e: Environment renderer object.
         """
         try:
             # Get ego agent state
@@ -420,8 +408,12 @@ class GKEnv(gym.Env):
 
     @classmethod
     def fullscale_vehicle_params(cls) -> dict:
-        """
-        This is copied as-is from commonroad-vehicle-models/PYTHON/vehiclemodels/parameters/parameters_vehicle1.yaml
+        """Return full-scale vehicle parameters from CommonRoad.
+
+        Copied as-is from ``commonroad-vehicle-models/PYTHON/vehiclemodels/parameters/parameters_vehicle1.yaml``.
+
+        Returns:
+            Complete parameter dictionary for a full-scale vehicle (ST/MB/STD models).
         """
         params = {
             "mu": 1.0489,
@@ -562,6 +554,11 @@ class GKEnv(gym.Env):
 
     @classmethod
     def f1fifth_vehicle_params(cls) -> dict:
+        """Return default parameters for the 1/5th scale F1FIFTH car (ST model).
+
+        Returns:
+            Parameter dictionary for ST/KS models.
+        """
         params = {
             "mu": 1.1,
             "C_Sf": 5.3507,
@@ -586,8 +583,10 @@ class GKEnv(gym.Env):
 
     @classmethod
     def f1tenth_vehicle_params(cls) -> dict:
-        """
-        Default parameters.
+        """Return default parameters for the 1/10th scale F1TENTH car (ST model).
+
+        Returns:
+            Parameter dictionary for ST/KS models.
         """
         params = {
             "mu": 1.0489,
@@ -613,11 +612,13 @@ class GKEnv(gym.Env):
 
     @classmethod
     def f1tenth_std_drift_bias_params(cls) -> dict:
-        """
-        Returns params for Single Track Drift (STD) model with drift bias.
+        """Return STD model parameters tuned for increased drift tendency.
+
+        Extends :meth:`f1tenth_std_vehicle_params` with adjusted CoG, reduced
+        ``a_max``, softer lateral tyre stiffness, and rear-wheel-drive torque split.
 
         Returns:
-            dict: Parameter dictionary with drift bias for STD model
+            Parameter dictionary for the STD model with drift bias.
         """
         params = cls.f1tenth_std_vehicle_params().copy()
 
@@ -633,12 +634,14 @@ class GKEnv(gym.Env):
 
     @classmethod
     def f1tenth_std_vehicle_params(cls) -> dict:
-        """
-        Returns default parameters for Single Track Drift (STD) model.
-        Extends standard F1TENTH parameters with wheel dynamics and Pacejka tire model.
+        """Return default parameters for the 1/10th scale F1TENTH car (STD model).
+
+        Extends the standard F1TENTH parameters with wheel dynamics (``R_w``,
+        ``I_y_w``) and the full PAC2002 (Pacejka Magic Formula) tyre coefficient
+        set, adapted from full-scale values. See inline comments for derivation notes.
 
         Returns:
-            dict: Complete parameter dictionary for STD model
+            Complete parameter dictionary for the STD model.
         """
         params = {
             # =========================
@@ -716,16 +719,13 @@ class GKEnv(gym.Env):
 
     @classmethod
     def default_config(cls) -> dict:
-        """
-        Default environment configuration.
+        """Return the default environment configuration dict.
 
-        Can be overloaded in environment implementations, or by calling configure().
-
-        Args:
-            None
+        All keys can be overridden by passing a partial ``config`` dict to
+        ``__init__`` or by calling :meth:`configure`.
 
         Returns:
-            a configuration dict
+            Complete default configuration dict.
         """
         return {
             "seed": 12345,
@@ -783,6 +783,14 @@ class GKEnv(gym.Env):
         }
 
     def configure(self, config: dict) -> None:
+        """Merge a partial config dict into the current configuration.
+
+        Also updates the simulator and action space if they are already
+        initialised (i.e. when called after ``__init__``).
+
+        Args:
+            config: Partial configuration dict; keys are merged via deep update.
+        """
         if config:
             self.config = deep_update(self.config, config)
             self.params = self.config["params"]
@@ -799,13 +807,9 @@ class GKEnv(gym.Env):
                 self.action_space = from_single_to_multi_action_space(self.action_type.space, self.num_agents)
 
     def _resolve_direction(self) -> None:
-        """
-        Resolve track direction based on configuration.
+        """Set ``self.direction_reversed`` from ``self.track_direction_config``.
 
-        Sets self.direction_reversed based on self.track_direction_config:
-        - "normal": False (drive forward)
-        - "reverse": True (drive backward)
-        - "random": randomly choose 50/50
+        ``"normal"`` → False, ``"reverse"`` → True, ``"random"`` → 50/50 coin flip.
         """
         if self.track_direction_config == "normal":
             self.direction_reversed = False
@@ -815,27 +819,22 @@ class GKEnv(gym.Env):
             self.direction_reversed = np.random.random() < 0.5
 
     def _check_done(self):
-        """
-        Check if the current episode should end. Distinguishes between
-        natural termination (collision/boundary) and truncation (time limit).
+        """Check whether the current episode should end.
 
-        Behavior depends on training mode:
-        - Recovery (single-agent):
-            - Terminated: (Only Frenet-based) boundary exceeded OR recovery success.
-            - Truncated: max recovery episode steps exceeded, OR arc-length > recovery_s_max
-        - Race (1+ agents)
-            - Terminated:
-                - Predictive TTC: ego agent has TTC collision OR all agents complete 2 laps
-                - Frenet-based: ego agent exceeds track boundaries
-            - Truncated: When max episode steps exceeded
+        Distinguishes natural termination (collision/boundary) from truncation
+        (time limit). Behaviour depends on ``training_mode``:
 
-        Args:
-            None
+        - **Recovery** (single-agent):
+            - Terminated: boundary exceeded OR recovery success.
+            - Truncated: max steps exceeded OR arc-length > ``recovery_s_max``.
+        - **Race** (1+ agents):
+            - Terminated (TTC mode): ego TTC collision OR all agents complete 2 laps.
+            - Terminated (Frenet mode): ego agent exceeds track boundaries.
+            - Truncated: max episode steps exceeded.
 
         Returns:
-            terminated (bool): whether the episode ended due to a terminal state
-            truncated (bool): whether the episode was truncated due to time limit
-            toggle_list (list[int]): each agent's toggle list for crossing the finish zone
+            Tuple of ``(terminated, truncated, toggle_list)`` where
+            ``toggle_list`` tracks each agent's finish-zone crossing count.
         """
 
         if self.training_mode == "recover":
@@ -890,12 +889,11 @@ class GKEnv(gym.Env):
             return bool(terminated), bool(truncated), self.toggle_list >= 4
 
     def _update_state(self):
-        """
-        Update the env's states according to observations.
+        """Update env state from the simulator after a step.
 
-        Note: When predictive_collision=False (Frenet mode), self.collisions
-        reflects simulator TTC/GJK collision state, but is unused for reset/reward.
-        Instead, self.boundary_exceeded tracks Frenet-based boundary violations.
+        Note: when ``predictive_collision=False`` (Frenet mode), ``self.collisions``
+        reflects the simulator TTC/GJK state but is unused for reward/reset.
+        ``self.boundary_exceeded`` tracks Frenet-based boundary violations instead.
         """
         self.poses_x = self.sim.agent_poses[:, 0]
         self.poses_y = self.sim.agent_poses[:, 1]
@@ -908,10 +906,7 @@ class GKEnv(gym.Env):
                 self.boundary_exceeded[i] = self._check_boundary_frenet(i)
 
     def _update_obs_min_max(self):
-        """
-        Update observation min/max tracking with current observation values.
-        Called after each step when tracking is enabled.
-        """
+        """Update observation min/max tracker with the current step's values."""
 
         raw_features = getattr(self.observation_type, "_last_raw_features", None)
         if raw_features is None:
@@ -939,9 +934,10 @@ class GKEnv(gym.Env):
                 self.obs_min_max_tracker[feature_name]["max"] = curr_max
 
     def _print_obs_min_max_stats(self):
-        """
-        Print observation min/max statistics at the end of training/evaluation.
-        Shows recorded values compared to theoretical normalization bounds.
+        """Print a table of recorded vs. theoretical observation min/max bounds.
+
+        Called automatically by :meth:`close` when ``record_obs_min_max=True``.
+        Flags any features whose recorded values exceed theoretical normalisation bounds.
         """
         TABLE_WIDTH = 120
         FEATURE_WIDTH = 25
@@ -999,23 +995,20 @@ class GKEnv(gym.Env):
         print()
 
     def _check_boundary_frenet(self, agent_idx: int) -> bool:
-        """
-        Check if agent has exceeded track boundaries using Frenet coordinates.
+        """Check whether an agent has exceeded track boundaries using Frenet coordinates.
 
-        This method provides explicit boundary detection based on the agent's
-        lateral deviation from the centerline. Used when predictive_collision=False
-        (drift mode) to detect exact boundary crossings rather than predictive
-        TTC-based collisions.
+        Used when ``predictive_collision=False`` (drift mode) to detect exact
+        boundary crossings based on lateral deviation rather than predictive TTC.
 
         Args:
-            agent_idx (int): Index of the agent to check
+            agent_idx: Index of the agent to check.
 
         Returns:
-            bool: True if agent has exceeded track boundaries, False otherwise
+            True if the agent has exceeded track boundaries.
 
         Raises:
-            RuntimeError: If Frenet conversion fails
-            ValueError: If track boundary data is missing or invalid
+            RuntimeError: If Frenet coordinate conversion fails.
+            ValueError: If track boundary data (``w_lefts``, ``w_rights``, ``ss``) is missing.
         """
         # Get agent position
         x = self.poses_x[agent_idx]
@@ -1063,10 +1056,15 @@ class GKEnv(gym.Env):
         return False  # Within boundaries
 
     def _check_recovery_success(self) -> bool:
-        """
-        Check if the vehicle is in a recovered state. Defined as all 6 of:
-        delta, beta, r, d_beta, d_r, frenet_u
-        are within a threshold distance from 0. This defn is taken from a phase plane analysis
+        """Check whether the vehicle is in a recovered (stable) state.
+
+        Recovery is defined as all six quantities — ``delta``, ``beta``, ``r``,
+        ``d_beta``, ``d_r``, and ``frenet_u`` — being within their respective
+        threshold distances from zero. Thresholds are set in config. Definition
+        derived from phase-plane analysis of the drift dynamics.
+
+        Returns:
+            True if the vehicle is considered recovered.
         """
         agent = self.sim.agents[0]
         std_state = agent.standard_state
@@ -1095,11 +1093,13 @@ class GKEnv(gym.Env):
         )
 
     def _get_recovery_reward(self) -> float:
-        """
-        Compute recovery mode reward.
+        """Compute the reward for the current recovery-mode step.
+
+        Combines a boundary collision penalty, a recovery success bonus, and a
+        constant timestep penalty.
 
         Returns:
-            float: Total reward for this step
+            Total reward for this step.
         """
         # collision penalty
         r_col = self.recovery_collision_penalty if self.boundary_exceeded[0] else 0.0
@@ -1120,14 +1120,17 @@ class GKEnv(gym.Env):
         self.recovery_yaw_range = yaw_range
 
     def _get_reward(self):
-        """
-        Get the reward for the current step
+        """Compute the reward for the current step.
 
-        Reward structure depends on training mode:
-        - Recovery (single-agent): recovery reward given by _get_recovery_reward()
-        - Race (1+ agents):
-            - Predictive TTC: progress - penalties (additive)
-            - Frenet-based: -1 OR progress (exclusive)
+        Reward structure depends on ``training_mode``:
+
+        - **Recovery**: delegates to :meth:`_get_recovery_reward`.
+        - **Race (TTC mode)**: additive — ``sum(progress) - sum(collision_penalties)``.
+        - **Race (Frenet mode)**: exclusive — ``out_of_bounds_penalty`` if boundary
+          exceeded, else ``progress * progress_gain``.
+
+        Returns:
+            Scalar reward for the current step.
         """
 
         if self.training_mode == "recover":
@@ -1176,18 +1179,16 @@ class GKEnv(gym.Env):
             return reward
 
     def step(self, action, skip_integration=False):
-        """
-        Step function for the gym env
+        """Step the environment by one timestep.
 
         Args:
-            action (np.ndarray(num_agents, 2))
-            skip_integration (bool): if True, skip dynamics integration (used in reset to generate obs)
+            action: Control inputs for all agents, shape ``(num_agents, 2)``.
+                Each row is ``[steer, longitudinal]``.
+            skip_integration: If True, skip dynamics integration (used during
+                reset to generate an initial observation).
 
         Returns:
-            obs (dict): observation of the current step
-            reward (float, default=self.timestep): step reward, currently is physics timestep
-            done (bool): if the simulation is done
-            info (dict): auxillary information dictionary
+            Tuple ``(obs, reward, terminated, truncated, info)``.
         """
 
         # call simulation step
@@ -1264,22 +1265,22 @@ class GKEnv(gym.Env):
         return obs, reward, terminated, truncated, info
 
     def reset(self, seed=None, options=None):
-        """
-        Reset the gym environment by given poses or full states.
+        """Reset the environment and return an initial observation.
 
         Args:
-            seed: random seed for the reset
-            options: dictionary of options for the reset:
-                - "poses": np.ndarray (num_agents, 3) - [x, y, yaw] per agent
-                - "states": np.ndarray (num_agents, 7) - full state per agent (STD model only)
-                            [x, y, delta, v, yaw, yaw_rate, slip_angle]
-                Note: Cannot specify both "poses" and "states".
+            seed: Random seed for reproducibility.
+            options: Optional dict with one of:
+
+                - ``"poses"``: ``np.ndarray`` of shape ``(num_agents, 3)``
+                  — ``[x, y, yaw]`` per agent.
+                - ``"states"``: ``np.ndarray`` of shape ``(num_agents, 7)``
+                  — ``[x, y, delta, v, yaw, yaw_rate, slip_angle]`` per agent
+                  (STD model only).
+
+                Cannot specify both keys simultaneously.
 
         Returns:
-            obs (dict): observation of the current step
-            reward (float, default=self.timestep): step reward, currently is physics timestep
-            done (bool): if the simulation is done
-            info (dict): auxillary information dictionary
+            Tuple ``(obs, info)``.
         """
         if seed is not None:
             np.random.seed(seed=seed)
@@ -1396,12 +1397,15 @@ class GKEnv(gym.Env):
         return obs, info
 
     def _correct_wraparound_prog(self, prog: float, track_length: float, margin=10.0) -> float:
-        """
-        Validate that progress is within physically possible bounds.
+        """Correct arc-length progress for track wraparound and clip to physical limits.
 
         Args:
-            prog (float): Progress in meters for current timestep
-            agent_idx (int): Index of the agent
+            prog: Raw progress in metres for the current timestep.
+            track_length: Total track length for wraparound correction.
+            margin: Multiplier on ``v_max * timestep`` used as the clip limit (default 10).
+
+        Returns:
+            Corrected and clipped progress in metres.
         """
         # max progress used for clipping
         max_progress = self.params["v_max"] * self.timestep * margin
@@ -1420,52 +1424,40 @@ class GKEnv(gym.Env):
         return np.clip(prog, -max_progress, max_progress)
 
     def update_map(self, map_name: str):
-        """
-        Updates the map used by simulation
+        """Update the map used by the simulation.
 
         Args:
-            map_name (str): name of the map
-
-        Returns:
-            None
+            map_name: Name of the map.
         """
         self.sim.set_map(map_name)
         self.track = Track.from_track_name(map_name)
 
     def update_params(self, params, index=-1):
-        """
-        Updates the parameters used by simulation for vehicles
+        """Update vehicle parameters for the simulation.
 
         Args:
-            params (dict): dictionary of parameters
-            index (int, default=-1): if >= 0 then only update a specific agent's params
-
-        Returns:
-            None
+            params: Dictionary of vehicle parameters.
+            index: If >= 0, update only the specified agent's params; -1 updates all.
         """
         self.sim.update_params(params, agent_idx=index)
 
     def add_render_callback(self, callback_func):
-        """
-        Add extra drawing function to call during rendering.
+        """Add an extra drawing function to call during rendering.
 
         Args:
-            callback_func (function (EnvRenderer) -> None): custom function to called during render()
+            callback_func: Callable with signature ``(EnvRenderer) -> None`` invoked each :meth:`render` call.
         """
         if self.renderer is not None:
             self.renderer.add_renderer_callback(callback_func)
 
     def render(self, mode="human"):
-        """
-        Renders the environment with pyglet. Use mouse scroll in the window to zoom in/out, use mouse click drag to pan. Shows the agents, the map, current fps (bottom left corner), and the race information near as text.
+        """Render the environment.
+
+        Mouse scroll zooms in/out; click-drag pans. Displays agents, map,
+        current FPS, and race information.
 
         Args:
-            mode (str, default='human'): rendering mode, currently supports:
-                'human': slowed down rendering such that the env is rendered in a way that sim time elapsed is close to real time elapsed
-                'human_fast': render as fast as possible
-
-        Returns:
-            None
+            mode: Rendering mode — ``"human"`` (real-time paced) or ``"human_fast"`` (uncapped).
         """
         # NOTE: separate render (manage render-mode) from render_frame (actual rendering with pyglet)
 
@@ -1476,9 +1468,7 @@ class GKEnv(gym.Env):
         return self.renderer.render()
 
     def close(self):
-        """
-        Ensure renderer is closed upon deletion
-        """
+        """Close the environment and release renderer resources."""
         # Print observation statistics if tracking was enabled
         if self.record_obs_min_max:
             self._print_obs_min_max_stats()

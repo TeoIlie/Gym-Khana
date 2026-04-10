@@ -40,20 +40,18 @@ from .track import Track
 
 
 class RaceCar(object):
-    """
-    Base level race car class, handles the physics and laser scan of a single vehicle
+    """Single vehicle physics and laser scan simulation.
 
-    Data Members:
-        params (dict): vehicle parameters dictionary
-        is_ego (bool): ego identifier
-        time_step (float): physics timestep
-        num_beams (int): number of beams in laser
-        fov (float): field of view of laser
-        state (np.ndarray (7, )): state vector [x, y, theta, vel, steer_angle, ang_vel, slip_angle]
-        odom (np.ndarray(13, )): odometry vector [x, y, z, qx, qy, qz, qw, linear_x, linear_y, linear_z, angular_x, angular_y, angular_z]
-        accel (float): current acceleration input
-        steer_angle_vel (float): current steering velocity input
-        in_collision (bool): collision indicator
+    Attributes:
+        params: Vehicle parameters dictionary.
+        is_ego: Whether this is the ego vehicle.
+        time_step: Physics timestep in seconds.
+        num_beams: Number of beams in the laser scan.
+        fov: Field of view of the laser in radians.
+        state: State vector (size depends on model, e.g. 7 for ST).
+        accel: Current acceleration input.
+        steer_angle_vel: Current steering velocity input.
+        in_collision: Whether the vehicle is currently in collision.
     """
 
     # static objects that don't need to be stored in class instances
@@ -75,24 +73,19 @@ class RaceCar(object):
         num_beams=1080,
         fov=4.7,
     ):
-        """
-        TODO rewrite it
-
-        Init function creates a race car instance with all required state vars
+        """Initialize a RaceCar instance.
 
         Args:
-            params (dict): vehicle parameters dictionary
-            seed (int): random seed
-            is_ego (bool, default=False): ego identifier
-            time_step (float, default=0.01): physics sim time step
-            num_beams (int, default=1080): number of beams in the laser scan
-            fov (float, default=4.7): field of view of the laser
-            integrator (Integrator, default=EulerIntegrator()): integrator type
-            model (Model, default=Model.ST): vehicle model type
-            action_type (Action, default=SpeedAction()): action type
-
-        Returns:
-            None
+            params: Vehicle parameters dictionary.
+            seed: Random seed for scan simulation.
+            wall_deflection: If True, vehicle stops on wall contact instead of bouncing.
+            action_type: Action handler (steering + longitudinal).
+            integrator: ODE integrator for dynamics stepping.
+            model: Vehicle dynamics model.
+            is_ego: Whether this is the ego vehicle.
+            time_step: Physics simulation timestep in seconds.
+            num_beams: Number of beams in the laser scan.
+            fov: Field of view of the laser in radians.
         """
 
         # initialization
@@ -191,40 +184,30 @@ class RaceCar(object):
                         RaceCar.side_distances[i] = min(to_side, to_fr)
 
     def update_params(self, params):
-        """
-        Updates the physical parameters of the vehicle
-        Note that does not need to be called at initialization of class anymore
+        """Update the physical parameters of the vehicle.
 
         Args:
-            params (dict): new parameters for the vehicle
-
-        Returns:
-            None
+            params: New vehicle parameters dictionary.
         """
         self.params = params
 
     def set_map(self, map: str | Track, map_scale: float = 1.0):
-        """
-        Sets the map for scan simulator
+        """Set the map for the scan simulator.
 
         Args:
-            map (str | Track): name of the map, or Track object
-            map_scale (float, default=1.0): scale of the map, larger scale means larger map
+            map: Map name or a :class:`Track` object.
+            map_scale: Scale factor for the map (default 1.0).
         """
         RaceCar.scan_simulator.set_map(map, map_scale)
 
     def reset(self, pose, state=None):
-        """
-        Resets the vehicle to a pose or full state.
+        """Reset the vehicle to a pose or full state.
 
         Args:
-            pose (np.ndarray (3, )): pose to reset the vehicle to
-            state (np.ndarray (7, ), optional): full state for STD model
-                  [x, y, delta, v, yaw, yaw_rate, slip_angle]
-                  If provided, pose is ignored and state is used instead.
-
-        Returns:
-            None
+            pose: Pose to reset to, shape ``(3,)`` as ``[x, y, yaw]``.
+            state: Full state for STD model, shape ``(7,)`` as
+                ``[x, y, delta, v, yaw, yaw_rate, slip_angle]``.
+                If provided, ``pose`` is ignored.
         """
         # clear control inputs
         self.accel = 0.0
@@ -256,14 +239,13 @@ class RaceCar(object):
         self.scan_rng = np.random.default_rng(seed=self.seed)
 
     def ray_cast_agents(self, scan):
-        """
-        Ray cast onto other agents in the env, modify original scan
+        """Ray cast onto other agents, returning a modified scan.
 
         Args:
-            scan (np.ndarray, (n, )): original scan range array
+            scan: Original scan range array, shape ``(n,)``.
 
         Returns:
-            new_scan (np.ndarray, (n, )): modified scan
+            Modified scan with other agents occluding rays, shape ``(n,)``.
         """
 
         # starting from original scan
@@ -284,17 +266,16 @@ class RaceCar(object):
         return new_scan
 
     def check_ttc(self, current_scan):
-        """
-        Check iTTC against the environment, sets vehicle states accordingly if collision occurs.
-        Note that this does NOT check collision with other agents.
+        """Check inverse Time-To-Collision (iTTC) against the environment.
 
-        state is [x, y, steer_angle, vel, yaw_angle, yaw_rate, slip_angle]
+        Sets collision state if iTTC threshold is exceeded. Does not check
+        collision with other agents (handled separately via GJK).
 
         Args:
-            current_scan
+            current_scan: Current laser scan array.
 
         Returns:
-            None
+            True if a collision is detected, False otherwise.
         """
 
         in_collision = check_ttc_jit(
@@ -318,16 +299,15 @@ class RaceCar(object):
         return in_collision
 
     def update_pose(self, raw_steer, raw_throttle, skip_integration=False):
-        """
-        Steps the vehicle's physical simulation by one time step
+        """Step the vehicle's physical simulation by one timestep.
 
         Args:
-            raw_steer (float): desired steering angle, or desired steering velocity
-            raw_throttle (float): desired longitudinal velocity, or desired longitudinal acceleration
-            skip_integration (bool): if True, skip dynamics integration (used in reset to generate obs)
+            raw_steer: Desired steering angle or velocity, depending on action type.
+            raw_throttle: Desired longitudinal velocity or acceleration, depending on action type.
+            skip_integration: If True, skip dynamics integration (used during reset to generate obs).
 
         Returns:
-            current_scan
+            Current laser scan array after updating position.
         """
 
         # steering: update prev to curr, and current to new action input raw_steer
@@ -384,28 +364,22 @@ class RaceCar(object):
         return current_scan
 
     def update_opp_poses(self, opp_poses):
-        """
-        Updates the vehicle's information on other vehicles
+        """Update this vehicle's information about other agents.
 
         Args:
-            opp_poses (np.ndarray(num_other_agents, 3)): updated poses of other agents
-
-        Returns:
-            None
+            opp_poses: Poses of all other agents, shape ``(num_other_agents, 3)``.
         """
         self.opp_poses = opp_poses
 
     def update_scan(self, agent_scans, agent_index):
-        """
-        Steps the vehicle's laser scan simulation
-        Separated from update_pose because needs to update scan based on NEW poses of agents in the environment
+        """Update this vehicle's laser scan based on current agent positions.
+
+        Separated from :meth:`update_pose` because scans must be updated after
+        all agents have moved to their new positions.
 
         Args:
-            agent scans list (modified in-place),
-            agent index (int)
-
-        Returns:
-            None
+            agent_scans: List of all agent scans, modified in-place.
+            agent_index: Index of this vehicle in the scans list.
         """
 
         current_scan = agent_scans[agent_index]
@@ -420,31 +394,23 @@ class RaceCar(object):
 
     @property
     def standard_state(self) -> dict:
-        """
-        Returns the state of the vehicle as an observation
-
-        Returns:
-            np.ndarray (7, ): state of the vehicle
-        """
+        """Standardized state dict with keys: x, y, delta, v_x, v_y, yaw, yaw_rate, slip."""
         return self.standard_state_fn(self.state)
 
 
 class Simulator(object):
-    """
-    Simulator class, handles the interaction and update of all vehicles in the environment
+    """Multi-agent simulation orchestrator.
 
-    TODO check description
+    Manages multiple :class:`RaceCar` instances, steps their dynamics simultaneously,
+    and checks collisions between agents and with track boundaries.
 
-    Data Members:
-        num_agents (int): number of agents in the environment
-        time_step (float): physics time step
-        agent_poses (np.ndarray(num_agents, 3)): all poses of all agents
-        agents (list[RaceCar]): container for RaceCar objects
-        collisions (np.ndarray(num_agents, )): array of collision indicator for each agent
-        collision_idx (np.ndarray(num_agents, )): which agent is each agent in collision with
-        integrator (Integrator): integrator to use for vehicle dynamics
-        model (Model): model to use for vehicle dynamics
-        action_type (Action): action type to use for vehicle dynamics
+    Attributes:
+        num_agents: Number of agents in the environment.
+        time_step: Physics time step in seconds.
+        agent_poses: All agent poses as array of shape ``(num_agents, 3)``.
+        agents: List of :class:`RaceCar` instances.
+        collisions: Collision indicator per agent, shape ``(num_agents,)``.
+        collision_idx: Index of the agent each agent is colliding with, ``-1`` if none.
     """
 
     def __init__(
@@ -460,20 +426,19 @@ class Simulator(object):
         time_step=0.01,
         ego_idx=0,
     ):
-        """
-        Init function
+        """Initialize the Simulator.
 
         Args:
-            params (dict): vehicle parameter dictionary, includes {'mu', 'C_Sf', 'C_Sr', 'lf', 'lr', 'h', 'm', 'I', 's_min', 's_max', 'sv_min', 'sv_max', 'v_switch', 'a_max', 'v_min', 'v_max', 'length', 'width'}
-            num_agents (int): number of agents in the environment
-            seed (int): seed of the rng in scan simulation
-            time_step (float, default=0.01): physics time step
-            ego_idx (int, default=0): ego vehicle's index in list of agents
-            integrator (Integrator, default=Integrator.RK4): integrator to use for vehicle dynamics
-            model (Model, default=Model.ST): vehicle dynamics model to use
-            action_type (Action, default=SpeedAction()): action type to use for controlling the vehicle
-        Returns:
-            None
+            params: Vehicle parameters dictionary.
+            num_agents: Number of agents in the environment.
+            seed: Random seed for scan simulation.
+            num_beams: Number of laser beams per agent.
+            wall_deflection: If True, vehicles stop on wall contact.
+            action_type: Shared action handler for all agents.
+            integrator: ODE integrator for dynamics stepping.
+            model: Vehicle dynamics model used by all agents.
+            time_step: Physics time step in seconds.
+            ego_idx: Index of the ego vehicle in the agents list.
         """
         self.num_agents = num_agents
         self.seed = seed
@@ -508,29 +473,24 @@ class Simulator(object):
         self.agent_scans = np.empty((self.num_agents, num_beams))
 
     def set_map(self, map: str | Track, map_scale: float = 1.0):
-        """
-        Sets the map of the environment and sets the map for scan simulator of each agent
+        """Set the map for all agents' scan simulators.
 
         Args:
-            map (str | Track): name of the map, or Track object
-            map_scale (float, default=1.0): scale of the map, larger scale means larger map
-
-        Returns:
-            None
+            map: Map name or a :class:`Track` object.
+            map_scale: Scale factor for the map (default 1.0).
         """
         for agent in self.agents:
             agent.set_map(map, map_scale)
 
     def update_params(self, params, agent_idx=-1):
-        """
-        Updates the params of agents, if an index of an agent is given, update only that agent's params
+        """Update vehicle parameters for one or all agents.
 
         Args:
-            params (dict): dictionary of params, see details in docstring of __init__
-            agent_idx (int, default=-1): index for agent that needs param update, if negative, update all agents
+            params: Vehicle parameters dictionary.
+            agent_idx: Index of the agent to update. If negative, updates all agents.
 
-        Returns:
-            None
+        Raises:
+            IndexError: If ``agent_idx`` is out of range.
         """
         self.params = params
         if agent_idx < 0:
@@ -545,15 +505,7 @@ class Simulator(object):
             raise IndexError("Index given is out of bounds for list of agents.")
 
     def check_collision(self):
-        """
-        Checks for collision between agents using GJK and agents' body vertices
-
-        Args:
-            None
-
-        Returns:
-            None
-        """
+        """Check for collisions between agents using GJK and body vertices."""
         # get vertices of all agents
         all_vertices = np.empty((self.num_agents, 4, 2))
         for i in range(self.num_agents):
@@ -565,15 +517,12 @@ class Simulator(object):
         self.collisions, self.collision_idx = collision_multiple(all_vertices)
 
     def step(self, control_inputs, skip_integration=False):
-        """
-        Steps the simulation environment
+        """Step the simulation by one timestep for all agents.
 
         Args:
-            control_inputs (np.ndarray (num_agents, 2)): control inputs of all agents, first column is desired steering angle, second column is desired velocity
-            skip_integration (bool): if True, skip dynamics integration (used in reset to generate obs)
-
-        Returns:
-            observations (dict): dictionary for observations: poses of agents, current laser scan of each agent, collision indicators, etc.
+            control_inputs: Control inputs for all agents, shape ``(num_agents, 2)``.
+                Each row is ``[steering, longitudinal]``.
+            skip_integration: If True, skip dynamics integration (used during reset).
         """
 
         # looping over agents
@@ -604,16 +553,16 @@ class Simulator(object):
                 self.collisions[i] = 1.0
 
     def reset(self, poses, states=None):
-        """
-        Resets the simulation environment by given poses or full states.
+        """Reset all agents to given poses or full states.
 
         Args:
-            poses (np.ndarray (num_agents, 3)): poses to reset agents to
-            states (np.ndarray (num_agents, 7), optional): full states for STD model
-                   [x, y, delta, v, yaw, yaw_rate, slip_angle] per agent
+            poses: Poses for all agents, shape ``(num_agents, 3)``.
+            states: Full states for STD model, shape ``(num_agents, 7)``,
+                each row ``[x, y, delta, v, yaw, yaw_rate, slip_angle]``.
+                If provided, ``poses`` is ignored.
 
-        Returns:
-            None
+        Raises:
+            ValueError: If the number of poses or states does not match ``num_agents``.
         """
 
         if poses.shape[0] != self.num_agents:
