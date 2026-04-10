@@ -161,6 +161,6 @@ def get_standardized_state_ks(x: np.ndarray) -> dict:
     d["v_x"] = x[3]
     d["v_y"] = 0.0
     d["yaw"] = x[4]
-    d["yaw_rate"] = x[5]
+    d["yaw_rate"] = 0.0
     d["slip"] = 0.0
     return d
