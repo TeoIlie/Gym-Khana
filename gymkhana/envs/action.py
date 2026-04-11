@@ -388,7 +388,6 @@ class CarAction:
         self._longitudinal_action: LongitudinalAction = long_act_type_fn(params, normalize=normalize)
         self._steer_action: SteerAction = steer_act_type_fn(params, normalize=normalize)
 
-    @abstractmethod
     def act(self, action: Any, **kwargs) -> Tuple[float, float]:
         """Convert a ``[steer, longitudinal]`` action pair into control commands.
 
