@@ -48,7 +48,13 @@ version = ".".join(release.split(".")[:2])
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["sphinx_rtd_theme", "sphinx.ext.autosectionlabel", "sphinx.ext.autodoc", "sphinx.ext.napoleon", "myst_parser"]
+extensions = [
+    "sphinx_rtd_theme",
+    "sphinx.ext.autosectionlabel",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
+    "myst_parser",
+]
 pygments_style = "emacs"
 autodoc_member_order = "bysource"
 autosectionlabel_prefix_document = True
