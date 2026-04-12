@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-04-11
+
 ### Added
 - **Control debug panel**: real-time steering/throttle visualization (PyQt6 renderer)
 - **Observation debug overlay**: live observation values overlay on the map (PyQt6 renderer)
@@ -94,7 +96,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Configuration logic simplified and centralized in `train/config/`
 - Moved plotting files to `analysis/` folder
 
-[Unreleased]: https://github.com/TeoIlie/Gym-Khana/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/TeoIlie/Gym-Khana/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/TeoIlie/Gym-Khana/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/TeoIlie/Gym-Khana/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/TeoIlie/Gym-Khana/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/TeoIlie/Gym-Khana/releases/tag/v1.0.0
