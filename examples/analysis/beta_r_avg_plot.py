@@ -506,7 +506,7 @@ def main():
         stanley_states_path = f"{proj_root}/figures/analysis/recover_heatmap/stanley_recovery_states.npz"
 
         stanley_states = None
-        if controller_type == "learned" and os.path.exists(stanley_states_path):
+        if controller_type != "stanley" and os.path.exists(stanley_states_path):
             data = np.load(stanley_states_path)
 
             grids_match = (
@@ -523,7 +523,7 @@ def main():
                     "Stanley states were computed with a different grid — "
                     "re-run with --controller_type stanley to regenerate."
                 )
-        elif controller_type == "learned":
+        elif controller_type != "stanley":
             raise FileNotFoundError(
                 f"{stanley_states_path} not found — run Stanley evaluation first for baseline metrics"
             )
