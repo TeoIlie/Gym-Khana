@@ -1,0 +1,12 @@
+# STD model parameters tuned for increased drift tendency.
+# Inherits from f1tenth_std with adjusted CoG, reduced a_max,
+# softer lateral tyre stiffness, and rear-wheel-drive torque split.
+
+_base: f1tenth_std
+_overrides:
+  lf: 0.19812        # originally 0.15875, promotes rear weight bias
+  lr: 0.13208        # originally 0.17145, promotes rear weight bias
+  a_max: 7.0         # originally 5.0, allows more wheelspin
+  tire_p_dy1: 1.0    # adjusted from 1.101 for more oversteer
+  tire_p_ky1: -50.0  # adjusted from -65.76 for more oversteer
+  T_se: 0.0          # adjusted from 0.5 to simulate RWD

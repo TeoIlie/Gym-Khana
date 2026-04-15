@@ -39,6 +39,7 @@ from .action import CarAction, from_single_to_multi_action_space
 from .base_classes import DynamicModel, Simulator
 from .integrator import IntegratorType
 from .observation import observation_factory
+from .params import load_params
 from .rendering import make_renderer
 from .reset import make_reset_fn
 from .track import Track
@@ -415,142 +416,7 @@ class GKEnv(gym.Env):
         Returns:
             Complete parameter dictionary for a full-scale vehicle (ST/MB/STD models).
         """
-        params = {
-            "mu": 1.0489,
-            "C_Sf": 4.718,
-            "C_Sr": 5.4562,
-            "lf": 0.88392,
-            "lr": 1.50876,
-            "h": 0.074,
-            "m": 1225.8878467253344,
-            "I": 1538.8533713561394,
-            "width": 1.674,
-            "length": 4.298,
-            # steering constraints
-            "s_min": -0.91,
-            "s_max": 0.91,
-            "sv_min": -0.4,
-            "sv_max": 0.4,
-            # maximum curvature change
-            "kappa_dot_max": 0.4,
-            # maximum curvature rate rate
-            "kappa_dot_dot_max": 20,
-            # Longitudinal constraints
-            "v_switch": 4.755,
-            "a_max": 11.5,
-            "v_min": -13.9,
-            "v_max": 45.8,
-            # maximum longitudinal jerk [m/s^3]
-            "j_max": 10.0e3,
-            # maximum longitudinal jerk change [m/s^4]
-            "j_dot_max": 10.0e3,
-            # Extra parameters (for future use in multibody simulation)
-            # sprung mass [kg]  SMASS
-            "m_s": 1094.542720290477,
-            # unsprung mass front [kg]  UMASSF
-            "m_uf": 65.67256321742863,
-            # unsprung mass rear [kg]  UMASSR
-            "m_ur": 65.67256321742863,
-            # moments of inertia of sprung mass
-            # moment of inertia for sprung mass in roll [kg m^2]  IXS
-            "I_Phi_s": 244.04723069965206,
-            # moment of inertia for sprung mass in pitch [kg m^2]  IYS
-            "I_y_s": 1342.2597688480864,
-            # moment of inertia for sprung mass in yaw [kg m^2]  IZZ
-            "I_z": 1538.8533713561394,
-            # moment of inertia cross product [kg m^2]  IXZ
-            "I_xz_s": 0.0,
-            # suspension parameters
-            # suspension spring rate (front) [N/m]  KSF
-            "K_sf": 21898.332429625985,
-            # suspension damping rate (front) [N s/m]  KSDF
-            "K_sdf": 1459.3902937206362,
-            # suspension spring rate (rear) [N/m]  KSR
-            "K_sr": 21898.332429625985,
-            # suspension damping rate (rear) [N s/m]  KSDR
-            "K_sdr": 1459.3902937206362,
-            # geometric parameters
-            # track width front [m]  TRWF
-            "T_f": 1.389888,
-            # track width rear [m]  TRWB
-            "T_r": 1.423416,
-            # lateral spring rate at compliant compliant pin joint between M_s and M_u [N/m]  KRAS
-            "K_ras": 175186.65943700788,
-            # auxiliary torsion roll stiffness per axle (normally negative) (front) [N m/rad]  KTSF
-            "K_tsf": -12880.270509148304,
-            # auxiliary torsion roll stiffness per axle (normally negative) (rear) [N m/rad]  KTSR
-            "K_tsr": 0.0,
-            # damping rate at compliant compliant pin joint between M_s and M_u [N s/m]  KRADP
-            "K_rad": 10215.732056044453,
-            # vertical spring rate of tire [N/m]  KZT
-            "K_zt": 189785.5477234252,
-            # center of gravity height of total mass [m]  HCG (mainly required for conversion to other vehicle models)
-            "h_cg": 0.5577840000000001,
-            # height of roll axis above ground (front) [m]  HRAF
-            "h_raf": 0.0,
-            # height of roll axis above ground (rear) [m]  HRAR
-            "h_rar": 0.0,
-            # M_s center of gravity above ground [m]  HS
-            "h_s": 0.59436,
-            # moment of inertia for unsprung mass about x-axis (front) [kg m^2]  IXUF
-            "I_uf": 32.53963075995361,
-            # moment of inertia for unsprung mass about x-axis (rear) [kg m^2]  IXUR
-            "I_ur": 32.53963075995361,
-            # wheel inertia, from internet forum for 235/65 R 17 [kg m^2]
-            "I_y_w": 1.7,
-            # lateral compliance rate of tire, wheel, and suspension, per tire [m/N]  KLT
-            "K_lt": 1.0278264878518764e-05,
-            # effective wheel/tire radius  chosen as tire rolling radius RR  taken from ADAMS documentation [m]
-            "R_w": 0.344,
-            # split of brake and engine torque
-            "T_sb": 0.76,
-            "T_se": 1,
-            # suspension parameters
-            # [rad/m]  DF
-            "D_f": -0.6233595800524934,
-            # [rad/m]  DR
-            "D_r": -0.20997375328083986,
-            # [needs conversion if nonzero]  EF
-            "E_f": 0,
-            # [needs conversion if nonzero]  ER
-            "E_r": 0,
-            # tire parameters from ADAMS handbook
-            # longitudinal coefficients
-            "tire_p_cx1": 1.6411,  # Shape factor Cfx for longitudinal force
-            "tire_p_dx1": 1.1739,  # Longitudinal friction Mux at Fznom
-            "tire_p_dx3": 0,  # Variation of friction Mux with camber
-            "tire_p_ex1": 0.46403,  # Longitudinal curvature Efx at Fznom
-            "tire_p_kx1": 22.303,  # Longitudinal slip stiffness Kfx/Fz at Fznom
-            "tire_p_hx1": 0.0012297,  # Horizontal shift Shx at Fznom
-            "tire_p_vx1": -8.8098e-006,  # Vertical shift Svx/Fz at Fznom
-            "tire_r_bx1": 13.276,  # Slope factor for combined slip Fx reduction
-            "tire_r_bx2": -13.778,  # Variation of slope Fx reduction with kappa
-            "tire_r_cx1": 1.2568,  # Shape factor for combined slip Fx reduction
-            "tire_r_ex1": 0.65225,  # Curvature factor of combined Fx
-            "tire_r_hx1": 0.0050722,  # Shift factor for combined slip Fx reduction
-            # lateral coefficients
-            "tire_p_cy1": 1.3507,  # Shape factor Cfy for lateral forces
-            "tire_p_dy1": 1.0489,  # Lateral friction Muy
-            "tire_p_dy3": -2.8821,  # Variation of friction Muy with squared camber
-            "tire_p_ey1": -0.0074722,  # Lateral curvature Efy at Fznom
-            "tire_p_ky1": -21.92,  # Maximum value of stiffness Kfy/Fznom
-            "tire_p_hy1": 0.0026747,  # Horizontal shift Shy at Fznom
-            "tire_p_hy3": 0.031415,  # Variation of shift Shy with camber
-            "tire_p_vy1": 0.037318,  # Vertical shift in Svy/Fz at Fznom
-            "tire_p_vy3": -0.32931,  # Variation of shift Svy/Fz with camber
-            "tire_r_by1": 7.1433,  # Slope factor for combined Fy reduction
-            "tire_r_by2": 9.1916,  # Variation of slope Fy reduction with alpha
-            "tire_r_by3": -0.027856,  # Shift term for alpha in slope Fy reduction
-            "tire_r_cy1": 1.0719,  # Shape factor for combined Fy reduction
-            "tire_r_ey1": -0.27572,  # Curvature factor of combined Fy
-            "tire_r_hy1": 5.7448e-006,  # Shift factor for combined Fy reduction
-            "tire_r_vy1": -0.027825,  # Kappa induced side force Svyk/Muy*Fz at Fznom
-            "tire_r_vy3": -0.27568,  # Variation of Svyk/Muy*Fz with camber
-            "tire_r_vy4": 12.12,  # Variation of Svyk/Muy*Fz with alpha
-            "tire_r_vy5": 1.9,  # Variation of Svyk/Muy*Fz with kappa
-            "tire_r_vy6": -10.704,  # Variation of Svyk/Muy*Fz with atan(kappa)
-        }
-        return params
+        return load_params("fullscale")
 
     @classmethod
     def f1fifth_vehicle_params(cls) -> dict:
@@ -559,27 +425,7 @@ class GKEnv(gym.Env):
         Returns:
             Parameter dictionary for ST/KS models.
         """
-        params = {
-            "mu": 1.1,
-            "C_Sf": 5.3507,
-            "C_Sr": 5.3507,
-            "lf": 0.2725,
-            "lr": 0.2585,
-            "h": 0.1825,
-            "m": 15.32,
-            "I": 0.64332,
-            "s_min": -0.4189,
-            "s_max": 0.4189,
-            "sv_min": -3.2,
-            "sv_max": 3.2,
-            "v_switch": 7.319,
-            "a_max": 9.51,
-            "v_min": -5.0,
-            "v_max": 20.0,
-            "width": 0.55,
-            "length": 0.8,
-        }
-        return params
+        return load_params("f1fifth")
 
     @classmethod
     def f1tenth_vehicle_params(cls) -> dict:
@@ -588,27 +434,7 @@ class GKEnv(gym.Env):
         Returns:
             Parameter dictionary for ST/KS models.
         """
-        params = {
-            "mu": 1.0489,
-            "C_Sf": 4.718,
-            "C_Sr": 5.4562,
-            "lf": 0.15875,
-            "lr": 0.17145,
-            "h": 0.074,
-            "m": 3.74,
-            "I": 0.04712,
-            "s_min": -0.4189,
-            "s_max": 0.4189,
-            "sv_min": -3.2,
-            "sv_max": 3.2,
-            "v_switch": 7.319,
-            "a_max": 9.51,
-            "v_min": -5.0,
-            "v_max": 20.0,
-            "width": 0.31,
-            "length": 0.58,
-        }
-        return params
+        return load_params("f1tenth")
 
     @classmethod
     def f1tenth_std_drift_bias_params(cls) -> dict:
@@ -620,17 +446,7 @@ class GKEnv(gym.Env):
         Returns:
             Parameter dictionary for the STD model with drift bias.
         """
-        params = cls.f1tenth_std_vehicle_params().copy()
-
-        # Overwrite specific params
-        params["lf"] = 0.19812  # originally 0.15875 to promote rear weight bias
-        params["lr"] = 0.13208  # originally 0.17145 to promote rear weight bias
-        params["a_max"] = 7.0  # originally 9.51 (greater than 5.0 to allow more wheelspin)
-        params["tire_p_dy1"] = 1.0  # adjusted from original 1.101 for more oversteer
-        params["tire_p_ky1"] = -50.0  # adjusted from original -65.76 for more oversteer
-        params["T_se"] = 0.0  # adjusted from original 0.5 to simulate RWD
-
-        return params
+        return load_params("f1tenth_std_drift_bias")
 
     @classmethod
     def f1tenth_std_vehicle_params(cls) -> dict:
@@ -638,84 +454,13 @@ class GKEnv(gym.Env):
 
         Extends the standard F1TENTH parameters with wheel dynamics (``R_w``,
         ``I_y_w``) and the full PAC2002 (Pacejka Magic Formula) tyre coefficient
-        set, adapted from full-scale values. See inline comments for derivation notes.
+        set, adapted from full-scale values. See ``gymkhana/envs/params/f1tenth_std.yaml``
+        for values and derivation notes.
 
         Returns:
             Complete parameter dictionary for the STD model.
         """
-        params = {
-            # =========================
-            # ORIGINAL PARAMS FROM f1tenth_vehicle_params
-            # =========================
-            "mu": 1.0489,
-            "C_Sf": 4.718,
-            "C_Sr": 5.4562,
-            "lf": 0.15875,
-            "lr": 0.17145,
-            "h": 0.074,
-            "m": 3.74,
-            "I_z": 0.04712,  # moment of inertia for sprung mass in yaw [kg m^2]
-            "s_min": -0.5,  # originally -0.4189
-            "s_max": 0.5,  # originally 0.4189
-            "sv_min": -3.2,
-            "sv_max": 3.2,
-            "v_switch": 7.319,
-            "a_max": 5.0,  # originally 9.51
-            "v_min": -5.0,
-            "v_max": 20.0,
-            "width": 0.31,
-            "length": 0.58,
-            # =========================
-            # NEW PARAMS
-            # =========================
-            # 1. New params copied from multi-body config
-            # =========================
-            # tire parameters from ADAMS handbook
-            # longitudinal coefficients
-            "tire_p_cx1": 1.6411,  # Shape factor Cfx for longitudinal force
-            "tire_p_dx1": 1.23,  # Longitudinal friction Mux at Fznom
-            "tire_p_dx3": 0,  # Variation of friction Mux with camber
-            "tire_p_ex1": 0.46403,  # Longitudinal curvature Efx at Fznom
-            "tire_p_kx1": 66.909,  # Longitudinal slip stiffness Kfx/Fz at Fznom
-            "tire_p_hx1": 0.0012297,  # Horizontal shift Shx at Fznom
-            "tire_p_vx1": -8.8098e-006,  # Vertical shift Svx/Fz at Fznom
-            "tire_r_bx1": 13.276,  # Slope factor for combined slip Fx reduction
-            "tire_r_bx2": -13.778,  # Variation of slope Fx reduction with kappa
-            "tire_r_cx1": 1.2568,  # Shape factor for combined slip Fx reduction
-            "tire_r_ex1": 0.65225,  # Curvature factor of combined Fx
-            "tire_r_hx1": 0.0050722,  # Shift factor for combined slip Fx reduction
-            # lateral coefficients
-            "tire_p_cy1": 1.3507,  # Shape factor Cfy for lateral forces
-            "tire_p_dy1": 1.101,  # Lateral friction Muy
-            "tire_p_dy3": -2.8821,  # Variation of friction Muy with squared camber
-            "tire_p_ey1": -0.0074722,  # Lateral curvature Efy at Fznom
-            "tire_p_ky1": -65.76,  # Maximum value of stiffness Kfy/Fznom
-            "tire_p_hy1": 0.0026747,  # Horizontal shift Shy at Fznom
-            "tire_p_hy3": 0.031415,  # Variation of shift Shy with camber
-            "tire_p_vy1": 0.037318,  # Vertical shift in Svy/Fz at Fznom
-            "tire_p_vy3": -0.32931,  # Variation of shift Svy/Fz with camber
-            "tire_r_by1": 7.1433,  # Slope factor for combined Fy reduction
-            "tire_r_by2": 9.1916,  # Variation of slope Fy reduction with alpha
-            "tire_r_by3": -0.027856,  # Shift term for alpha in slope Fy reduction
-            "tire_r_cy1": 1.0719,  # Shape factor for combined Fy reduction
-            "tire_r_ey1": -0.27572,  # Curvature factor of combined Fy
-            "tire_r_hy1": 5.7448e-006,  # Shift factor for combined Fy reduction
-            "tire_r_vy1": -0.027825,  # Kappa induced side force Svyk/Muy*Fz at Fznom
-            "tire_r_vy3": -0.27568,  # Variation of Svyk/Muy*Fz with camber
-            "tire_r_vy4": 12.12,  # Variation of Svyk/Muy*Fz with alpha
-            "tire_r_vy5": 1.9,  # Variation of Svyk/Muy*Fz with kappa
-            "tire_r_vy6": -10.704,  # Variation of Svyk/Muy*Fz with atan(kappa)
-            # =========================
-            # 2. New params modified for 1/10 scale
-            # =========================
-            "h_s": 0.074,  # height of center of gravity [m], copied from ETH simulator
-            "R_w": 0.049,  # effective tire radius [m] estimated by me to be 49 mm which is 0.049 m
-            "I_y_w": 0.00017,  # wheel inertia in [kg m^2], approximated by me using I = 1/2 * m * r^2, where m = 107.5g and r = 50 mm
-            # split of brake and engine torque
-            "T_sb": 0.5,  # torque split of brakes (percent of torque sent to front axle) [no units] - I'm assuming it's even front/back
-            "T_se": 0.5,  # torque split of engine (percent of torque sent to front axle) [no units] - For AWD I'm assuming it's even front/back
-        }
-        return params
+        return load_params("f1tenth_std")
 
     @classmethod
     def default_config(cls) -> dict:
