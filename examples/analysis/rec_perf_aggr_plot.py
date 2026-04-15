@@ -68,7 +68,7 @@ def plot_comparison(recovery_rates_list, beta_values, r_values, labels, output_p
     r_deg = np.rad2deg(r_values)
 
     # Scale height with panel count to keep cells roughly square
-    height = {2: 2.8, 3: 2.5, 4: 2.2, 5: 2.0}[n]
+    height = {2: 2.8, 3: 2.5, 4: 1.9, 5: 2.0}[n]
     fig, axes = plt.subplots(1, n, figsize=(IEEE_FULL_W, height), constrained_layout=True)
     if n == 1:
         axes = [axes]
