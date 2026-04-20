@@ -83,7 +83,7 @@ def test_yaml_has_required_keys(yaml_name, required_keys):
 
 def test_yaml_values_are_numeric():
     """All parameter values should be int or float, not strings."""
-    for name in ("fullscale", "f1fifth", "f1tenth", "f1tenth_std", "f1tenth_std_drift_bias"):
+    for name in ("fullscale", "f1fifth", "f1tenth_st", "f1tenth_std", "f1tenth_std_drift_bias"):
         params = load_params(name)
         for key, val in params.items():
             assert isinstance(val, (int, float)), (
