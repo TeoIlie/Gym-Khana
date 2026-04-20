@@ -69,7 +69,7 @@ _STD_EXTRA_KEYS = {"I_z", "h_s", "R_w", "I_y_w", "T_sb", "T_se"} | _TIRE_KEYS
     [
         ("fullscale", _BASE_KEYS | {"I"} | _TIRE_KEYS),
         ("f1fifth", _BASE_KEYS | {"I"}),
-        ("f1tenth", _BASE_KEYS | {"I"}),
+        ("f1tenth_st", _BASE_KEYS | {"I"}),
         ("f1tenth_std", _BASE_KEYS | _STD_EXTRA_KEYS),
         ("f1tenth_std_drift_bias", _BASE_KEYS | _STD_EXTRA_KEYS),
     ],

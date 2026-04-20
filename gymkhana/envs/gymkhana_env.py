@@ -434,7 +434,7 @@ class GKEnv(gym.Env):
         Returns:
             Parameter dictionary for ST/KS models.
         """
-        return load_params("f1tenth")
+        return load_params("f1tenth_st")
 
     @classmethod
     def f1tenth_std_drift_bias_params(cls) -> dict:

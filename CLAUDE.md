@@ -213,11 +213,24 @@ Debug with breakpoints by looping through environment steps (see `tests/drift_de
 - Original `f1tenth_gym` branch `rl_example` → renamed to `main` in this fork (active development branch)
 - This fork actively extends the RL capabilities of the original project
 
-## Tire Parameters
+## Vehicle Parameters
 
-Parameters for the 1/10 scale F1TENTH car with STD model are defined in `gymkhana/envs/gymkhana_env.py::f1tenth_std_vehicle_params()`. These mix existing F1TENTH params with tire parameters adjusted from fullscale car.
+Vehicle parameters are defined in YAML files in `gymkhana/envs/params/`:
+- `f1tenth_st.yaml`: 1/10 scale F1TENTH car (ST model)
+- `f1tenth_std.yaml`: 1/10 scale F1TENTH car with PAC2002 tire model (STD model for drifting)
+- `f1tenth_std_drift_bias.yaml`: STD model tuned for increased drift tendency
+- `f1fifth.yaml`: 1/5 scale F1FIFTH car
+- `fullscale.yaml`: Full-scale vehicle from CommonRoad
 
-Test script `tests/model_validation/test_f1tenth_std_params.py` creates comparison figures and parameter YAML dumps in `figures/tire_params/` to maintain parameter history.
+Access parameters via class methods on `GKEnv`:
+```python
+GKEnv.f1tenth_vehicle_params()      # ST model params
+GKEnv.f1tenth_std_vehicle_params()  # STD model params (recommended for drift)
+GKEnv.f1fifth_vehicle_params()      # 1/5 scale params
+GKEnv.fullscale_vehicle_params()    # Full-scale params
+```
+
+Test script `tests/model_validation/test_f1tenth_std_params.py` creates comparison figures and parameter YAML dumps in `figures/tire_params/` for validation.
 
 ## Map Management
 

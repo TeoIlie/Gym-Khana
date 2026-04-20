@@ -1,5 +1,5 @@
 # STD model parameters tuned for increased drift tendency.
-# Inherits from f1tenth_std with adjusted CoG, reduced a_max,
+# Inherits from f1tenth_std with adjusted CoG, increased a_max,
 # softer lateral tyre stiffness, and rear-wheel-drive torque split.
 
 _base: f1tenth_std
