@@ -160,7 +160,12 @@ class Track:
             map_filename = pathlib.Path(track_spec.image)
             image = Image.open(track_dir / str(map_filename)).transpose(Transpose.FLIP_TOP_BOTTOM)
 
-            occupancy_map = np.array(image).astype(np.float32)
+            occupancy_map = np.array(image)
+            # Handle boolean (1-bit) images by scaling to 0-255 range
+            if occupancy_map.dtype == bool:
+                occupancy_map = occupancy_map.astype(np.float32) * 255.0
+            else:
+                occupancy_map = occupancy_map.astype(np.float32)
             occupancy_map[occupancy_map <= 128] = 0.0
             occupancy_map[occupancy_map > 128] = 255.0
 
@@ -224,7 +229,12 @@ class Track:
             # Image path is from path + image name from track_spec
             image_path = path.parent / track_spec.image
             image = Image.open(image_path).transpose(Transpose.FLIP_TOP_BOTTOM)
-            occupancy_map = np.array(image).astype(np.float32)
+            occupancy_map = np.array(image)
+            # Handle boolean (1-bit) images by scaling to 0-255 range
+            if occupancy_map.dtype == bool:
+                occupancy_map = occupancy_map.astype(np.float32) * 255.0
+            else:
+                occupancy_map = occupancy_map.astype(np.float32)
             occupancy_map[occupancy_map <= 128] = 0.0
             occupancy_map[occupancy_map > 128] = 255.0
 
