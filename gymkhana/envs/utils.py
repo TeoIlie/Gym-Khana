@@ -7,9 +7,9 @@ KeyType = TypeVar("KeyType")
 
 # Global track bounds for normalization, computed across all available tracks
 # Update these values when creating a new custom track
-GLOBAL_MAX_CURVATURE = 1.95
-GLOBAL_MIN_WIDTH = 1.2
-GLOBAL_MAX_WIDTH = 2.2
+GLOBAL_MAX_CURVATURE = 0.195
+GLOBAL_MIN_WIDTH = 12.0
+GLOBAL_MAX_WIDTH = 22.0
 
 
 def deep_update(mapping: Dict[KeyType, Any], *updating_mappings: Dict[KeyType, Any]) -> Dict[KeyType, Any]:
@@ -150,7 +150,7 @@ def calculate_norm_bounds(env, features: list[str]):
             raise ValueError(f"Wheel radius 'R_w' must be positive, got {R_w}")
 
         omega_max = v_max / R_w  # rad/s
-        experimental_gain = 6.4  # True max wheel omega found experimentally to be ~2610
+        experimental_gain = 64.0  # True max wheel omega found experimentally to be ~2610
         omega_bounds = (0.0, omega_max * experimental_gain)
         if "prev_avg_wheel_omega" in features_set:
             bounds["prev_avg_wheel_omega"] = omega_bounds

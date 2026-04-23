@@ -15,17 +15,17 @@ predictive_collision: false
 wall_deflection: false
 
 # Map
-map: "Drift_large"
+map: "Drift_large_fullscale"
 # Multi-map training (optional)
 # If specified, parallel environments will train on different maps from this list
 # See /train/training_utils.py make_subprocvecenv
-track_pool:
-  - "Drift_large"
-  - "Drift_large_mirror"
+# track_pool:
+#   - "Drift_large"
+#   - "Drift_large_mirror"
   # - "Drift2"
   # - "Drift2_mirror"
 # For single-map training, set to null or comment out:
-# track_pool: null
+track_pool: null
 
 # Action
 action_input:
@@ -38,7 +38,7 @@ obs_type: "drift"
 normalize_obs: true
 record_obs_min_max: true
 lookahead_n_points: 5
-lookahead_ds: 0.5  # Distance between lookahead points
+lookahead_ds: 5.0  # Distance between lookahead points
 sparse_width_obs: true
 
 # Reset configuration
