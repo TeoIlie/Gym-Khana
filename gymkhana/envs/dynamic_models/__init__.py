@@ -1,6 +1,55 @@
-"""
-This module contains the dynamic models available in the F1Tenth Gym.
-Each submodule contains a single model, and the equations or their source is documented alongside it. Many of the models are from the CommonRoad repository, available here: https://gitlab.lrz.de/tum-cps/commonroad-vehicle-models/
+"""Dynamic models available in the Gym-Khana environment.
+
+Each submodule contains a single model. Most models originate from the
+CommonRoad vehicle model library: https://gitlab.lrz.de/tum-cps/commonroad-vehicle-models/
+
+Vehicle Parameters
+------------------
+All dynamics functions accept a ``params`` dict. The keys used across models are:
+
+**Geometry**
+
+- ``lf`` (float): Distance from centre of gravity to front axle (m).
+- ``lr`` (float): Distance from centre of gravity to rear axle (m).
+- ``h`` (float): Height of centre of gravity (m).
+- ``length`` (float): Vehicle length (m).
+- ``width`` (float): Vehicle width (m).
+
+**Inertia**
+
+- ``m`` (float): Vehicle mass (kg).
+- ``I`` (float): Moment of inertia about the Z axis (kg·m²). *(KS, ST)*
+- ``I_z`` (float): Yaw moment of inertia (kg·m²). *(STD)*
+- ``I_y_w`` (float): Wheel moment of inertia about spin axis (kg·m²). *(STD)*
+
+**Tyre / lateral dynamics**
+
+- ``mu`` (float): Tyre–road friction coefficient. *(ST)*
+- ``C_Sf`` (float): Cornering stiffness of front tyres (N/rad). *(ST)*
+- ``C_Sr`` (float): Cornering stiffness of rear tyres (N/rad). *(ST)*
+
+**Steering constraints**
+
+- ``s_min`` (float): Minimum steering angle (rad).
+- ``s_max`` (float): Maximum steering angle (rad).
+- ``sv_min`` (float): Minimum steering velocity (rad/s).
+- ``sv_max`` (float): Maximum steering velocity (rad/s).
+
+**Longitudinal constraints**
+
+- ``v_switch`` (float): Velocity above which peak acceleration begins to scale down (m/s).
+- ``a_max`` (float): Maximum acceleration magnitude (m/s²).
+- ``v_min`` (float): Minimum allowed velocity (m/s).
+- ``v_max`` (float): Maximum allowed velocity (m/s).
+
+**STD-only (PAC2002 tyre model)**
+
+- ``h_s`` (float): Height of sprung mass centre of gravity (m).
+- ``R_w`` (float): Wheel radius (m).
+- ``T_sb`` (float): Brake torque split to front axle (0–1).
+- ``T_se`` (float): Engine torque split to front axle (0–1).
+- Plus all PAC2002 magic-formula coefficients (``B_f``, ``C_f``, ``D_f``, etc.)
+  — see ``gymkhana.envs.gymkhana_env.GKEnv.f1tenth_std_vehicle_params()``.
 """
 
 import warnings
@@ -17,6 +66,15 @@ from .utils import bang_bang_steer, p_accl
 
 
 class DynamicModel(Enum):
+    """Available vehicle dynamics models, ordered by increasing complexity.
+
+    Members:
+        KS: Kinematic Single Track — pure kinematics, no tire forces.
+        ST: Single Track — lateral dynamics without an explicit tire model.
+        MB: Multi-Body — full tire modeling and multi-body dynamics.
+        STD: Single Track Drift — ST with PAC2002 tire model for drift simulation.
+    """
+
     KS = 1  # Kinematic Single Track
     ST = 2  # Single Track
     MB = 3  # Multi-body Model
@@ -24,6 +82,17 @@ class DynamicModel(Enum):
 
     @staticmethod
     def from_string(model: str):
+        """Return the DynamicModel enum value for a string identifier.
+
+        Args:
+            model: One of ``"ks"``, ``"st"``, ``"mb"``, ``"std"``.
+
+        Returns:
+            Corresponding :class:`DynamicModel` enum value.
+
+        Raises:
+            ValueError: If the model string is not recognised.
+        """
         if model == "ks":
             warnings.warn("Chosen model is KS. This is different from previous versions of the gym.")
             return DynamicModel.KS
@@ -98,6 +167,7 @@ class DynamicModel(Enum):
 
     @property
     def f_dynamics(self):
+        """The dynamics function ``f(x, u, params)`` for this model."""
         if self == DynamicModel.KS:
             return vehicle_dynamics_ks
         elif self == DynamicModel.ST:

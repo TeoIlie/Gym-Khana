@@ -1,3 +1,5 @@
+"""Single Track (ST) vehicle dynamics model."""
+
 import numpy as np
 from numba import njit
 
@@ -5,59 +7,31 @@ from .utils import accl_constraints, steering_constraint
 
 
 def vehicle_dynamics_st(x: np.ndarray, u_init: np.ndarray, params: dict):
+    """Compute Single Track vehicle dynamics.
+
+    Reference: CommonRoad vehicle models, section 7.
+
+    Args:
+        x: State vector of shape ``(7,)``:
+            ``[x_pos, y_pos, steering_angle, velocity, yaw_angle, yaw_rate, slip_angle]``.
+        u_init: Control input ``[steering_velocity, acceleration]``.
+        params: Vehicle parameters dict. Uses ``mu``, ``C_Sf``, ``C_Sr``,
+            ``lf``, ``lr``, ``h``, ``m``, ``I``, ``s_min``, ``s_max``,
+            ``sv_min``, ``sv_max``, ``v_switch``, ``a_max``, ``v_min``,
+            ``v_max``. See :mod:`gymkhana.envs.dynamic_models` for full
+            parameter descriptions.
+
+    Returns:
+        Time derivatives of the state vector, shape ``(7,)``.
     """
-    Single Track Vehicle Dynamics.
-    From https://gitlab.lrz.de/tum-cps/commonroad-vehicle-models/-/blob/master/vehicleModels_commonRoad.pdf, section 7
+    # Implementation notes (vs. CommonRoad vehiclemodels/vehicle_dynamics_st.py):
+    # 1. Framework: parameters in a dict (not a p object), state as np array
+    # 2. Kinematic threshold: switch at V < 0.5 instead of x[3] < 0.1
+    # 3. Slip angle derivatives (BETA_HAT, BETA_DOT) computed differently from
+    #    commonroad (d_beta, dd_psi) — BETA_HAT performs a modulus operation
+    # 4. Same dynamic equations, restructured for readability; np replaces math
+    # 5. np array returned instead of list
 
-    Difference from commonroad imp (commonroad/vehiclemodels/vehicle_dynamics_st.py):
-    1. Framework conversion (Python classes -> NumPy/Numba)
-        a. parameters are stored in a params dict instead of a p object
-        b. state vector x stored as a np array instead of a list, and gives them clearer names
-    2. Kinematic threshold change
-        a. switch to kinematic/dynamics happens for V < 0.5, instead of x[3] < 0.1
-    3. slip angle derivatives (BETA_HAT, BETA_DOT) are computed differently from commonroad (d_beta, dd_psi)
-        a. All the BETA_HAT variable is doing is performing a modulus operation to bound the value
-    4. Dynamic model equations
-        a. these are the same but restructured
-        b. glr and glf are precomputed
-        c. Readability is improved
-        d. np array returned instead of list
-    5. Added method get_standardized_state_st to extract state info
-    6. Math libraries - all math function calls are replaced with np function calls (for ex. np.cos replaces math.cos)
-
-        Args:
-            x (numpy.ndarray (7, )): vehicle state vector (x0, x1, x2, x3, x4, x5, x6)
-                x0: x position in global coordinates
-                x1: y position in global coordinates
-                x2: steering angle of front wheels
-                x3: velocity in x direction
-                x4:yaw angle
-                x5: yaw rate
-                x6: slip angle at vehicle center
-            u (numpy.ndarray (2, )): control input vector (u1, u2)
-                u1: steering angle velocity of front wheels
-                u2: longitudinal acceleration
-            params (dict): dictionary containing the following parameters:
-                mu (float): friction coefficient
-                C_Sf (float): cornering stiffness of front wheels
-                C_Sr (float): cornering stiffness of rear wheels
-                lf (float): distance from center of gravity to front axle
-                lr (float): distance from center of gravity to rear axle
-                h (float): height of center of gravity
-                m (float): mass of vehicle
-                I (float): moment of inertia of vehicle, about Z axis
-                s_min (float): minimum steering angle
-                s_max (float): maximum steering angle
-                sv_min (float): minimum steering velocity
-                sv_max (float): maximum steering velocity
-                v_switch (float): velocity above which the acceleration is no longer able to create wheel spin
-                a_max (float): maximum allowed acceleration
-                v_min (float): minimum allowed velocity
-                v_max (float): maximum allowed velocity
-
-        Returns:
-            f (numpy.ndarray): right hand side of differential equations
-    """
     # States
     X = x[0]  # x1
     Y = x[1]  # x2
@@ -160,7 +134,16 @@ def vehicle_dynamics_st(x: np.ndarray, u_init: np.ndarray, params: dict):
 
 @njit(cache=True)
 def get_standardized_state_st(x: np.ndarray) -> dict:
-    """[X,Y,DELTA,V_X, V_Y,YAW,YAW_RATE,SLIP]"""
+    """Extract standardized state dict from ST model state vector.
+
+    Args:
+        x: ST state vector ``[x_pos, y_pos, steering_angle, velocity,
+           yaw_angle, yaw_rate, slip_angle]``.
+
+    Returns:
+        Dict with keys: ``x``, ``y``, ``delta``, ``v_x``, ``v_y``,
+        ``yaw``, ``yaw_rate``, ``slip``.
+    """
     d = dict()
     d["x"] = x[0]
     d["y"] = x[1]

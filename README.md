@@ -1,5 +1,5 @@
 [![gymkhana](https://img.shields.io/pypi/v/gymkhana)](https://pypi.org/project/gymkhana/)
-[![python_version](https://img.shields.io/badge/Python-%3E=3.10-purple)](https://www.python.org/downloads/)
+[![python_version](https://img.shields.io/pypi/pyversions/gymkhana?color=purple)](https://pypi.org/project/gymkhana/)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 [![Python 3.10-3.12](https://github.com/TeoIlie/Gym-Khana/actions/workflows/ci.yml/badge.svg)](https://github.com/TeoIlie/Gym-Khana/actions/workflows/ci.yml)
 [![Code Style](https://github.com/TeoIlie/Gym-Khana/actions/workflows/lint.yml/badge.svg)](https://github.com/TeoIlie/Gym-Khana/actions/workflows/lint.yml)
@@ -284,8 +284,9 @@ This project follows [Semantic Versioning](https://semver.org/): `MAJOR.MINOR.PA
 
 To release a new version:
 
-1. Update `version` in `pyproject.toml` and `__version__` in `gymkhana/__init__.py`
-2. Create and push a matching annotated git tag:
+1. Move items from `[Unreleased]` to a new version section in [`CHANGELOG.md`](CHANGELOG.md)
+2. Update `version` in `pyproject.toml` and `__version__` in `gymkhana/__init__.py`
+3. Create and push a matching annotated git tag:
 
 ```bash
 git tag -a v1.2.0 -m "description of release"
