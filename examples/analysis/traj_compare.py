@@ -23,6 +23,7 @@ matplotlib.use("Agg")
 import gymnasium as gym
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.signal import savgol_filter
 
 from gymkhana.envs.gymkhana_env import GKEnv
 
@@ -121,7 +122,11 @@ def main():
     print(f"Duration: {sim_t[-1]:.2f}s")
     print(f"Final position error (real vs sim): {final_err:.4f} m")
 
-    fig, axes = plt.subplots(1, 4, figsize=(32, 7))
+    # Derive longitudinal acceleration from velocity via smoothed differentiation
+    real_accl = np.gradient(savgol_filter(vicon_body_vx, window_length=20, polyorder=2), t)
+    sim_accl = np.gradient(savgol_filter(sim_vx, window_length=11, polyorder=2), sim_t)
+
+    fig, axes = plt.subplots(1, 5, figsize=(40, 7))
     fig.suptitle(f"Sim2Real Comparison — {model_label} model ({stem})", fontsize=14)
 
     # --- Plot 1: XY Trajectory ---
@@ -166,6 +171,18 @@ def main():
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Yaw rate (rad/s)")
     ax.set_title("Yaw Rate — Real vs Sim")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # --- Plot 5: Longitudinal acceleration ---
+    ax = axes[4]
+    ax.plot(t[:n_real], real_accl[:n_real], label="Real dv/dt (Vicon)", linewidth=1)
+    ax.plot(sim_t[:n_real], sim_accl[:n_real], label=f"Sim dv/dt ({model_label})", linewidth=1.5, linestyle="--")
+    ax.axhline(params["a_max"], color="red", linewidth=0.5, linestyle=":", label="±a_max")
+    ax.axhline(-params["a_max"], color="red", linewidth=0.5, linestyle=":")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Acceleration (m/s²)")
+    ax.set_title("Longitudinal Acceleration — Real vs Sim")
     ax.legend()
     ax.grid(True, alpha=0.3)
 

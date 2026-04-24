@@ -13,7 +13,7 @@ s_max: 0.52  # originally 0.4189
 sv_min: -4.95 # originally -3.2
 sv_max: 4.95 # originally 3.2
 v_switch: 7.319
-a_max: 9.51
+a_max: 6.0 # originally 9.51
 v_min: -5.0
 v_max: 20.0
 width: 0.31
