@@ -123,7 +123,7 @@ def main():
     print(f"Final position error (real vs sim): {final_err:.4f} m")
 
     # Derive longitudinal acceleration from velocity via smoothed differentiation
-    real_accl = np.gradient(savgol_filter(vicon_body_vx, window_length=20, polyorder=2), t)
+    real_accl = np.gradient(savgol_filter(vicon_body_vx, window_length=21, polyorder=2), t)
     sim_accl = np.gradient(savgol_filter(sim_vx, window_length=11, polyorder=2), sim_t)
 
     fig, axes = plt.subplots(1, 5, figsize=(40, 7))
