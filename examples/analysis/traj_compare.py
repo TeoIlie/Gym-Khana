@@ -23,6 +23,7 @@ matplotlib.use("Agg")
 import gymnasium as gym
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.signal import savgol_filter
 
 from gymkhana.envs.gymkhana_env import GKEnv
 
@@ -42,6 +43,7 @@ def main():
     vicon_y = data["vicon_y"]
     vicon_yaw = data["vicon_yaw"]
     vicon_body_vx = data["vicon_body_vx"]
+    vicon_r = data["vicon_r"]
 
     # Output path
     stem = Path(args.path).stem
@@ -50,10 +52,10 @@ def main():
     out_path = os.path.join(out_dir, f"plt_{args.model}.png")
 
     # Select params based on model
-    if args.model == "ks":
-        params = GKEnv.f1tenth_vehicle_params()
+    if args.model == "std":
+        params = GKEnv.f1tenth_std_vehicle_params()
     else:
-        params = GKEnv.f1tenth_std_drift_bias_params()
+        params = GKEnv.f1tenth_vehicle_params()
 
     # Create environment
     config = {
@@ -62,7 +64,7 @@ def main():
         "timestep": 0.01,
         "map": "Spielberg_blank",
         "control_input": ["speed", "steering_angle"],
-        "observation_config": {"type": "kinematic_state"},
+        "observation_config": {"type": "dynamic_state"},
         "normalize_obs": False,
         "normalize_act": False,
         "params": params,
@@ -76,6 +78,7 @@ def main():
     sim_y = [float(agent_obs["pose_y"])]
     sim_vx = [float(agent_obs["linear_vel_x"])]
     sim_delta = [float(agent_obs["delta"])]
+    sim_yaw_rate = [float(agent_obs["ang_vel_z"])]
     sim_cmd_speed = [cmd_speed[0]]
     sim_cmd_steer = [cmd_steer[0]]
 
@@ -89,6 +92,7 @@ def main():
         sim_y.append(float(agent_obs["pose_y"]))
         sim_vx.append(float(agent_obs["linear_vel_x"]))
         sim_delta.append(float(agent_obs["delta"]))
+        sim_yaw_rate.append(float(agent_obs["ang_vel_z"]))
         sim_cmd_speed.append(cmd_speed[i])
         sim_cmd_steer.append(cmd_steer[i])
 
@@ -99,6 +103,7 @@ def main():
     sim_y = np.array(sim_y)
     sim_vx = np.array(sim_vx)
     sim_delta = np.array(sim_delta)
+    sim_yaw_rate = np.array(sim_yaw_rate)
     sim_cmd_speed = np.array(sim_cmd_speed)
     sim_cmd_steer = np.array(sim_cmd_steer)
 
@@ -117,7 +122,11 @@ def main():
     print(f"Duration: {sim_t[-1]:.2f}s")
     print(f"Final position error (real vs sim): {final_err:.4f} m")
 
-    fig, axes = plt.subplots(1, 3, figsize=(24, 7))
+    # Derive longitudinal acceleration from velocity via smoothed differentiation
+    real_accl = np.gradient(savgol_filter(vicon_body_vx, window_length=21, polyorder=2), t)
+    sim_accl = np.gradient(savgol_filter(sim_vx, window_length=11, polyorder=2), sim_t)
+
+    fig, axes = plt.subplots(1, 5, figsize=(40, 7))
     fig.suptitle(f"Sim2Real Comparison — {model_label} model ({stem})", fontsize=14)
 
     # --- Plot 1: XY Trajectory ---
@@ -152,6 +161,28 @@ def main():
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Steering (rad)")
     ax.set_title("Steering — Command vs Actual")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # --- Plot 4: Yaw rate ---
+    ax = axes[3]
+    ax.plot(t[:n_real], vicon_r[:n_real], label="Real yaw rate (Vicon)", linewidth=1)
+    ax.plot(sim_t[:n_real], sim_yaw_rate[:n_real], label=f"Sim yaw rate ({model_label})", linewidth=1.5, linestyle="--")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Yaw rate (rad/s)")
+    ax.set_title("Yaw Rate — Real vs Sim")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # --- Plot 5: Longitudinal acceleration ---
+    ax = axes[4]
+    ax.plot(t[:n_real], real_accl[:n_real], label="Real dv/dt (Vicon)", linewidth=1)
+    ax.plot(sim_t[:n_real], sim_accl[:n_real], label=f"Sim dv/dt ({model_label})", linewidth=1.5, linestyle="--")
+    ax.axhline(params["a_max"], color="red", linewidth=0.5, linestyle=":", label="±a_max")
+    ax.axhline(-params["a_max"], color="red", linewidth=0.5, linestyle=":")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Acceleration (m/s²)")
+    ax.set_title("Longitudinal Acceleration — Real vs Sim")
     ax.legend()
     ax.grid(True, alpha=0.3)
 
