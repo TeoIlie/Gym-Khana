@@ -90,7 +90,7 @@ class DynamicModel(Enum):
         """Return the DynamicModel enum value for a string identifier.
 
         Args:
-            model: One of ``"ks"``, ``"st"``, ``"mb"``, ``"std"``.
+            model: One of ``"ks"``, ``"st"``, ``"mb"``, ``"std"``, ``"stp"``.
 
         Returns:
             Corresponding :class:`DynamicModel` enum value.
@@ -112,14 +112,41 @@ class DynamicModel(Enum):
         else:
             raise ValueError(f"Unknown model type {model}")
 
+    def user_state_len(self) -> int:
+        """Return the user-facing state-row width accepted by full-state reset.
+
+        - KS  -> 5 ``[x, y, delta, v, yaw]``
+        - ST  -> 7 ``[x, y, delta, v, yaw, yaw_rate, slip_angle]``
+        - STP -> 7 (same layout as ST)
+        - STD -> 7 (same layout as ST; ``omega_f, omega_r`` are computed by ``init_std``)
+
+        Returns:
+            The expected state-row width for this model.
+
+        Raises:
+            ValueError: For MB, which has a 29D internal state with
+                suspension/wheel quantities a user cannot sensibly construct.
+        """
+        if self == DynamicModel.MB:
+            raise ValueError(
+                "Full-state initialization is not supported for the MB model. Use pose-based reset instead."
+            )
+        return {
+            DynamicModel.KS: 5,
+            DynamicModel.ST: 7,
+            DynamicModel.STP: 7,
+            DynamicModel.STD: 7,
+        }[self]
+
     def get_initial_state(self, pose=None, state=None, params: Optional[dict] = None):
         """
         Get the initial state for the vehicle model.
 
         Args:
-            pose: (3,) array [x, y, yaw] - legacy pose-only initialization
-            state: (7,) array for STD model [x, y, delta, v, yaw, yaw_rate, slip_angle]
-                   omega_f and omega_r are calculated automatically
+            pose: (3,) array [x, y, yaw] - legacy pose-only initialization.
+            state: Optional model-specific user-facing state row; see
+                :meth:`user_state_len` for accepted widths and layouts. MB
+                does not support full-state initialization.
             params: Vehicle parameters dictionary (required for MB and STD models)
 
         Returns:
@@ -152,13 +179,13 @@ class DynamicModel(Enum):
         else:
             raise ValueError(f"Unknown model type {self}")
 
-        # If full state provided, copy first 7 elements (STD model only)
+        # If full state provided, dispatch per model. Width and MB-rejection
+        # both come from DynamicModel.user_state_len so the rules live in one place.
         if state is not None:
-            if self != DynamicModel.STD:
-                raise ValueError(f"Full state initialization only supported for STD model, not {self}")
-            if len(state) != 7:
-                raise ValueError(f"STD model requires 7-element state, got {len(state)}")
-            init_state[:7] = state
+            expected_state_len = self.user_state_len()
+            if len(state) != expected_state_len:
+                raise ValueError(f"{self.name} model requires {expected_state_len}-element state, got {len(state)}")
+            init_state[:expected_state_len] = state
         # set initial pose if provided
         elif pose is not None:
             init_state[0:2] = pose[0:2]

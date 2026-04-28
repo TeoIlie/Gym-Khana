@@ -420,7 +420,7 @@ class TestFullStateReset(unittest.TestCase):
         """Test that wrong state shape raises clear error."""
         wrong_states = np.array([[0.0, 0.0, 0.0]])  # Only 3 elements instead of 7
 
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             self.env.reset(options={"states": wrong_states})
 
     def test_wrong_num_agents_error(self):
@@ -439,28 +439,29 @@ class TestFullStateReset(unittest.TestCase):
 
         states = np.array([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])  # Only 1 agent
 
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             env.reset(options={"states": states})
 
         env.close()
 
-    def test_non_std_model_states_error(self):
-        """Test that using states with non-STD model raises error."""
+    def test_mb_model_states_rejected(self):
+        """Test that full-state reset is rejected for the MB model."""
         env = gym.make(
             "gymkhana:gymkhana-v0",
             config={
                 "map": "Spielberg",
                 "num_agents": 1,
-                "model": "st",  # Single Track model, not STD
+                "model": "mb",
+                "params": GKEnv.fullscale_vehicle_params(),
                 "observation_config": {"type": None},
             },
         )
 
-        states = np.array([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])
+        states = np.zeros((1, 7))
 
         with self.assertRaises(ValueError) as ctx:
             env.reset(options={"states": states})
-        self.assertIn("only supported for STD model", str(ctx.exception))
+        self.assertIn("MB", str(ctx.exception))
 
         env.close()
 
@@ -710,6 +711,58 @@ class TestSkipIntegration(unittest.TestCase):
             decimal=5,
             err_msg="State should NOT be modified when skip_integration=True",
         )
+
+
+class TestNonStdFullStateReset(unittest.TestCase):
+    """Full-state reset for KS / ST / STP. STD coverage lives in TestFullStateReset.
+
+    Multi-agent + wrong-num-agents paths are model-independent and already
+    covered by the existing STD tests; the rejection-side check here uses ST.
+    """
+
+    def test_full_state_reset_supported_models(self):
+        """Every supported non-STD model accepts a row of its expected width."""
+        cases = [
+            ("ks", np.array([1.0, 2.0, 0.1, 4.0, np.pi / 4]), None),
+            ("st", np.array([1.0, 2.0, 0.1, 4.0, np.pi / 4, 0.3, 0.05]), None),
+            ("stp", np.array([1.0, 2.0, 0.1, 4.0, np.pi / 4, 0.3, 0.05]), GKEnv.f1tenth_stp_vehicle_params()),
+        ]
+        for model, row, params in cases:
+            with self.subTest(model=model):
+                config = {
+                    "map": "Spielberg",
+                    "num_agents": 1,
+                    "model": model,
+                    "observation_config": {"type": None},
+                    "reset_config": {"type": "rl_random_static"},
+                }
+                if params is not None:
+                    config["params"] = params
+                env = gym.make("gymkhana:gymkhana-v0", config=config)
+                try:
+                    env.reset(options={"states": row.reshape(1, -1)})
+                    state = env.unwrapped.sim.agents[0].state
+                    np.testing.assert_array_almost_equal(state, row, decimal=5)
+                finally:
+                    env.close()
+
+    def test_full_state_wrong_width_rejected(self):
+        """Wrong row width raises ValueError. ST chosen as a representative."""
+        env = gym.make(
+            "gymkhana:gymkhana-v0",
+            config={
+                "map": "Spielberg",
+                "num_agents": 1,
+                "model": "st",
+                "observation_config": {"type": None},
+                "reset_config": {"type": "rl_random_static"},
+            },
+        )
+        try:
+            with self.assertRaises(ValueError):
+                env.reset(options={"states": np.zeros((1, 5))})  # ST expects 7
+        finally:
+            env.close()
 
 
 if __name__ == "__main__":

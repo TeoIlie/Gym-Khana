@@ -1040,9 +1040,11 @@ class GKEnv(gym.Env):
 
                 - ``"poses"``: ``np.ndarray`` of shape ``(num_agents, 3)``
                   — ``[x, y, yaw]`` per agent.
-                - ``"states"``: ``np.ndarray`` of shape ``(num_agents, 7)``
-                  — ``[x, y, delta, v, yaw, yaw_rate, slip_angle]`` per agent
-                  (STD model only).
+                - ``"states"``: ``np.ndarray`` of shape ``(num_agents, n)`` where
+                  ``n`` is the model-specific row width; see
+                  :meth:`gymkhana.envs.dynamic_models.DynamicModel.user_state_len`
+                  for accepted widths and layouts. MB does not support
+                  full-state reset.
 
                 Cannot specify both keys simultaneously.
 
@@ -1083,21 +1085,24 @@ class GKEnv(gym.Env):
                 raise ValueError("Cannot provide both 'poses' and 'states' in reset options.")
 
             if has_states:
-                # Validate STD model requirement
-                if self.model != DynamicModel.STD:
-                    raise ValueError(
-                        f"Full state initialization only supported for STD model. "
-                        f"Current model: {self.model}. Optionally use 'poses' instead."
-                    )
+                # Per-model expected width (and MB rejection) come from
+                # DynamicModel.user_state_len; this layer only validates that
+                # the supplied 2-D array matches (num_agents, expected_len).
+                expected_state_len = self.model.user_state_len()
 
                 states = options["states"]
-                assert isinstance(states, np.ndarray) and states.shape == (
+                if not isinstance(states, np.ndarray) or states.shape != (
                     self.num_agents,
-                    7,
-                ), f"States must be a numpy array of shape (num_agents, 7), got {states.shape}"
+                    expected_state_len,
+                ):
+                    raise ValueError(
+                        f"States must be a numpy array of shape "
+                        f"(num_agents={self.num_agents}, {expected_state_len}) "
+                        f"for model {self.model.name}, got "
+                        f"{states.shape if isinstance(states, np.ndarray) else type(states).__name__}"
+                    )
 
                 # Save poses for downstream use
-                # State indices: [x, y, delta, v, yaw, yaw_rate, slip_angle]
                 poses = np.column_stack([states[:, 0], states[:, 1], states[:, 4]])
 
             elif has_poses:
