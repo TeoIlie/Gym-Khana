@@ -275,16 +275,24 @@ class GKEnv(gym.Env):
                 "Please set model='std' (or model=DynamicModel.STD) when creating the environment."
             )
 
+        # Validate drift_st observation requires ST or STP model
+        if obs_type == "drift_st" and self.model not in [DynamicModel.ST, DynamicModel.STP]:
+            raise ValueError(
+                "The 'drift_st' observation type requires the single_track (ST) or single_track_pacejka (STP) model. "
+                f"Current model: {self.model}. "
+                "Please set model='st' or 'stp' (or model=DynamicModel.ST, model=DynamicModel.STP) when creating the environment."
+            )
+
         # Handle normalization configuration
         normalize_obs = self.config["normalize_obs"]
 
         # Identify whether the chosen observation type is supported for normalization
-        supported_obs_types = ["drift", "race", "frenet"]
+        supported_obs_types = ["drift", "race", "frenet", "drift_st"]
         obs_norm_supported = obs_type in supported_obs_types
 
         if normalize_obs is None:
             # User did not set normalize - auto-set based on observation type
-            # Default to True for observation types that support normalization (drift, race, frenet, etc.)
+            # Default to True for observation types that support normalization (drift, race, etc.)
             self.normalize_obs = obs_norm_supported
         else:
             # User explicitly set normalize

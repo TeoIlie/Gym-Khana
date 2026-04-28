@@ -152,6 +152,96 @@ def test_normalize_override_false_with_drift():
 
 
 # ============================================================================
+# Observation Type / Model Pairing Validation Tests
+# ============================================================================
+
+
+@pytest.mark.parametrize(
+    "obs_type, model, params_factory, expect_error",
+    [
+        ("drift", "std", GKEnv.f1tenth_std_vehicle_params, False),
+        ("drift", "st", GKEnv.f1tenth_vehicle_params, True),
+        ("drift_st", "st", GKEnv.f1tenth_vehicle_params, False),
+        ("drift_st", "stp", GKEnv.f1tenth_stp_vehicle_params, False),
+        ("drift_st", "std", GKEnv.f1tenth_std_vehicle_params, True),
+        ("drift_st", "ks", GKEnv.f1tenth_vehicle_params, True),
+    ],
+)
+def test_obs_type_model_pairing(obs_type, model, params_factory, expect_error):
+    """Validate that each obs_type only accepts its compatible vehicle models."""
+    cfg = {
+        "map": "Spielberg",
+        "num_agents": 1,
+        "model": model,
+        "observation_config": {"type": obs_type},
+        "params": params_factory(),
+    }
+    if expect_error:
+        with pytest.raises(ValueError, match=f"'{obs_type}' observation type requires"):
+            gym.make("gymkhana:gymkhana-v0", config=cfg)
+    else:
+        env = gym.make("gymkhana:gymkhana-v0", config=cfg)
+        assert env.unwrapped.observation_config["type"] == obs_type
+        env.close()
+
+
+_DRIFT_ST_MODELS = [
+    ("st", GKEnv.f1tenth_vehicle_params),
+    ("stp", GKEnv.f1tenth_stp_vehicle_params),
+]
+
+
+@pytest.mark.parametrize("model, params_factory", _DRIFT_ST_MODELS)
+def test_drift_st_normalize_obs_default_true(model, params_factory):
+    """Test that normalize_obs=True by default for 'drift_st' obs across compatible models."""
+    env = gym.make(
+        "gymkhana:gymkhana-v0",
+        config={
+            "map": "Spielberg",
+            "num_agents": 1,
+            "model": model,
+            "observation_config": {"type": "drift_st"},
+            "params": params_factory(),
+        },
+    )
+    assert env.unwrapped.normalize_obs is True
+    env.close()
+
+
+@pytest.mark.parametrize("model, params_factory", _DRIFT_ST_MODELS)
+def test_drift_st_end_to_end_normalized(model, params_factory):
+    """Validate complete drift_st observation pipeline with normalization across compatible models."""
+    env = gym.make(
+        "gymkhana:gymkhana-v0",
+        config={
+            "map": "Spielberg",
+            "num_agents": 1,
+            "model": model,
+            "observation_config": {"type": "drift_st"},
+            "params": params_factory(),
+            "normalize_obs": True,
+        },
+    )
+
+    obs, _ = env.reset()
+
+    for _ in range(10):
+        action = env.action_space.sample()
+        obs, _, terminated, truncated, _ = env.step(action)
+
+        assert np.all(obs >= -1.0), f"Observation has values < -1.0: min={np.min(obs)}"
+        assert np.all(obs <= 1.0), f"Observation has values > 1.0: max={np.max(obs)}"
+        assert obs.shape == env.observation_space.shape, "Observation shape mismatch"
+        assert obs.dtype == np.float32, f"Expected dtype float32, got {obs.dtype}"
+        assert env.observation_space.contains(obs), "Observation not in declared space"
+
+        if terminated or truncated:
+            break
+
+    env.close()
+
+
+# ============================================================================
 # Action Normalization Configuration Tests
 # ============================================================================
 
