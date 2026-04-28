@@ -8,6 +8,7 @@ Usage:
     python examples/analysis/traj_compare.py --path /path/to/bag_100Hz.npz --model ks
     python examples/analysis/traj_compare.py --path /path/to/bag_100Hz.npz --model st
     python examples/analysis/traj_compare.py --path /path/to/bag_100Hz.npz --model std
+    python examples/analysis/traj_compare.py --path /path/to/bag_100Hz.npz --model stp
 
 Output:
     figures/analysis/traj_compare/<bag_stem>/plt_<model>.png
@@ -31,7 +32,7 @@ from gymkhana.envs.gymkhana_env import GKEnv
 def main():
     parser = argparse.ArgumentParser(description="Sim2Real trajectory comparison")
     parser.add_argument("--path", required=True, help="Path to 100Hz resampled NPZ file")
-    parser.add_argument("--model", required=True, choices=["ks", "st", "std"], help="Vehicle dynamics model")
+    parser.add_argument("--model", required=True, choices=["ks", "st", "std", "stp"], help="Vehicle dynamics model")
     args = parser.parse_args()
 
     # Load real data
@@ -43,6 +44,7 @@ def main():
     vicon_y = data["vicon_y"]
     vicon_yaw = data["vicon_yaw"]
     vicon_body_vx = data["vicon_body_vx"]
+    vicon_body_vy = data["vicon_body_vy"]
     vicon_r = data["vicon_r"]
 
     # Output path
@@ -54,6 +56,8 @@ def main():
     # Select params based on model
     if args.model == "std":
         params = GKEnv.f1tenth_std_vehicle_params()
+    elif args.model == "stp":
+        params = GKEnv.f1tenth_stp_vehicle_params()
     else:
         params = GKEnv.f1tenth_vehicle_params()
 
@@ -77,8 +81,10 @@ def main():
     sim_x = [float(agent_obs["pose_x"])]
     sim_y = [float(agent_obs["pose_y"])]
     sim_vx = [float(agent_obs["linear_vel_x"])]
+    sim_vy = [float(agent_obs["linear_vel_y"])]
     sim_delta = [float(agent_obs["delta"])]
     sim_yaw_rate = [float(agent_obs["ang_vel_z"])]
+    sim_beta = [float(agent_obs["beta"])]
     sim_cmd_speed = [cmd_speed[0]]
     sim_cmd_steer = [cmd_steer[0]]
 
@@ -91,8 +97,10 @@ def main():
         sim_x.append(float(agent_obs["pose_x"]))
         sim_y.append(float(agent_obs["pose_y"]))
         sim_vx.append(float(agent_obs["linear_vel_x"]))
+        sim_vy.append(float(agent_obs["linear_vel_y"]))
         sim_delta.append(float(agent_obs["delta"]))
         sim_yaw_rate.append(float(agent_obs["ang_vel_z"]))
+        sim_beta.append(float(agent_obs["beta"]))
         sim_cmd_speed.append(cmd_speed[i])
         sim_cmd_steer.append(cmd_steer[i])
 
@@ -102,8 +110,10 @@ def main():
     sim_x = np.array(sim_x)
     sim_y = np.array(sim_y)
     sim_vx = np.array(sim_vx)
+    sim_vy = np.array(sim_vy)
     sim_delta = np.array(sim_delta)
     sim_yaw_rate = np.array(sim_yaw_rate)
+    sim_beta = np.array(sim_beta)
     sim_cmd_speed = np.array(sim_cmd_speed)
     sim_cmd_steer = np.array(sim_cmd_steer)
 
@@ -126,8 +136,23 @@ def main():
     real_accl = np.gradient(savgol_filter(vicon_body_vx, window_length=21, polyorder=2), t)
     sim_accl = np.gradient(savgol_filter(sim_vx, window_length=11, polyorder=2), sim_t)
 
-    fig, axes = plt.subplots(1, 5, figsize=(40, 7))
+    # Real slip angle from body-frame Vicon velocities, masked at low speed
+    real_speed = np.hypot(vicon_body_vx, vicon_body_vy)
+    real_beta = np.arctan2(vicon_body_vy, vicon_body_vx)
+    real_beta = np.where(real_speed > 0.2, real_beta, np.nan)
+
+    fig, axes_grid = plt.subplots(2, 4, figsize=(32, 14))
     fig.suptitle(f"Sim2Real Comparison — {model_label} model ({stem})", fontsize=14)
+    axes_grid[0, 3].axis("off")
+    axes = [
+        axes_grid[0, 0],  # XY
+        axes_grid[0, 1],  # vx
+        axes_grid[0, 2],  # vy
+        axes_grid[1, 0],  # steering
+        axes_grid[1, 1],  # yaw rate
+        axes_grid[1, 2],  # long. accel
+        axes_grid[1, 3],  # slip angle
+    ]
 
     # --- Plot 1: XY Trajectory ---
     ax = axes[0]
@@ -141,20 +166,30 @@ def main():
     ax.legend()
     ax.grid(True, alpha=0.3)
 
-    # --- Plot 2: Velocity ---
+    # --- Plot 2: Longitudinal velocity (vx) ---
     ax = axes[1]
     ax.plot(t[:n_real], cmd_speed[:n_real], label="Commanded speed", linewidth=1, alpha=0.7)
-    ax.plot(t[:n_real], vicon_body_vx[:n_real], label="Real velocity (Vicon)", linewidth=1)
+    ax.plot(t[:n_real], vicon_body_vx[:n_real], label="Real vx (Vicon)", linewidth=1)
     ax.plot(sim_t[:n_real], sim_cmd_speed[:n_real], label="Sim commanded speed", linewidth=1, linestyle="--")
-    ax.plot(sim_t[:n_real], sim_vx[:n_real], label="Sim actual velocity", linewidth=1.5)
+    ax.plot(sim_t[:n_real], sim_vx[:n_real], label="Sim vx", linewidth=1.5)
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Velocity (m/s)")
-    ax.set_title("Velocity — Command vs Actual")
+    ax.set_title("Longitudinal Velocity (vx) — Command vs Actual")
     ax.legend()
     ax.grid(True, alpha=0.3)
 
-    # --- Plot 3: Steering ---
+    # --- Plot 3: Lateral velocity (vy) ---
     ax = axes[2]
+    ax.plot(t[:n_real], vicon_body_vy[:n_real], label="Real vy (Vicon)", linewidth=1)
+    ax.plot(sim_t[:n_real], sim_vy[:n_real], label=f"Sim vy ({model_label})", linewidth=1.5, linestyle="--")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Velocity (m/s)")
+    ax.set_title("Lateral Velocity (vy) — Real vs Sim")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # --- Plot 4: Steering ---
+    ax = axes[3]
     ax.plot(t[:n_real], cmd_steer[:n_real], label="Commanded steering", linewidth=1, alpha=0.7)
     ax.plot(sim_t[:n_real], sim_cmd_steer[:n_real], label="Sim commanded steering", linewidth=1, linestyle="--")
     ax.plot(sim_t[:n_real], sim_delta[:n_real], label="Sim actual delta", linewidth=1.5)
@@ -164,8 +199,8 @@ def main():
     ax.legend()
     ax.grid(True, alpha=0.3)
 
-    # --- Plot 4: Yaw rate ---
-    ax = axes[3]
+    # --- Plot 5: Yaw rate ---
+    ax = axes[4]
     ax.plot(t[:n_real], vicon_r[:n_real], label="Real yaw rate (Vicon)", linewidth=1)
     ax.plot(sim_t[:n_real], sim_yaw_rate[:n_real], label=f"Sim yaw rate ({model_label})", linewidth=1.5, linestyle="--")
     ax.set_xlabel("Time (s)")
@@ -174,8 +209,8 @@ def main():
     ax.legend()
     ax.grid(True, alpha=0.3)
 
-    # --- Plot 5: Longitudinal acceleration ---
-    ax = axes[4]
+    # --- Plot 6: Longitudinal acceleration ---
+    ax = axes[5]
     ax.plot(t[:n_real], real_accl[:n_real], label="Real dv/dt (Vicon)", linewidth=1)
     ax.plot(sim_t[:n_real], sim_accl[:n_real], label=f"Sim dv/dt ({model_label})", linewidth=1.5, linestyle="--")
     ax.axhline(params["a_max"], color="red", linewidth=0.5, linestyle=":", label="±a_max")
@@ -183,6 +218,16 @@ def main():
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Acceleration (m/s²)")
     ax.set_title("Longitudinal Acceleration — Real vs Sim")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # --- Plot 7: Slip angle ---
+    ax = axes[6]
+    ax.plot(t[:n_real], real_beta[:n_real], label="Real slip (Vicon)", linewidth=1)
+    ax.plot(sim_t[:n_real], sim_beta[:n_real], label=f"Sim slip ({model_label})", linewidth=1.5, linestyle="--")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Slip angle β (rad)")
+    ax.set_title("Slip Angle — Real vs Sim")
     ax.legend()
     ax.grid(True, alpha=0.3)
 

@@ -463,6 +463,20 @@ class GKEnv(gym.Env):
         return load_params("f1tenth_std")
 
     @classmethod
+    def f1tenth_stp_vehicle_params(cls) -> dict:
+        """Return default parameters for the 1/10th scale F1TENTH car (STP model).
+
+        Single Track Pacejka: dynamic single-track chassis with a lateral-only
+        Pacejka Magic Formula tyre model (8 coefficients, ``B_f, C_f, D_f, E_f,
+        B_r, C_r, D_r, E_r``). Coefficients are seeded from the on-track sysid
+        pipeline output (``SIM_pacejka.txt``).
+
+        Returns:
+            Complete parameter dictionary for the STP model.
+        """
+        return load_params("f1tenth_stp")
+
+    @classmethod
     def default_config(cls) -> dict:
         """Return the default environment configuration dict.
 

@@ -24,9 +24,11 @@ All dynamics functions accept a ``params`` dict. The keys used across models are
 
 **Tyre / lateral dynamics**
 
-- ``mu`` (float): Tyre–road friction coefficient. *(ST)*
+- ``mu`` (float): Tyre–road friction coefficient. *(ST, STP)*
 - ``C_Sf`` (float): Cornering stiffness of front tyres (N/rad). *(ST)*
 - ``C_Sr`` (float): Cornering stiffness of rear tyres (N/rad). *(ST)*
+- ``B_f, C_f, D_f, E_f`` (float): Front-axle Pacejka Magic Formula coefficients. *(STP)*
+- ``B_r, C_r, D_r, E_r`` (float): Rear-axle Pacejka Magic Formula coefficients. *(STP)*
 
 **Steering constraints**
 
@@ -62,6 +64,7 @@ from .kinematic import get_standardized_state_ks, vehicle_dynamics_ks
 from .multi_body import get_standardized_state_mb, init_mb, vehicle_dynamics_mb
 from .single_track import get_standardized_state_st, vehicle_dynamics_st
 from .single_track_drift import get_standardized_state_std, init_std, vehicle_dynamics_std
+from .single_track_pacejka import vehicle_dynamics_stp
 from .utils import bang_bang_steer, p_accl
 
 
@@ -73,12 +76,14 @@ class DynamicModel(Enum):
         ST: Single Track — lateral dynamics without an explicit tire model.
         MB: Multi-Body — full tire modeling and multi-body dynamics.
         STD: Single Track Drift — ST with PAC2002 tire model for drift simulation.
+        STP: Single Track Pacejka — ST with lateral-only Pacejka Magic Formula.
     """
 
     KS = 1  # Kinematic Single Track
     ST = 2  # Single Track
     MB = 3  # Multi-body Model
     STD = 4  # Single Track Drift
+    STP = 5  # Single Track Pacejka (lateral-only)
 
     @staticmethod
     def from_string(model: str):
@@ -102,6 +107,8 @@ class DynamicModel(Enum):
             return DynamicModel.MB
         elif model == "std":
             return DynamicModel.STD
+        elif model == "stp":
+            return DynamicModel.STP
         else:
             raise ValueError(f"Unknown model type {model}")
 
@@ -133,7 +140,7 @@ class DynamicModel(Enum):
         if self == DynamicModel.KS:
             # state is [x, y, steer_angle, vel, yaw_angle]
             init_state = np.zeros(5)
-        elif self == DynamicModel.ST:
+        elif self == DynamicModel.ST or self == DynamicModel.STP:
             # state is [x, y, steer_angle, vel, yaw_angle, yaw_rate, slip_angle]
             init_state = np.zeros(7)
         elif self == DynamicModel.MB:
@@ -176,6 +183,8 @@ class DynamicModel(Enum):
             return vehicle_dynamics_mb
         elif self == DynamicModel.STD:
             return vehicle_dynamics_std
+        elif self == DynamicModel.STP:
+            return vehicle_dynamics_stp
         else:
             raise ValueError(f"Unknown model type {self}")
 
@@ -193,5 +202,7 @@ class DynamicModel(Enum):
             return get_standardized_state_mb
         elif self == DynamicModel.STD:
             return get_standardized_state_std
+        elif self == DynamicModel.STP:
+            return get_standardized_state_st
         else:
             raise ValueError(f"Unknown model type {self}")
