@@ -151,6 +151,7 @@ class TestObservationInterface(unittest.TestCase):
             "pose_y",
             "pose_theta",
             "linear_vel_x",
+            "linear_vel_y",
             "ang_vel_z",
             "delta",
             "beta",
@@ -167,7 +168,15 @@ class TestObservationInterface(unittest.TestCase):
         obs, _, _, _, _ = env.step(env.action_space.sample())
 
         for i, agent_id in enumerate(env.unwrapped.agent_ids):
-            pose_x, pose_y, delta, velx, pose_theta, _, beta = env.unwrapped.sim.agents[i].state
+            std_state = env.unwrapped.sim.agents[i].standard_state
+            pose_x = std_state["x"]
+            pose_y = std_state["y"]
+            pose_theta = std_state["yaw"]
+            velx = std_state["v_x"]
+            vely = std_state["v_y"]
+            delta = std_state["delta"]
+            ang_vel_z = std_state["yaw_rate"]
+            beta = std_state["slip"]
 
             agent_obs = obs[agent_id]
             obs_x, obs_y, obs_theta = (
@@ -175,15 +184,17 @@ class TestObservationInterface(unittest.TestCase):
                 agent_obs["pose_y"],
                 agent_obs["pose_theta"],
             )
-            obs_velx, obs_delta, obs_beta = (
+            obs_velx, obs_vely, obs_delta, obs_beta, obs_ang_vel_z = (
                 agent_obs["linear_vel_x"],
+                agent_obs["linear_vel_y"],
                 agent_obs["delta"],
                 agent_obs["beta"],
+                agent_obs["ang_vel_z"],
             )
 
             for ground_truth, observed in zip(
-                [pose_x, pose_y, pose_theta, velx, delta, beta],
-                [obs_x, obs_y, obs_theta, obs_velx, obs_delta, obs_beta],
+                [pose_x, pose_y, pose_theta, velx, vely, delta, beta, ang_vel_z],
+                [obs_x, obs_y, obs_theta, obs_velx, obs_vely, obs_delta, obs_beta, obs_ang_vel_z],
             ):
                 self.assertTrue(np.allclose(ground_truth, observed))
 
