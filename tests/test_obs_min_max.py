@@ -178,7 +178,7 @@ def test_tracking_with_features_obs_multi_agent():
         # Tracker still keyed by bare feature names; agents collapse into the same row.
         assert set(unwrapped.obs_min_max_tracker.keys()) == set(unwrapped.observation_type.features)
 
-        obs, _ = env.reset()
+        obs, _ = env.reset(seed=0)
         # After reset, env.step is called once internally with skip_integration=True
         # (see GKEnv.reset) so the tracker has already seen both agents' poses.
         agent_ids = list(obs.keys())
