@@ -36,6 +36,7 @@ from train.config.env_config import (
 )
 from train.train_utils import (
     CustomLeakyReLU,
+    aggregate_and_print_instability_count,
     aggregate_and_print_obs_min_max,
     download_model_from_wandb,
     extract_norm_bounds,
@@ -151,6 +152,7 @@ def train(profile: TrainingProfile):
     run.save(f"{best_model_path}.zip", base_path=models_dir)
 
     aggregate_and_print_obs_min_max(env)
+    aggregate_and_print_instability_count(env)
     env.close()
     eval_env.close()
 
@@ -287,6 +289,7 @@ def continue_training(profile: TrainingProfile, model_path: str, additional_time
     print(f"New run ID: {new_run_id}")
 
     aggregate_and_print_obs_min_max(env)
+    aggregate_and_print_instability_count(env)
     env.close()
     eval_env.close()
 
@@ -442,6 +445,7 @@ def transfer_train(
     print(f"New run ID: {new_run_id}")
 
     aggregate_and_print_obs_min_max(env)
+    aggregate_and_print_instability_count(env)
     env.close()
     eval_env.close()
 

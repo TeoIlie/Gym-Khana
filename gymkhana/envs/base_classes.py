@@ -38,6 +38,14 @@ from .integrator import EulerIntegrator, Integrator
 from .laser_models import ScanSimulator2D, check_ttc_jit, ray_cast
 from .track import Track
 
+# Numerical-stability sanity bounds applied after RK4 integration on the
+# standardized state. Anything outside these is treated as integrator blow-up;
+# the offending step is reverted and the env truncates the episode.
+_STATE_SANITY_BOUNDS = {
+    "yaw_rate": 4 * np.pi,  # rad/s
+    "slip": np.pi / 2,  # rad
+}
+
 
 class RaceCar(object):
     """Single vehicle physics and laser scan simulation.
@@ -117,6 +125,11 @@ class RaceCar(object):
 
         # collision identifier
         self.in_collision = False
+
+        # numerical-instability flag: set when post-RK4 state violates sanity
+        # bounds and is reverted to the prior step's state
+        self.unstable = False
+        self._unstable_info = None
 
         # collision threshold for iTTC to environment
         self.ttc_thresh = 0.005
@@ -215,6 +228,9 @@ class RaceCar(object):
         self.steer_angle_vel = 0.0
         # clear collision indicator
         self.in_collision = False
+        # clear instability flag
+        self.unstable = False
+        self._unstable_info = None
         # clear previous and current steering commands
         self.prev_steering_cmd = 0.0
         self.curr_steering_cmd = 0.0
@@ -350,8 +366,11 @@ class RaceCar(object):
         u_np = np.array([sv, accl])
 
         # Conditionally integrate dynamics (skip during reset to preserve exact state)
+        self.unstable = False
+        self._unstable_info = None
         if not skip_integration:
             f_dynamics = self.model.f_dynamics
+            prev_state = self.state.copy()
             self.state = self.integrator.integrate(
                 f=f_dynamics, x=self.state, u=u_np, dt=self.time_step, params=self.params
             )
@@ -359,10 +378,40 @@ class RaceCar(object):
             # bound yaw angle
             self.state[4] %= 2 * np.pi  # TODO: This is a problem waiting to happen
 
+            # numerical-stability check: if RK4 produced a non-physical state,
+            # revert to prev_state and flag for env-level truncation
+            self._check_state_sanity(prev_state, u_np)
+
         # update scan
         current_scan = RaceCar.scan_simulator.scan(np.append(self.state[0:2], self.state[4]), self.scan_rng)
 
         return current_scan
+
+    def _check_state_sanity(self, prev_state, u_np):
+        """Validate post-integration state; revert and flag on blow-up.
+
+        Args:
+            prev_state: Pre-integration state vector (used to revert on failure).
+            u_np: Action vector applied this step (recorded for diagnostics).
+        """
+        violations = {}
+
+        if not np.all(np.isfinite(self.state)):
+            violations["non_finite"] = True
+        else:
+            std = self.standard_state_fn(self.state)
+            for feature, bound in _STATE_SANITY_BOUNDS.items():
+                value = std.get(feature, 0.0)
+                if abs(value) > bound:
+                    violations[feature] = float(value)
+
+        if violations:
+            self.unstable = True
+            self._unstable_info = {
+                "violations": violations,
+                "action": np.asarray(u_np).tolist(),
+            }
+            self.state = prev_state
 
     def update_opp_poses(self, opp_poses):
         """Update this vehicle's information about other agents.

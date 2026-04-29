@@ -127,6 +127,22 @@ def aggregate_and_print_obs_min_max(vec_env: SubprocVecEnv) -> None:
     vec_env.env_method("disable_obs_min_max_recording")
 
 
+def aggregate_and_print_instability_count(vec_env: SubprocVecEnv) -> None:
+    """Sum per-env instability-truncation counts across subprocs and print.
+
+    Must run before ``vec_env.close()``. No-op if no events occurred.
+    """
+    counts = vec_env.get_attr("_instability_count")
+    total = sum(counts)
+
+    print("=" * 60)
+    print(f"Instability truncation events: {total} total across {len(counts)} envs")
+    nonzero = [(i, c) for i, c in enumerate(counts) if c > 0]
+    for i, c in nonzero:
+        print(f"  env {i}: {c}")
+    print("=" * 60)
+
+
 def compute_global_track_bounds(track_pool: list[str], track_scale: float = 1.0) -> dict:
     """
     Compute global normalization bounds across all tracks in a pool.

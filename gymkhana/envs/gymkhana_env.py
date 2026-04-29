@@ -250,6 +250,9 @@ class GKEnv(gym.Env):
         self.debug_frenet_projection = self.config["debug_frenet_projection"]
         self.record_obs_min_max = self.config["record_obs_min_max"]
 
+        # cumulative count of instability-truncation events for rate-limited logging
+        self._instability_count = 0
+
         # reward params
         self.out_of_bounds_penalty = self.config["out_of_bounds_penalty"]
         self.progress_gain = self.config["progress_gain"]
@@ -968,11 +971,16 @@ class GKEnv(gym.Env):
         # call simulation step
         self.sim.step(action, skip_integration=skip_integration)
 
+        # detect numerical instability flagged by RaceCar.update_pose
+        unstable_agents = [i for i, a in enumerate(self.sim.agents) if a.unstable]
+        instability_truncation = len(unstable_agents) > 0
+
         # observation
         obs = self.observation_type.observe()
 
-        # Track observation min/max if enabled
-        if self.record_obs_min_max:
+        # Track observation min/max if enabled — skip on unstable steps so a
+        # single blow-up doesn't poison the cumulative tracker
+        if self.record_obs_min_max and not instability_truncation:
             self._update_obs_min_max()
 
         # increment time and step
@@ -1021,10 +1029,22 @@ class GKEnv(gym.Env):
 
         # check done
         terminated, truncated, toggle_list = self._check_done()
+        truncated = truncated or instability_truncation
         info = {
             "checkpoint_done": toggle_list,
             "episode_length": self.current_step,
+            "instability_truncation": instability_truncation,
         }
+        if instability_truncation:
+            agent_infos = [self.sim.agents[i]._unstable_info for i in unstable_agents]
+            info["unstable_agents"] = unstable_agents
+            info["unstable_info"] = agent_infos
+            self._instability_count += 1
+            if self._instability_count <= 10 or self._instability_count % 100 == 0:
+                print(
+                    f"[INSTABILITY #{self._instability_count}] step={self.current_step} "
+                    f"agents={unstable_agents} info={agent_infos}"
+                )
 
         # calc reward
         reward = self._get_reward()
