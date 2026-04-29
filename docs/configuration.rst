@@ -33,7 +33,7 @@ Vehicle model and control
 
 .. note::
 
-   Available models: ``ks`` (kinematic), ``st`` (single-track), ``mb`` (multi-body), ``std`` (single-track drift). Use ``std`` for drift training. See :doc:`api/dynamic_models` for details.
+   Available models: ``ks`` (kinematic), ``st`` (single-track), ``stp`` (single-track Pacejka, lateral-only Magic Formula), ``std`` (single-track drift, PAC2002), ``mb`` (multi-body). Use ``std`` for drift training. See :doc:`api/dynamic_models` for details.
 
 For action space configuration (``control_input``, ``normalize_act``), see :doc:`api/action`.
 
@@ -136,7 +136,7 @@ Debugging and visualization
        'render_arc_length_annotations': True,     # Arc-length points along centerline (orange)
        'arc_length_annotation_interval': 2.0,     # Spacing in metres (default: 2.0)
        'debug_frenet_projection': True,           # Visualize Frenet coordinate accuracy
-       'record_obs_min_max': True,                # Record min/max obs for normalization tuning
+       'record_obs_min_max': True,                # Record min/max obs for normalization tuning (aggregated across parallel envs; works with normalize_obs on or off)
    }
 
 Debug with breakpoints by looping through environment steps (see ``tests/drift_debug.py``).

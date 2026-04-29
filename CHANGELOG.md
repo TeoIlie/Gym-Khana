@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **STP (Single Track Pacejka) model**: dynamic single-track bicycle with lateral-only Pacejka Magic Formula tire model, ported from the ForzaETH f110-simulator. Shares ST's 7-element state layout. Selectable via `model='stp'` with parameters from `GKEnv.f1tenth_stp_vehicle_params()` (`f1tenth_stp.yaml`). Supports `drift_st` observation type alongside ST.
+- Aggregated min/max observation tracking across parallelized environments (works with both `normalize_obs=True` and `normalize_obs=False`) for tuning normalization bounds.
+
 ## [1.2.0] - 2026-04-11
 
 ### Added

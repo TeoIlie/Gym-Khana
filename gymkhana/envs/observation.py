@@ -416,6 +416,19 @@ class OriginalObservation(Observation):
 
     def __init__(self, env):
         super().__init__(env)
+        # Names of the keys produced by observe() (excluding "ego_idx")
+        self.features = [
+            "scans",
+            "poses_x",
+            "poses_y",
+            "poses_theta",
+            "linear_vels_x",
+            "linear_vels_y",
+            "ang_vels_z",
+            "collisions",
+            "lap_times",
+            "lap_counts",
+        ]
 
     def space(self):
         num_agents = self.env.unwrapped.num_agents
