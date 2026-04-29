@@ -39,9 +39,10 @@ Important files
 
 - ``gymkhana/envs/base_classes.py:503`` defines the ``step`` method
 - See :doc:`api/action` for action space details
-- ``gymkhana/envs/dynamic_models/single_track_drift.py`` — STD model with PAC2002 tire model, recommended for drift RL training
 - ``gymkhana/envs/dynamic_models/single_track.py`` — basic single-track dynamics without explicit tire model
-- ``gymkhana/envs/dynamic_models/multi_body.py`` — most detailed model, but parameters only available for full-scale vehicles
+- ``gymkhana/envs/dynamic_models/single_track_pacejka/`` — STP model: dynamic single-track with lateral-only Pacejka Magic Formula (ported from ForzaETH f110-simulator)
+- ``gymkhana/envs/dynamic_models/single_track_drift/`` — STD model with PAC2002 tire model, recommended for drift RL training
+- ``gymkhana/envs/dynamic_models/multi_body/`` — most detailed model, but parameters only available for full-scale vehicles
 
 Vehicle parameters
 ------------------
@@ -49,6 +50,7 @@ Vehicle parameters
 Vehicle parameters are defined in YAML files in ``gymkhana/envs/params/``:
 
 - ``f1tenth_st.yaml`` — 1/10 scale F1TENTH car (ST model)
+- ``f1tenth_stp.yaml`` — 1/10 scale F1TENTH car (STP model, lateral-only Pacejka)
 - ``f1tenth_std.yaml`` — 1/10 scale F1TENTH with PAC2002 tire model (STD model for drifting)
 - ``f1tenth_std_drift_bias.yaml`` — STD model tuned for increased drift tendency
 - ``f1fifth.yaml`` — 1/5 scale F1FIFTH car
@@ -57,6 +59,7 @@ Vehicle parameters are defined in YAML files in ``gymkhana/envs/params/``:
 Access parameters via class methods on ``GKEnv``::
 
    GKEnv.f1tenth_vehicle_params()      # ST model params
+   GKEnv.f1tenth_stp_vehicle_params()  # STP model params (lateral-only Pacejka)
    GKEnv.f1tenth_std_vehicle_params()  # STD model params (recommended for drift)
    GKEnv.f1fifth_vehicle_params()      # 1/5 scale params
    GKEnv.fullscale_vehicle_params()    # Full-scale params

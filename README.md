@@ -169,7 +169,7 @@ Note that CL is only supported for recovery training, with the environment `trai
     2. Optionally, also set `"arc_length_annotation_interval"` to modify the point spacing (`2.0` metres by default)
 4. Set `"render_lookahead_curvatures": True` (it is `False` by default) to visualize lookahead curvature sampling points ahead of the vehicle in **yellow**. Optional parameters:
 5. Set `"debug_frenet_projection" = True` to visualize the Frenet coordinates are correct
-6. Set `"record_obs_min_max"` to `True/False` to record min/max observation values during training, and tweak normalization bounds if necessary, defined in `utils.py::calculate_norm_bounds`
+6. Set `"record_obs_min_max"` to `True/False` to record min/max observation values during training, and tweak normalization bounds if necessary, defined in `utils.py::calculate_norm_bounds`. Min/max are aggregated across parallelized environments and supported regardless of whether `normalize_obs` is enabled
 
 #### Control debug panel
 
@@ -196,9 +196,14 @@ Works with all observation types (`OriginalObservation`, `FeaturesObservation`, 
 1. Set `training_mode` to define the training goal. This modifies the reset, initialization, track, and reward settings:
     1. `"race"` (default) is used by `train/ppo_race.py` for training racing policies 
     2. `"recover"` is used by `train/ppo_recover.py` to train policies for stabilizing an out-of-control vehicle 
-2. Set `model` to `std` for drifting model with PAC2002 tire model
+2. Set `model` to define vehicle dynamics:
+    1. `ks` - Kinematic Single Track (no tire forces)
+    2. `st` - Single Track (lateral dynamics, no explicit tire model)
+    3. `stp` - Single Track Pacejka, dynamic single-track with lateral-only Pacejka Magic Formula tire model (ported from the ForzaETH f110-simulator). Shares ST's 7-d state layout
+    4. `std` - Single Track Drift with PAC2002 tire model (recommended for drift RL training)
+    5. `mb` - Multi-Body (full-scale parameters only)
 3. Use `control_input` `["accl", "steering_angle"]` for best RL drift training
-4. Use parameter dictionary `params` as `GKEnv.f1tenth_std_vehicle_params()` or `GKEnv.f1tenth_std_drift_bias_params()` for drift parameters on 1/10 scale F1TENTH car
+4. Use parameter dictionary `params` as `GKEnv.f1tenth_std_vehicle_params()` or `GKEnv.f1tenth_std_drift_bias_params()` for drift parameters on 1/10 scale F1TENTH car, or `GKEnv.f1tenth_stp_vehicle_params()` for the STP model
 5. Lookahead curvature/width observations can be configured with spacing and number parameters, and when `render_lookahead_curvatures": True` these will be reflected
     1. `lookahead_n_points` - Number of lookahead points (default: 10)
     2. `lookahead_ds` - Spacing between points in meters (default: 0.3m)
