@@ -53,6 +53,7 @@ ACTION_INPUT = _config["action_input"]
 OBS_TYPE = _config["obs_type"]
 RESET_CONFIG = _config["reset_config"]
 TRACK_DIRECTION = _config["track_direction"]
+RESET_V_MIN = _config.get("reset_v_min", None)
 LOOKAHEAD_N_POINTS = _config["lookahead_n_points"]
 LOOKAHEAD_DS = _config["lookahead_ds"]
 SPARSE_WIDTH_OBS = _config["sparse_width_obs"]
@@ -119,6 +120,7 @@ def _base_config(debug_render):
         "predictive_collision": PREDICTIVE_COLLISION,
         "normalize_act": NORM_ACT,
         "wall_deflection": WALL_DEFLECTION,
+        "reset_v_min": RESET_V_MIN,
     }
 
 
