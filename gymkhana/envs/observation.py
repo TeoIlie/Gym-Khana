@@ -826,7 +826,7 @@ def observation_factory(env, type: str | None, **kwargs) -> Observation:
         type: Observation type string. Supported values:
             ``"original"``, ``"features"``, ``"kinematic_state"``,
             ``"dynamic_state"``, ``"frenet_dynamic_state"``, ``"rl"``,
-            ``"drift"``, ``"frenet"``, ``"race"``.
+            ``"drift"``, ``"frenet"``, ``"race"``, ``"drift_st"``.
             Defaults to ``"original"`` if None.
         **kwargs: Additional arguments forwarded to the observation constructor.
 
@@ -851,6 +851,7 @@ def observation_factory(env, type: str | None, **kwargs) -> Observation:
             "pose_y",
             "delta",
             "linear_vel_x",
+            "linear_vel_y",
             "pose_theta",
             "ang_vel_z",
             "beta",
@@ -886,6 +887,19 @@ def observation_factory(env, type: str | None, **kwargs) -> Observation:
             "prev_accl_cmd",  # ω_dot_ref - last control input (acceleration)
             "prev_avg_wheel_omega",  # ω - previous measured wheel speed
             "curr_vel_cmd",  # ω_ref - current commanded velocity (integrated from acceleration)
+            "lookahead_curvatures",  # c - track curvatures
+            "lookahead_widths",  # w - track widths
+        ]
+        return VectorObservation(env, features=features)
+    elif type == "drift_st":
+        features = [
+            "linear_vel_x",  # vx - longitudinal velocity, vehicle frame
+            "linear_vel_y",  # vy - lateral velocity, vehicle frame
+            "frenet_u",  # u - angle between car heading, track heading, in Frenet coords
+            "frenet_n",  # n - lateral distance from centerline, in Frenet coords
+            "ang_vel_z",  # r - yaw rate
+            "beta",  # β - slip angle (vehicle velocity angle relative to body axis)
+            "prev_steering_cmd",  # δ_ref - previous commanded steering angle
             "lookahead_curvatures",  # c - track curvatures
             "lookahead_widths",  # w - track widths
         ]

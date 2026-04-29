@@ -275,16 +275,24 @@ class GKEnv(gym.Env):
                 "Please set model='std' (or model=DynamicModel.STD) when creating the environment."
             )
 
+        # Validate drift_st observation requires ST or STP model
+        if obs_type == "drift_st" and self.model not in [DynamicModel.ST, DynamicModel.STP]:
+            raise ValueError(
+                "The 'drift_st' observation type requires the single_track (ST) or single_track_pacejka (STP) model. "
+                f"Current model: {self.model}. "
+                "Please set model='st' or 'stp' (or model=DynamicModel.ST, model=DynamicModel.STP) when creating the environment."
+            )
+
         # Handle normalization configuration
         normalize_obs = self.config["normalize_obs"]
 
         # Identify whether the chosen observation type is supported for normalization
-        supported_obs_types = ["drift", "race", "frenet"]
+        supported_obs_types = ["drift", "race", "frenet", "drift_st"]
         obs_norm_supported = obs_type in supported_obs_types
 
         if normalize_obs is None:
             # User did not set normalize - auto-set based on observation type
-            # Default to True for observation types that support normalization (drift, race, frenet, etc.)
+            # Default to True for observation types that support normalization (drift, race, etc.)
             self.normalize_obs = obs_norm_supported
         else:
             # User explicitly set normalize
@@ -461,6 +469,20 @@ class GKEnv(gym.Env):
             Complete parameter dictionary for the STD model.
         """
         return load_params("f1tenth_std")
+
+    @classmethod
+    def f1tenth_stp_vehicle_params(cls) -> dict:
+        """Return default parameters for the 1/10th scale F1TENTH car (STP model).
+
+        Single Track Pacejka: dynamic single-track chassis with a lateral-only
+        Pacejka Magic Formula tyre model (8 coefficients, ``B_f, C_f, D_f, E_f,
+        B_r, C_r, D_r, E_r``). Coefficients are seeded from the on-track sysid
+        pipeline output (``SIM_pacejka.txt``).
+
+        Returns:
+            Complete parameter dictionary for the STP model.
+        """
+        return load_params("f1tenth_stp")
 
     @classmethod
     def default_config(cls) -> dict:
@@ -1018,9 +1040,11 @@ class GKEnv(gym.Env):
 
                 - ``"poses"``: ``np.ndarray`` of shape ``(num_agents, 3)``
                   — ``[x, y, yaw]`` per agent.
-                - ``"states"``: ``np.ndarray`` of shape ``(num_agents, 7)``
-                  — ``[x, y, delta, v, yaw, yaw_rate, slip_angle]`` per agent
-                  (STD model only).
+                - ``"states"``: ``np.ndarray`` of shape ``(num_agents, n)`` where
+                  ``n`` is the model-specific row width; see
+                  :meth:`gymkhana.envs.dynamic_models.DynamicModel.user_state_len`
+                  for accepted widths and layouts. MB does not support
+                  full-state reset.
 
                 Cannot specify both keys simultaneously.
 
@@ -1061,21 +1085,24 @@ class GKEnv(gym.Env):
                 raise ValueError("Cannot provide both 'poses' and 'states' in reset options.")
 
             if has_states:
-                # Validate STD model requirement
-                if self.model != DynamicModel.STD:
-                    raise ValueError(
-                        f"Full state initialization only supported for STD model. "
-                        f"Current model: {self.model}. Optionally use 'poses' instead."
-                    )
+                # Per-model expected width (and MB rejection) come from
+                # DynamicModel.user_state_len; this layer only validates that
+                # the supplied 2-D array matches (num_agents, expected_len).
+                expected_state_len = self.model.user_state_len()
 
                 states = options["states"]
-                assert isinstance(states, np.ndarray) and states.shape == (
+                if not isinstance(states, np.ndarray) or states.shape != (
                     self.num_agents,
-                    7,
-                ), f"States must be a numpy array of shape (num_agents, 7), got {states.shape}"
+                    expected_state_len,
+                ):
+                    raise ValueError(
+                        f"States must be a numpy array of shape "
+                        f"(num_agents={self.num_agents}, {expected_state_len}) "
+                        f"for model {self.model.name}, got "
+                        f"{states.shape if isinstance(states, np.ndarray) else type(states).__name__}"
+                    )
 
                 # Save poses for downstream use
-                # State indices: [x, y, delta, v, yaw, yaw_rate, slip_angle]
                 poses = np.column_stack([states[:, 0], states[:, 1], states[:, 4]])
 
             elif has_poses:

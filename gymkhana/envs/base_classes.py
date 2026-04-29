@@ -205,9 +205,10 @@ class RaceCar(object):
 
         Args:
             pose: Pose to reset to, shape ``(3,)`` as ``[x, y, yaw]``.
-            state: Full state for STD model, shape ``(7,)`` as
-                ``[x, y, delta, v, yaw, yaw_rate, slip_angle]``.
-                If provided, ``pose`` is ignored.
+            state: Optional model-specific user-facing state row; see
+                :meth:`gymkhana.envs.dynamic_models.DynamicModel.user_state_len`
+                for accepted widths and layouts. MB does not support full-state
+                reset. If provided, ``pose`` is ignored.
         """
         # clear control inputs
         self.accel = 0.0
@@ -557,9 +558,11 @@ class Simulator(object):
 
         Args:
             poses: Poses for all agents, shape ``(num_agents, 3)``.
-            states: Full states for STD model, shape ``(num_agents, 7)``,
-                each row ``[x, y, delta, v, yaw, yaw_rate, slip_angle]``.
-                If provided, ``poses`` is ignored.
+            states: Optional full states for all agents, shape ``(num_agents, n)``
+                where ``n`` is the model-specific row width; see
+                :meth:`gymkhana.envs.dynamic_models.DynamicModel.user_state_len`
+                for accepted widths and layouts. MB does not support full-state
+                reset. If provided, ``poses`` is ignored.
 
         Raises:
             ValueError: If the number of poses or states does not match ``num_agents``.
