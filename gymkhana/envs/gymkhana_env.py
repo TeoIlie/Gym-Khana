@@ -46,6 +46,83 @@ from .track import Track
 from .utils import deep_update
 
 
+def print_obs_min_max_stats(tracker, step_count, features, bounds, normalize_obs):
+    """Print a table of recorded observation min/max values.
+
+    Pure function — reused by ``GKEnv._print_obs_min_max_stats`` (standalone)
+    and by ``train.train_utils.aggregate_and_print_obs_min_max`` (parallelized).
+    Theoretical-bound columns render ``N/A`` for features missing from ``bounds``.
+    """
+    TABLE_WIDTH = 120
+    FEATURE_WIDTH = 25
+    OBS_WIDTH = 12
+    NA = "N/A"
+
+    # Print header
+    print("\n" + "=" * TABLE_WIDTH)
+    print("Observation Min/Max Statistics")
+    print(f"Tracked over {step_count:,} timesteps")
+    if normalize_obs:
+        print("Normalization: ENABLED   (theoretical bounds are the active scaling targets)")
+    else:
+        print("Normalization: DISABLED  (theoretical bounds not computed)")
+    print("=" * TABLE_WIDTH)
+    print(
+        f"{'Feature':<{FEATURE_WIDTH}} | {'Rec. Min':>{OBS_WIDTH}} | {'Rec. Max':>{OBS_WIDTH}} | {'Theor. Min':>{OBS_WIDTH}} | {'Theor. Max':>{OBS_WIDTH}} | {'Coverage':>{OBS_WIDTH}}"
+    )
+    print("-" * TABLE_WIDTH)
+
+    bounds_violations = []
+
+    for feature_name in features:
+        # Get recorded min/max values
+        rec_min = tracker[feature_name]["min"]
+        rec_max = tracker[feature_name]["max"]
+
+        # Handle case where no valid values were recorded
+        if rec_min == float("inf") or rec_max == float("-inf"):
+            print(
+                f"{feature_name:<{FEATURE_WIDTH}} | {NA:>{OBS_WIDTH}} | {NA:>{OBS_WIDTH}} | {NA:>{OBS_WIDTH}} | {NA:>{OBS_WIDTH}} | {NA:>{OBS_WIDTH}}"
+            )
+            continue
+
+        theor_bounds = bounds.get(feature_name)
+        if theor_bounds is not None:
+            theor_min, theor_max = theor_bounds
+
+            # Calculate coverage
+            theor_range = theor_max - theor_min
+            rec_range = rec_max - rec_min
+            coverage_str = f"{(rec_range / theor_range) * 100.0:6.1f}%" if theor_range > 0 else NA
+
+            # Check for violations
+            exceeds = ""
+            eps = 1e-4
+            if rec_min < theor_min - eps or rec_max > theor_max + eps:
+                bounds_violations.append(feature_name)
+                exceeds = " ⚠️"
+
+            print(
+                f"{feature_name:<{FEATURE_WIDTH}} | {rec_min:12.4f} | {rec_max:12.4f} | {theor_min:12.4f} | {theor_max:12.4f} | {coverage_str:>{OBS_WIDTH}}{exceeds}"
+            )
+        else:
+            # Theoretical bounds not available for this feature
+            print(
+                f"{feature_name:<{FEATURE_WIDTH}} | {rec_min:12.4f} | {rec_max:12.4f} | {NA:>{OBS_WIDTH}} | {NA:>{OBS_WIDTH}} | {NA:>{OBS_WIDTH}}"
+            )
+
+    print("=" * TABLE_WIDTH)
+
+    if bounds_violations:
+        print("⚠️  WARNING: The following features exceeded theoretical bounds:")
+        for feature_name in bounds_violations:
+            print(f"    - {feature_name}")
+        print("   Consider updating normalization bounds in calculate_norm_bounds()")
+        print("=" * TABLE_WIDTH)
+
+    print()
+
+
 class GKEnv(gym.Env):
     """Gymnasium environment for Gym-Khana autonomous racing.
 
@@ -682,88 +759,14 @@ class GKEnv(gym.Env):
             entry["max"] = max(entry["max"], curr_max)
 
     def _print_obs_min_max_stats(self):
-        """Print a table of recorded observation min/max values.
-
-        Called automatically by :meth:`close` when ``record_obs_min_max=True``.
-        Tracking is supported for all observation types. Theoretical bounds and
-        coverage are shown only for features that have entries in
-        ``self.observation_type.bounds`` (currently populated for Vector-based
-        observation types when ``normalize_obs=True``); other rows render the
-        theoretical columns as ``N/A``.
-
-        For multi-agent observations (``FeaturesObservation``), values are
-        aggregated across agents into a single row per feature. Array-valued
-        features (e.g. ``scans``) are reduced via element-wise ``np.min``/``np.max``.
-        """
-        TABLE_WIDTH = 120
-        FEATURE_WIDTH = 25
-        OBS_WIDTH = 12
-        NA = "N/A"
-        bounds = getattr(self.observation_type, "bounds", {}) or {}
-
-        # Print header
-        print("\n" + "=" * TABLE_WIDTH)
-        print("Observation Min/Max Statistics")
-        print(f"Tracked over {self.obs_tracker_step_count:,} timesteps")
-        if self.normalize_obs:
-            print("Normalization: ENABLED   (theoretical bounds are the active scaling targets)")
-        else:
-            print("Normalization: DISABLED  (theoretical bounds not computed)")
-        print("=" * TABLE_WIDTH)
-        print(
-            f"{'Feature':<{FEATURE_WIDTH}} | {'Rec. Min':>{OBS_WIDTH}} | {'Rec. Max':>{OBS_WIDTH}} | {'Theor. Min':>{OBS_WIDTH}} | {'Theor. Max':>{OBS_WIDTH}} | {'Coverage':>{OBS_WIDTH}}"
+        """Print this env's tracked obs min/max table. Called from :meth:`close`."""
+        print_obs_min_max_stats(
+            tracker=self.obs_min_max_tracker,
+            step_count=self.obs_tracker_step_count,
+            features=self.observation_type.features,
+            bounds=getattr(self.observation_type, "bounds", {}) or {},
+            normalize_obs=self.normalize_obs,
         )
-        print("-" * TABLE_WIDTH)
-
-        bounds_violations = []
-
-        for feature_name in self.observation_type.features:
-            # Get recorded min/max values
-            rec_min = self.obs_min_max_tracker[feature_name]["min"]
-            rec_max = self.obs_min_max_tracker[feature_name]["max"]
-
-            # Handle case where no valid values were recorded
-            if rec_min == float("inf") or rec_max == float("-inf"):
-                print(
-                    f"{feature_name:<{FEATURE_WIDTH}} | {NA:>{OBS_WIDTH}} | {NA:>{OBS_WIDTH}} | {NA:>{OBS_WIDTH}} | {NA:>{OBS_WIDTH}} | {NA:>{OBS_WIDTH}}"
-                )
-                continue
-
-            theor_bounds = bounds.get(feature_name)
-            if theor_bounds is not None:
-                theor_min, theor_max = theor_bounds
-
-                # Calculate coverage
-                theor_range = theor_max - theor_min
-                rec_range = rec_max - rec_min
-                coverage_str = f"{(rec_range / theor_range) * 100.0:6.1f}%" if theor_range > 0 else NA
-
-                # Check for violations
-                exceeds = ""
-                eps = 1e-4
-                if rec_min < theor_min - eps or rec_max > theor_max + eps:
-                    bounds_violations.append(feature_name)
-                    exceeds = " ⚠️"
-
-                print(
-                    f"{feature_name:<{FEATURE_WIDTH}} | {rec_min:12.4f} | {rec_max:12.4f} | {theor_min:12.4f} | {theor_max:12.4f} | {coverage_str:>{OBS_WIDTH}}{exceeds}"
-                )
-            else:
-                # Theoretical bounds not available for this feature
-                print(
-                    f"{feature_name:<{FEATURE_WIDTH}} | {rec_min:12.4f} | {rec_max:12.4f} | {NA:>{OBS_WIDTH}} | {NA:>{OBS_WIDTH}} | {NA:>{OBS_WIDTH}}"
-                )
-
-        print("=" * TABLE_WIDTH)
-
-        if bounds_violations:
-            print("⚠️  WARNING: The following features exceeded theoretical bounds:")
-            for feature_name in bounds_violations:
-                print(f"    - {feature_name}")
-            print("   Consider updating normalization bounds in calculate_norm_bounds()")
-            print("=" * TABLE_WIDTH)
-
-        print()
 
     def _check_boundary_frenet(self, agent_idx: int) -> bool:
         """Check whether an agent has exceeded track boundaries using Frenet coordinates.
@@ -1242,6 +1245,12 @@ class GKEnv(gym.Env):
 
         self.renderer.update(state=self.render_obs)
         return self.renderer.render()
+
+    def disable_obs_min_max_recording(self):
+        """Mute the close()-time print. Called by the SubprocVecEnv aggregator
+        via ``env_method`` so the flag is set on the inner GKEnv, not the
+        Monitor wrapper (which is what ``set_attr`` would target)."""
+        self.record_obs_min_max = False
 
     def close(self):
         """Close the environment and release renderer resources."""

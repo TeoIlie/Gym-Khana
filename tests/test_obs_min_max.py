@@ -7,11 +7,13 @@ multi-agent collapse in the FeaturesObservation adapter.
 """
 
 import warnings
+from types import SimpleNamespace
 
 import gymnasium as gym
 import numpy as np
 
-from gymkhana.envs.gymkhana_env import GKEnv
+from gymkhana.envs.gymkhana_env import GKEnv, print_obs_min_max_stats
+from train.train_utils import aggregate_and_print_obs_min_max
 
 
 def _make_drift_env(normalize_obs: bool):
@@ -197,3 +199,102 @@ def test_tracking_with_features_obs_multi_agent():
         _assert_tracker_finite(unwrapped)
     finally:
         env.close()
+
+
+class _FakeVecEnv:
+    """Stand-in for SubprocVecEnv that records env_method calls.
+
+    Implements only the three methods the aggregator uses (get_attr, set_attr,
+    env_method) so tests run sub-millisecond without forking subprocs.
+    """
+
+    def __init__(self, per_env: list[dict]):
+        self._envs = per_env
+        self.method_calls: list[tuple[str, tuple]] = []
+
+    def get_attr(self, name):
+        return [e[name] for e in self._envs]
+
+    def set_attr(self, name, value):
+        for e in self._envs:
+            e[name] = value
+
+    def env_method(self, name, *args):
+        self.method_calls.append((name, args))
+
+
+def _fake_subproc(record: bool, tracker: dict, step_count: int, features, bounds, normalize_obs=True):
+    return {
+        "record_obs_min_max": record,
+        "obs_min_max_tracker": tracker,
+        "obs_tracker_step_count": step_count,
+        "observation_type": SimpleNamespace(features=features, bounds=bounds),
+        "normalize_obs": normalize_obs,
+    }
+
+
+class TestObsMinMaxAggregation:
+    """Cover the pure print function and the SubprocVecEnv aggregator."""
+
+    # --- print_obs_min_max_stats: callable with externally supplied data ---
+
+    def test_print_pure_fn_with_violation(self, capsys):
+        """Exceeding theor bounds prints the ⚠️ marker and the warning footer."""
+        print_obs_min_max_stats(
+            tracker={"f1": {"min": -2.0, "max": 5.0}},
+            step_count=100,
+            features=["f1"],
+            bounds={"f1": (-1.0, 1.0)},
+            normalize_obs=True,
+        )
+        out = capsys.readouterr().out
+        assert "Normalization: ENABLED" in out
+        assert "Tracked over 100 timesteps" in out
+        assert "⚠️" in out
+        assert "calculate_norm_bounds" in out
+
+    def test_print_pure_fn_no_recorded_values(self, capsys):
+        """Untouched tracker (inf/-inf) renders an all-N/A row, no violation footer."""
+        print_obs_min_max_stats(
+            tracker={"f1": {"min": float("inf"), "max": float("-inf")}},
+            step_count=0,
+            features=["f1"],
+            bounds={"f1": (-1.0, 1.0)},
+            normalize_obs=False,
+        )
+        out = capsys.readouterr().out
+        assert "Normalization: DISABLED" in out
+        assert "N/A" in out
+        assert "calculate_norm_bounds" not in out
+
+    # --- aggregate_and_print_obs_min_max ---
+
+    def test_aggregator_noop_when_all_flags_false(self, capsys):
+        """If no subproc has tracking enabled, print nothing and don't touch envs."""
+        vec = _FakeVecEnv([_fake_subproc(False, {}, 0, [], {}) for _ in range(3)])
+        aggregate_and_print_obs_min_max(vec)
+        assert capsys.readouterr().out == ""
+        assert vec.method_calls == []
+
+    def test_aggregator_merges_and_disables(self, capsys):
+        """Per-feature min-of-mins, max-of-maxes, sum of steps; mute via env_method."""
+        features = ["f1"]
+        bounds = {"f1": (-10.0, 10.0)}
+        # Three subprocs with overlapping ranges. Global min = -3, global max = 7.
+        per_env = [
+            _fake_subproc(True, {"f1": {"min": -1.0, "max": 5.0}}, 100, features, bounds),
+            _fake_subproc(True, {"f1": {"min": -3.0, "max": 4.0}}, 200, features, bounds),
+            _fake_subproc(True, {"f1": {"min": 0.0, "max": 7.0}}, 300, features, bounds),
+        ]
+        vec = _FakeVecEnv(per_env)
+
+        aggregate_and_print_obs_min_max(vec)
+        out = capsys.readouterr().out
+
+        # Step counts summed across subprocs.
+        assert "Tracked over 600 timesteps" in out
+        # Merged min/max land in the rec columns (printed via %12.4f).
+        assert "-3.0000" in out
+        assert "7.0000" in out
+        # Mute path: must use env_method, not set_attr — guards the Monitor-wrapper bug.
+        assert vec.method_calls == [("disable_obs_min_max_recording", ())]
