@@ -899,7 +899,7 @@ def observation_factory(env, type: str | None, **kwargs) -> Observation:
             "frenet_n",  # n - lateral distance from centerline, in Frenet coords
             "ang_vel_z",  # r - yaw rate
             "beta",  # β - slip angle (vehicle velocity angle relative to body axis)
-            "prev_steering_cmd",  # δ - measured steering angle
+            "prev_steering_cmd",  # δ_ref - previous commanded steering angle
             "lookahead_curvatures",  # c - track curvatures
             "lookahead_widths",  # w - track widths
         ]
