@@ -170,6 +170,7 @@ Note that CL is only supported for recovery training, with the environment `trai
 4. Set `"render_lookahead_curvatures": True` (it is `False` by default) to visualize lookahead curvature sampling points ahead of the vehicle in **yellow**. Optional parameters:
 5. Set `"debug_frenet_projection" = True` to visualize the Frenet coordinates are correct
 6. Set `"record_obs_min_max"` to `True/False` to record min/max observation values during training, and tweak normalization bounds if necessary, defined in `utils.py::calculate_norm_bounds`. Min/max are aggregated across parallelized environments and supported regardless of whether `normalize_obs` is enabled. When enabled during training, a YAML snapshot is written periodically to `outputs/config/<run_id>/obs_min_max.yaml`, and per-feature bounds-violation magnitudes (`obs_bounds/<feature>/over` and `.../under`) are streamed to wandb for live monitoring
+7. Set `"prevent_instability"` to `True/False` to enable post-RK4 sanity checks on the standardized state. When enabled, integrator blow-ups are detected, the agent's state is reverted, the episode is truncated, and the running event count is logged to wandb under `instability/total` and printed at end-of-run. The bounds are configurable via `"instability_yaw_rate_bound"` (default `4π` rad/s) and `"instability_slip_bound"` (default `π/2` rad). When disabled, the env behaves as before — no detection, no revert, no truncation
 
 #### Control debug panel
 
