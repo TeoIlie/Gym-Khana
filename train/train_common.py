@@ -14,7 +14,7 @@ from stable_baselines3.common.policies import BasePolicy
 from wandb.integration.sb3 import WandbCallback
 
 import wandb
-from train.callbacks import make_curriculum_callback, make_obs_min_max_callback
+from train.callbacks import make_curriculum_callback, make_instability_callback, make_obs_min_max_callback
 from train.config.env_config import (
     ACTOR_LAYER_SIZE,
     ADDITIONAL_TIMESTEPS,
@@ -141,6 +141,9 @@ def train(profile: TrainingProfile):
     obs_min_max_cb = make_obs_min_max_callback(profile.train_config, config_dir, OBS_MIN_MAX_YAML)
     if obs_min_max_cb is not None:
         callbacks.append(obs_min_max_cb)
+    instability_cb = make_instability_callback(profile.train_config)
+    if instability_cb is not None:
+        callbacks.append(instability_cb)
 
     model.learn(
         total_timesteps=TOTAL_TIMESTEPS,
@@ -274,6 +277,9 @@ def continue_training(profile: TrainingProfile, model_path: str, additional_time
     obs_min_max_cb = make_obs_min_max_callback(profile.train_config, config_dir, OBS_MIN_MAX_YAML)
     if obs_min_max_cb is not None:
         callbacks.append(obs_min_max_cb)
+    instability_cb = make_instability_callback(profile.train_config)
+    if instability_cb is not None:
+        callbacks.append(instability_cb)
 
     print("\nContinuing training...")
 
@@ -434,6 +440,9 @@ def transfer_train(
     obs_min_max_cb = make_obs_min_max_callback(profile.train_config, config_dir, OBS_MIN_MAX_YAML)
     if obs_min_max_cb is not None:
         callbacks.append(obs_min_max_cb)
+    instability_cb = make_instability_callback(profile.train_config)
+    if instability_cb is not None:
+        callbacks.append(instability_cb)
 
     print("\nStarting transfer training...")
 

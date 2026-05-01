@@ -143,8 +143,12 @@ def aggregate_and_print_obs_min_max(vec_env: SubprocVecEnv) -> None:
 def aggregate_and_print_instability_count(vec_env: SubprocVecEnv) -> None:
     """Sum per-env instability-truncation counts across subprocs and print.
 
-    Must run before ``vec_env.close()``
+    No-op when instability prevention is disabled in every subproc.
+    Must run before ``vec_env.close()``.
     """
+    if not any(vec_env.get_attr("prevent_instability")):
+        return
+
     counts = vec_env.get_attr("_instability_count")
     total = sum(counts)
 

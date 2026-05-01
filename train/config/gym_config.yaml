@@ -44,6 +44,7 @@ sparse_width_obs: true
 # Reset configuration
 reset_config: "cl_random_static"
 track_direction: "random"
+prevent_instability: true # enables integration instability checking with reset
 
 # Rendering/Debug settings
 test_debug_render: true

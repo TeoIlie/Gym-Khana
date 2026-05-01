@@ -313,3 +313,38 @@ def make_obs_min_max_callback(
     if not train_config.get("record_obs_min_max", False):
         return None
     return ObsMinMaxSnapshotCallback(snapshot_path=os.path.join(config_dir, filename), save_freq=save_freq)
+
+
+class InstabilityCountCallback(BaseCallback):
+    """Log total integration-instability events across subprocs to wandb.
+
+    Aggregates each env's ``_instability_count`` every ``save_freq`` env steps
+    (and once at training end). Mirrors :class:`ObsMinMaxSnapshotCallback`'s
+    pacing pattern.
+    """
+
+    def __init__(self, save_freq: int, verbose: int = 0):
+        super().__init__(verbose)
+        self.save_freq = save_freq
+        self._last_log_step = 0
+
+    def _log_total(self) -> None:
+        counts = self.training_env.get_attr("_instability_count")
+        wandb.log({"instability/total": sum(counts)}, step=self.num_timesteps)
+
+    def _on_step(self) -> bool:
+        if self.num_timesteps - self._last_log_step < self.save_freq:
+            return True
+        self._log_total()
+        self._last_log_step = self.num_timesteps
+        return True
+
+    def _on_training_end(self) -> None:
+        self._log_total()
+
+
+def make_instability_callback(train_config: dict, save_freq: int = CKPT_SAVE_FREQ) -> InstabilityCountCallback | None:
+    """Factory: returns the instability-count callback when prevention is enabled."""
+    if not train_config.get("prevent_instability", False):
+        return None
+    return InstabilityCountCallback(save_freq=save_freq)

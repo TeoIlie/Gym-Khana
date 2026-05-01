@@ -38,14 +38,6 @@ from .integrator import EulerIntegrator, Integrator
 from .laser_models import ScanSimulator2D, check_ttc_jit, ray_cast
 from .track import Track
 
-# Numerical-stability sanity bounds applied after RK4 integration on the
-# standardized state. Anything outside these is treated as integrator blow-up;
-# the offending step is reverted and the env truncates the episode.
-_STATE_SANITY_BOUNDS = {
-    "yaw_rate": 4 * np.pi,  # rad/s
-    "slip": np.pi / 2,  # rad
-}
-
 
 class RaceCar(object):
     """Single vehicle physics and laser scan simulation.
@@ -80,6 +72,8 @@ class RaceCar(object):
         time_step=0.01,
         num_beams=1080,
         fov=4.7,
+        prevent_instability=False,
+        instability_bounds=None,
     ):
         """Initialize a RaceCar instance.
 
@@ -94,6 +88,10 @@ class RaceCar(object):
             time_step: Physics simulation timestep in seconds.
             num_beams: Number of beams in the laser scan.
             fov: Field of view of the laser in radians.
+            prevent_instability: If True, run the post-integration sanity check
+                and revert state on blow-up.
+            instability_bounds: Mapping from standardized-state feature name
+                to absolute-value limit (e.g. ``{"yaw_rate": 4*pi, "slip": pi/2}``).
         """
 
         # initialization
@@ -108,6 +106,8 @@ class RaceCar(object):
         self.model = model
         self.standard_state_fn = self.model.get_standardized_state_fn()
         self.wall_deflection = wall_deflection
+        self.prevent_instability = prevent_instability
+        self.instability_bounds = instability_bounds if instability_bounds is not None else {}
 
         # state of the vehicle
         self.state = self.model.get_initial_state(params=self.params)
@@ -380,7 +380,8 @@ class RaceCar(object):
 
             # numerical-stability check: if RK4 produced a non-physical state,
             # revert to prev_state and flag for env-level truncation
-            self._check_state_sanity(prev_state, u_np)
+            if self.prevent_instability:
+                self._check_state_sanity(prev_state, u_np)
 
         # update scan
         current_scan = RaceCar.scan_simulator.scan(np.append(self.state[0:2], self.state[4]), self.scan_rng)
@@ -400,7 +401,7 @@ class RaceCar(object):
             violations["non_finite"] = True
         else:
             std = self.standard_state_fn(self.state)
-            for feature, bound in _STATE_SANITY_BOUNDS.items():
+            for feature, bound in self.instability_bounds.items():
                 value = std.get(feature, 0.0)
                 if abs(value) > bound:
                     violations[feature] = float(value)
@@ -475,6 +476,8 @@ class Simulator(object):
         model=DynamicModel.ST,
         time_step=0.01,
         ego_idx=0,
+        prevent_instability=False,
+        instability_bounds=None,
     ):
         """Initialize the Simulator.
 
@@ -489,6 +492,10 @@ class Simulator(object):
             model: Vehicle dynamics model used by all agents.
             time_step: Physics time step in seconds.
             ego_idx: Index of the ego vehicle in the agents list.
+            prevent_instability: Forwarded to each :class:`RaceCar` to enable
+                post-integration sanity checks and state revert on blow-up.
+            instability_bounds: Forwarded to each :class:`RaceCar` as the
+                per-feature absolute-value limits used by the sanity check.
         """
         self.num_agents = num_agents
         self.seed = seed
@@ -515,6 +522,8 @@ class Simulator(object):
                 integrator=integrator,
                 model=model,
                 action_type=action_type,
+                prevent_instability=prevent_instability,
+                instability_bounds=instability_bounds,
             )
             self.agents.append(car)
 

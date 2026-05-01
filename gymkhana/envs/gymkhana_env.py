@@ -250,7 +250,16 @@ class GKEnv(gym.Env):
         self.debug_frenet_projection = self.config["debug_frenet_projection"]
         self.record_obs_min_max = self.config["record_obs_min_max"]
 
-        # cumulative count of instability-truncation events for rate-limited logging
+        # integration-instability detection: when enabled, RaceCar runs sanity
+        # checks on the post-RK4 state, reverts on blow-up, and the env truncates
+        self.prevent_instability = self.config["prevent_instability"]
+        self.instability_bounds = {
+            "yaw_rate": self.config["instability_yaw_rate_bound"],
+            "slip": self.config["instability_slip_bound"],
+        }
+
+        # cumulative count of instability-truncation events; aggregated to wandb
+        # by InstabilityCountCallback and printed at end-of-run
         self._instability_count = 0
 
         # reward params
@@ -321,6 +330,8 @@ class GKEnv(gym.Env):
             model=self.model,
             action_type=self.action_type,
             num_beams=self.num_beams,
+            prevent_instability=self.prevent_instability,
+            instability_bounds=self.instability_bounds,
         )
         self.sim.set_map(self.map, self.config["scale"])
 
@@ -581,6 +592,9 @@ class GKEnv(gym.Env):
             "normalize_act": True,
             "predictive_collision": False,  # default Frenet-based boundary check
             "record_obs_min_max": False,
+            "prevent_instability": False,  # when True, sanity-check post-integration state and truncate on blow-up
+            "instability_yaw_rate_bound": 4 * np.pi,  # rad/s; standardized-state |yaw_rate| limit
+            "instability_slip_bound": np.pi / 2,  # rad; standardized-state |slip| limit
             "wall_deflection": False,  # default to no wall deflections
             "track_direction": "normal",  # "normal", "reverse", or "random"
             "training_mode": "race",  # "race" or "recover"
@@ -972,8 +986,13 @@ class GKEnv(gym.Env):
         self.sim.step(action, skip_integration=skip_integration)
 
         # detect numerical instability flagged by RaceCar.update_pose
-        unstable_agents = [i for i, a in enumerate(self.sim.agents) if a.unstable]
-        instability_truncation = len(unstable_agents) > 0
+        # (no-op when prevent_instability=False — agents never set .unstable)
+        if self.prevent_instability:
+            unstable_agents = [i for i, a in enumerate(self.sim.agents) if a.unstable]
+            instability_truncation = len(unstable_agents) > 0
+        else:
+            unstable_agents = []
+            instability_truncation = False
 
         # observation
         obs = self.observation_type.observe()
@@ -1040,11 +1059,6 @@ class GKEnv(gym.Env):
             info["unstable_agents"] = unstable_agents
             info["unstable_info"] = agent_infos
             self._instability_count += 1
-            if self._instability_count <= 10 or self._instability_count % 100 == 0:
-                print(
-                    f"[INSTABILITY #{self._instability_count}] step={self.current_step} "
-                    f"agents={unstable_agents} info={agent_infos}"
-                )
 
         # calc reward
         reward = self._get_reward()
