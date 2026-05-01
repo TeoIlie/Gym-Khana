@@ -44,7 +44,6 @@ sparse_width_obs: true
 # Reset configuration
 reset_config: "cl_random_static"
 track_direction: "random"
-reset_v_min: 1.5  # m/s; skips low-V kinematic↔dynamic blend region (~0.15-0.25 m/s) where RK4 is unstable
 
 # Rendering/Debug settings
 test_debug_render: true

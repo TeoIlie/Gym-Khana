@@ -249,7 +249,6 @@ class GKEnv(gym.Env):
         self.sparse_width_obs = self.config["sparse_width_obs"]
         self.debug_frenet_projection = self.config["debug_frenet_projection"]
         self.record_obs_min_max = self.config["record_obs_min_max"]
-        self.reset_v_min = self.config["reset_v_min"]
 
         # cumulative count of instability-truncation events for rate-limited logging
         self._instability_count = 0
@@ -589,11 +588,6 @@ class GKEnv(gym.Env):
             "progress_gain": 5.0,
             "negative_vel_penalty": -1,
             "max_episode_steps": 4096,
-            # Initial velocity floor (m/s). When set, race-mode resets bump
-            # state[3] above this value to skip the kinematic↔dynamic blend
-            # region (~0.15-0.25 m/s for STD/STP) where RK4 is unstable.
-            # None = no override (backward-compatible default).
-            "reset_v_min": None,
             # Recovery mode parameters (safe defaults, no effect when training_mode="race")
             "recovery_map": "IMS",
             "recovery_s_init": 96,
@@ -1182,15 +1176,6 @@ class GKEnv(gym.Env):
 
         # call reset to simulator (pass states if provided)
         self.sim.reset(poses, states=states)
-
-        # Optional initial-velocity floor: skip the low-V kinematic↔dynamic
-        # blend region where RK4 is unstable. Only applied when the caller did
-        # not provide an explicit full state.
-        if self.reset_v_min is not None and states is None:
-            for agent in self.sim.agents:
-                if agent.state[3] < self.reset_v_min:
-                    agent.state[3] = self.reset_v_min
-                    agent.curr_vel_cmd = self.reset_v_min
 
         # Initialize last_s to actual starting arc lengths for accurate first-step reward
         self.last_s = []
