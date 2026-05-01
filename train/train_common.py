@@ -14,7 +14,7 @@ from stable_baselines3.common.policies import BasePolicy
 from wandb.integration.sb3 import WandbCallback
 
 import wandb
-from train.callbacks import make_curriculum_callback
+from train.callbacks import make_curriculum_callback, make_instability_callback, make_obs_min_max_callback
 from train.config.env_config import (
     ACTOR_LAYER_SIZE,
     ADDITIONAL_TIMESTEPS,
@@ -36,6 +36,7 @@ from train.config.env_config import (
 )
 from train.train_utils import (
     CustomLeakyReLU,
+    aggregate_and_print_instability_count,
     aggregate_and_print_obs_min_max,
     download_model_from_wandb,
     extract_norm_bounds,
@@ -71,6 +72,7 @@ CURRICULUM_YAML = "curriculum_config.yaml"
 RL_YAML = "rl_config.yaml"
 TRANSFER_YAML = "transfer_config.yaml"
 NORM_BOUNDS_YAML = "norm_bounds.yaml"
+OBS_MIN_MAX_YAML = "obs_min_max.yaml"
 
 
 def train(profile: TrainingProfile):
@@ -136,6 +138,12 @@ def train(profile: TrainingProfile):
     )
     if curriculum_cb is not None:
         callbacks.append(curriculum_cb)
+    obs_min_max_cb = make_obs_min_max_callback(profile.train_config, config_dir, OBS_MIN_MAX_YAML)
+    if obs_min_max_cb is not None:
+        callbacks.append(obs_min_max_cb)
+    instability_cb = make_instability_callback(profile.train_config)
+    if instability_cb is not None:
+        callbacks.append(instability_cb)
 
     model.learn(
         total_timesteps=TOTAL_TIMESTEPS,
@@ -151,6 +159,7 @@ def train(profile: TrainingProfile):
     run.save(f"{best_model_path}.zip", base_path=models_dir)
 
     aggregate_and_print_obs_min_max(env)
+    aggregate_and_print_instability_count(env)
     env.close()
     eval_env.close()
 
@@ -265,6 +274,12 @@ def continue_training(profile: TrainingProfile, model_path: str, additional_time
     )
     if curriculum_cb is not None:
         callbacks.append(curriculum_cb)
+    obs_min_max_cb = make_obs_min_max_callback(profile.train_config, config_dir, OBS_MIN_MAX_YAML)
+    if obs_min_max_cb is not None:
+        callbacks.append(obs_min_max_cb)
+    instability_cb = make_instability_callback(profile.train_config)
+    if instability_cb is not None:
+        callbacks.append(instability_cb)
 
     print("\nContinuing training...")
 
@@ -287,6 +302,7 @@ def continue_training(profile: TrainingProfile, model_path: str, additional_time
     print(f"New run ID: {new_run_id}")
 
     aggregate_and_print_obs_min_max(env)
+    aggregate_and_print_instability_count(env)
     env.close()
     eval_env.close()
 
@@ -421,6 +437,12 @@ def transfer_train(
     )
     if curriculum_cb is not None:
         callbacks.append(curriculum_cb)
+    obs_min_max_cb = make_obs_min_max_callback(profile.train_config, config_dir, OBS_MIN_MAX_YAML)
+    if obs_min_max_cb is not None:
+        callbacks.append(obs_min_max_cb)
+    instability_cb = make_instability_callback(profile.train_config)
+    if instability_cb is not None:
+        callbacks.append(instability_cb)
 
     print("\nStarting transfer training...")
 
@@ -442,6 +464,7 @@ def transfer_train(
     print(f"New run ID: {new_run_id}")
 
     aggregate_and_print_obs_min_max(env)
+    aggregate_and_print_instability_count(env)
     env.close()
     eval_env.close()
 

@@ -13,11 +13,12 @@ Deviations from the C++ original:
 - Constraints applied inside ``f``.
 - Slip-angle sign flipped (gymkhana convention); ``F_y`` is negated to compensate
   since Pacejka is odd in alpha.
-- Blend thresholds retuned for 1/10 scale (``v_s=0.2, v_b=0.05``) and gated on
-  ``V`` rather than ``v_x``; the hard ``w_std=0`` clamp below ``v_min`` is
-  replaced by a sharper tanh plus zeroing ``alpha`` and ``beta_dot`` below
-  ``v_min_blend``. Thresholds are overridable via params keys ``blend_v_s``,
-  ``blend_v_b``, ``blend_v_min`` (used by parity tests against the f110 ref).
+- Blend thresholds match the f110 reference (``v_s=3.0, v_b=1.0,
+  v_min_blend=1.0``) and are gated on ``V`` rather than ``v_x``; the hard
+  ``w_std=0`` clamp below ``v_min`` is replaced by a sharper tanh plus
+  zeroing ``alpha`` and ``beta_dot`` below ``v_min_blend``. Thresholds are
+  overridable via params keys ``blend_v_s``, ``blend_v_b``, ``blend_v_min``
+  (used by parity tests against the f110 ref).
 
 State extraction: STP shares the ST 7-element state layout, so the dispatch in
 ``dynamic_models/__init__.py`` reuses ST's ``get_standardized_state_st`` for
@@ -55,11 +56,12 @@ def vehicle_dynamics_stp(x: np.ndarray, u_init: np.ndarray, params: dict) -> np.
     # Constants
     g = 9.81
 
-    # Low-speed blend thresholds (1/10-scale tuning, mirrors STD).
+    # Kinematic↔dynamic blend thresholds. Match the original f110-simulator
+    # values (std_kinematics.cpp)
     # Overridable via params for parity testing against the f110 reference.
-    v_s = params.get("blend_v_s", 0.2)
-    v_b = params.get("blend_v_b", 0.05)
-    v_min_blend = params.get("blend_v_min", v_s / 2)
+    v_s = params.get("blend_v_s", 3.0)  # blend center
+    v_b = params.get("blend_v_b", 1.0)  # blend width tanh scale
+    v_min_blend = params.get("blend_v_min", 1.0)  # hard kinematic floor
 
     # Apply input constraints (idempotent under RK4 sub-stages)
     u = np.array(

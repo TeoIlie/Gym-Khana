@@ -47,6 +47,16 @@ Default SB3 callbacks used during training:
 - ``CheckpointCallback`` — save periodic checkpoints
 - ``EvalCallback`` — evaluate during training
 
+Observation min/max snapshots
+-----------------------------
+
+When ``record_obs_min_max: true`` is set in the gym config, an ``ObsMinMaxSnapshotCallback`` is attached automatically. It merges per-subproc obs min/max trackers every ``CKPT_SAVE_FREQ`` env steps (and once at training end) and persists them to ``outputs/config/<run_id>/obs_min_max.yaml``. Per-feature bounds-violation magnitudes are streamed to wandb under ``obs_bounds/<feature>/over`` and ``obs_bounds/<feature>/under`` so the offending feature is identifiable from the metric key. The end-of-training aggregated table still prints to stdout.
+
+Instability prevention
+----------------------
+
+When ``prevent_instability: true`` is set in the gym config, every ``RaceCar`` runs a sanity check on the post-RK4 standardized state and reverts to the pre-step state on any violation, while the env truncates the episode with ``info["instability_truncation"] = True`` and a populated ``info["unstable_info"]``. An ``InstabilityCountCallback`` is attached automatically and logs the total event count summed across subprocs to wandb under ``instability/total`` every ``CKPT_SAVE_FREQ`` env steps (and once at training end). At end-of-run the per-env breakdown is printed to stdout. The detection bounds are configurable via ``instability_yaw_rate_bound`` and ``instability_slip_bound`` (defaults: ``4π`` rad/s and ``π/2`` rad).
+
 Curriculum learning
 -------------------
 

@@ -72,6 +72,8 @@ class RaceCar(object):
         time_step=0.01,
         num_beams=1080,
         fov=4.7,
+        prevent_instability=False,
+        instability_bounds=None,
     ):
         """Initialize a RaceCar instance.
 
@@ -86,6 +88,10 @@ class RaceCar(object):
             time_step: Physics simulation timestep in seconds.
             num_beams: Number of beams in the laser scan.
             fov: Field of view of the laser in radians.
+            prevent_instability: If True, run the post-integration sanity check
+                and revert state on blow-up.
+            instability_bounds: Mapping from standardized-state feature name
+                to absolute-value limit (e.g. ``{"yaw_rate": 4*pi, "slip": pi/2}``).
         """
 
         # initialization
@@ -100,6 +106,8 @@ class RaceCar(object):
         self.model = model
         self.standard_state_fn = self.model.get_standardized_state_fn()
         self.wall_deflection = wall_deflection
+        self.prevent_instability = prevent_instability
+        self.instability_bounds = instability_bounds if instability_bounds is not None else {}
 
         # state of the vehicle
         self.state = self.model.get_initial_state(params=self.params)
@@ -117,6 +125,11 @@ class RaceCar(object):
 
         # collision identifier
         self.in_collision = False
+
+        # numerical-instability flag: set when post-RK4 state violates sanity
+        # bounds and is reverted to the prior step's state
+        self.unstable = False
+        self._unstable_info = None
 
         # collision threshold for iTTC to environment
         self.ttc_thresh = 0.005
@@ -215,6 +228,9 @@ class RaceCar(object):
         self.steer_angle_vel = 0.0
         # clear collision indicator
         self.in_collision = False
+        # clear instability flag
+        self.unstable = False
+        self._unstable_info = None
         # clear previous and current steering commands
         self.prev_steering_cmd = 0.0
         self.curr_steering_cmd = 0.0
@@ -350,8 +366,11 @@ class RaceCar(object):
         u_np = np.array([sv, accl])
 
         # Conditionally integrate dynamics (skip during reset to preserve exact state)
+        self.unstable = False
+        self._unstable_info = None
         if not skip_integration:
             f_dynamics = self.model.f_dynamics
+            prev_state = self.state.copy()
             self.state = self.integrator.integrate(
                 f=f_dynamics, x=self.state, u=u_np, dt=self.time_step, params=self.params
             )
@@ -359,10 +378,41 @@ class RaceCar(object):
             # bound yaw angle
             self.state[4] %= 2 * np.pi  # TODO: This is a problem waiting to happen
 
+            # numerical-stability check: if RK4 produced a non-physical state,
+            # revert to prev_state and flag for env-level truncation
+            if self.prevent_instability:
+                self._check_state_sanity(prev_state, u_np)
+
         # update scan
         current_scan = RaceCar.scan_simulator.scan(np.append(self.state[0:2], self.state[4]), self.scan_rng)
 
         return current_scan
+
+    def _check_state_sanity(self, prev_state, u_np):
+        """Validate post-integration state; revert and flag on blow-up.
+
+        Args:
+            prev_state: Pre-integration state vector (used to revert on failure).
+            u_np: Action vector applied this step (recorded for diagnostics).
+        """
+        violations = {}
+
+        if not np.all(np.isfinite(self.state)):
+            violations["non_finite"] = True
+        else:
+            std = self.standard_state_fn(self.state)
+            for feature, bound in self.instability_bounds.items():
+                value = std.get(feature, 0.0)
+                if abs(value) > bound:
+                    violations[feature] = float(value)
+
+        if violations:
+            self.unstable = True
+            self._unstable_info = {
+                "violations": violations,
+                "action": np.asarray(u_np).tolist(),
+            }
+            self.state = prev_state
 
     def update_opp_poses(self, opp_poses):
         """Update this vehicle's information about other agents.
@@ -426,6 +476,8 @@ class Simulator(object):
         model=DynamicModel.ST,
         time_step=0.01,
         ego_idx=0,
+        prevent_instability=False,
+        instability_bounds=None,
     ):
         """Initialize the Simulator.
 
@@ -440,6 +492,10 @@ class Simulator(object):
             model: Vehicle dynamics model used by all agents.
             time_step: Physics time step in seconds.
             ego_idx: Index of the ego vehicle in the agents list.
+            prevent_instability: Forwarded to each :class:`RaceCar` to enable
+                post-integration sanity checks and state revert on blow-up.
+            instability_bounds: Forwarded to each :class:`RaceCar` as the
+                per-feature absolute-value limits used by the sanity check.
         """
         self.num_agents = num_agents
         self.seed = seed
@@ -466,6 +522,8 @@ class Simulator(object):
                 integrator=integrator,
                 model=model,
                 action_type=action_type,
+                prevent_instability=prevent_instability,
+                instability_bounds=instability_bounds,
             )
             self.agents.append(car)
 

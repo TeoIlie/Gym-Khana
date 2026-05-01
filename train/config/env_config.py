@@ -58,6 +58,7 @@ LOOKAHEAD_DS = _config["lookahead_ds"]
 SPARSE_WIDTH_OBS = _config["sparse_width_obs"]
 NORM_OBS = _config["normalize_obs"]
 RECORD_OBS_MIN_MAX = _config["record_obs_min_max"]
+PREVENT_INSTABILITY = _config["prevent_instability"]
 PREDICTIVE_COLLISION = _config["predictive_collision"]
 NORM_ACT = _config["normalize_act"]
 WALL_DEFLECTION = _config["wall_deflection"]
@@ -116,6 +117,7 @@ def _base_config(debug_render):
         "render_arc_length_annotations": debug_render,
         "normalize_obs": NORM_OBS,
         "record_obs_min_max": RECORD_OBS_MIN_MAX,
+        "prevent_instability": PREVENT_INSTABILITY,
         "predictive_collision": PREDICTIVE_COLLISION,
         "normalize_act": NORM_ACT,
         "wall_deflection": WALL_DEFLECTION,

@@ -13,7 +13,7 @@ import torch.nn as nn
 import yaml
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
 from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import SubprocVecEnv
+from stable_baselines3.common.vec_env import SubprocVecEnv, VecEnv
 
 import wandb
 from gymkhana.envs.gymkhana_env import GKEnv, print_obs_min_max_stats
@@ -84,26 +84,24 @@ def make_subprocvecenv(seed: int, config: dict, n_envs: int, track_pool: list[st
         return env
 
 
-def aggregate_and_print_obs_min_max(vec_env: SubprocVecEnv) -> None:
-    """Merge obs min/max trackers across subprocs and print one table.
+def merge_obs_min_max(vec_env: VecEnv) -> dict | None:
+    """Merge per-subproc obs min/max trackers into a single snapshot.
 
-    Must run before ``vec_env.close()``. No-op if tracking is off everywhere.
-    Aggregation: per-feature min-of-mins, max-of-maxes, sum of step counts.
-    Assumes identical obs config across subprocs (true today — ``make_subprocvecenv``
-    copies one config; only ``map`` varies, which doesn't affect features/bounds).
+    Returns ``None`` if tracking is disabled in every subproc. Otherwise returns
+    a dict with ``merged`` (per-feature min/max), ``total_steps``, ``bounds``,
+    and ``normalize_obs``. Assumes identical obs config across subprocs (true
+    today — ``make_subprocvecenv`` copies one config; only ``map`` varies,
+    which doesn't affect features/bounds).
     """
-    flags = vec_env.get_attr("record_obs_min_max")
-    if not any(flags):
-        return
+    if not any(vec_env.get_attr("record_obs_min_max")):
+        return None
 
     trackers = vec_env.get_attr("obs_min_max_tracker")
     step_counts = vec_env.get_attr("obs_tracker_step_count")
-    obs_types = vec_env.get_attr("observation_type")
-    normalize_flags = vec_env.get_attr("normalize_obs")
+    obs_type = vec_env.get_attr("observation_type", indices=[0])[0]
 
-    features = obs_types[0].features
-    bounds = getattr(obs_types[0], "bounds", {}) or {}
-    normalize_obs = normalize_flags[0]
+    features = obs_type.features
+    bounds = getattr(obs_type, "bounds", {}) or {}
 
     merged = {
         f: {
@@ -112,19 +110,54 @@ def aggregate_and_print_obs_min_max(vec_env: SubprocVecEnv) -> None:
         }
         for f in features
     }
-    total_steps = sum(step_counts)
+    return {
+        "merged": merged,
+        "total_steps": sum(step_counts),
+        "bounds": bounds,
+        "normalize_obs": vec_env.get_attr("normalize_obs", indices=[0])[0],
+    }
+
+
+def aggregate_and_print_obs_min_max(vec_env: SubprocVecEnv) -> None:
+    """Merge obs min/max trackers across subprocs and print one table.
+
+    Must run before ``vec_env.close()``. No-op if tracking is off everywhere.
+    """
+    snapshot = merge_obs_min_max(vec_env)
+    if snapshot is None:
+        return
 
     print_obs_min_max_stats(
-        tracker=merged,
-        step_count=total_steps,
-        features=features,
-        bounds=bounds,
-        normalize_obs=normalize_obs,
+        tracker=snapshot["merged"],
+        step_count=snapshot["total_steps"],
+        features=list(snapshot["merged"].keys()),
+        bounds=snapshot["bounds"],
+        normalize_obs=snapshot["normalize_obs"],
     )
 
     # env_method (not set_attr): set_attr writes onto the Monitor wrapper,
     # leaving the inner GKEnv's flag unchanged.
     vec_env.env_method("disable_obs_min_max_recording")
+
+
+def aggregate_and_print_instability_count(vec_env: SubprocVecEnv) -> None:
+    """Sum per-env instability-truncation counts across subprocs and print.
+
+    No-op when instability prevention is disabled in every subproc.
+    Must run before ``vec_env.close()``.
+    """
+    if not any(vec_env.get_attr("prevent_instability")):
+        return
+
+    counts = vec_env.get_attr("_instability_count")
+    total = sum(counts)
+
+    print("=" * 60)
+    print(f"Instability truncation events: {total} total across {len(counts)} envs")
+    nonzero = [(i, c) for i, c in enumerate(counts) if c > 0]
+    for i, c in nonzero:
+        print(f"  env {i}: {c}")
+    print("=" * 60)
 
 
 def compute_global_track_bounds(track_pool: list[str], track_scale: float = 1.0) -> dict:

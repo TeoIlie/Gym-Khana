@@ -6,6 +6,7 @@ normalization modes, the printout's bounded vs unbounded branches, and the
 multi-agent collapse in the FeaturesObservation adapter.
 """
 
+import os
 import warnings
 from types import SimpleNamespace
 
@@ -13,7 +14,8 @@ import gymnasium as gym
 import numpy as np
 
 from gymkhana.envs.gymkhana_env import GKEnv, print_obs_min_max_stats
-from train.train_utils import aggregate_and_print_obs_min_max
+from train.callbacks import ObsMinMaxSnapshotCallback
+from train.train_utils import aggregate_and_print_obs_min_max, merge_obs_min_max
 
 
 def _make_drift_env(normalize_obs: bool):
@@ -212,8 +214,13 @@ class _FakeVecEnv:
         self._envs = per_env
         self.method_calls: list[tuple[str, tuple]] = []
 
-    def get_attr(self, name):
-        return [e[name] for e in self._envs]
+    def get_attr(self, name, indices=None):
+        envs = self._envs if indices is None else [self._envs[i] for i in indices]
+        return [e[name] for e in envs]
+
+    @property
+    def num_envs(self):
+        return len(self._envs)
 
     def set_attr(self, name, value):
         for e in self._envs:
@@ -298,3 +305,129 @@ class TestObsMinMaxAggregation:
         assert "7.0000" in out
         # Mute path: must use env_method, not set_attr — guards the Monitor-wrapper bug.
         assert vec.method_calls == [("disable_obs_min_max_recording", ())]
+
+
+class TestMergeObsMinMax:
+    """Direct tests of the snapshot-producing merge function."""
+
+    def test_returns_none_when_all_disabled(self):
+        vec = _FakeVecEnv([_fake_subproc(False, {}, 0, [], {}) for _ in range(2)])
+        assert merge_obs_min_max(vec) is None
+
+    def test_snapshot_shape_and_merge(self):
+        features = ["f1", "f2"]
+        bounds = {"f1": (-1.0, 1.0)}  # f2 deliberately unbounded
+        per_env = [
+            _fake_subproc(
+                True, {"f1": {"min": -2.0, "max": 0.5}, "f2": {"min": 10.0, "max": 20.0}}, 50, features, bounds
+            ),
+            _fake_subproc(
+                True,
+                {"f1": {"min": -1.0, "max": 3.0}, "f2": {"min": 5.0, "max": 15.0}},
+                150,
+                features,
+                bounds,
+                normalize_obs=False,
+            ),
+        ]
+        snap = merge_obs_min_max(_FakeVecEnv(per_env))
+
+        assert snap["total_steps"] == 200
+        assert snap["bounds"] == bounds
+        # normalize_obs is read from index 0 only.
+        assert snap["normalize_obs"] is True
+        assert snap["merged"]["f1"] == {"min": -2.0, "max": 3.0}
+        assert snap["merged"]["f2"] == {"min": 5.0, "max": 20.0}
+
+
+class _StubVecEnv:
+    """Minimal VecEnv stub for callback tests — only what merge_obs_min_max touches."""
+
+    def __init__(self, snapshot):
+        # snapshot=None → tracking disabled; otherwise drives merge_obs_min_max output.
+        self._snapshot = snapshot
+        self.num_envs = 1
+
+    def get_attr(self, name, indices=None):
+        if name == "record_obs_min_max":
+            return [self._snapshot is not None]
+        if name == "obs_min_max_tracker":
+            return [self._snapshot["tracker"]]
+        if name == "obs_tracker_step_count":
+            return [self._snapshot["steps"]]
+        if name == "observation_type":
+            return [SimpleNamespace(features=self._snapshot["features"], bounds=self._snapshot["bounds"])]
+        if name == "normalize_obs":
+            return [True]
+        raise AssertionError(f"unexpected get_attr({name!r})")
+
+
+def _make_callback(tmp_path, snapshot, save_freq=100):
+    cb = ObsMinMaxSnapshotCallback(snapshot_path=str(tmp_path / "snap.yaml"), save_freq=save_freq)
+    # training_env is a property reading model.get_env(); stub the model.
+    cb.model = SimpleNamespace(get_env=lambda env=_StubVecEnv(snapshot): env)
+    cb.num_timesteps = 0
+    return cb
+
+
+class TestObsMinMaxSnapshotCallback:
+    def test_snapshot_writes_yaml_and_logs_violations(self, tmp_path, monkeypatch):
+        import yaml as _yaml
+
+        logged = []
+        monkeypatch.setattr("train.callbacks.wandb.log", lambda m, step=None: logged.append((m, step)))
+
+        cb = _make_callback(
+            tmp_path,
+            {
+                "tracker": {"f1": {"min": -2.0, "max": 5.0}, "f2": {"min": 0.0, "max": 1.0}},
+                "steps": 42,
+                "features": ["f1", "f2"],
+                "bounds": {"f1": (-1.0, 1.0)},  # f2 unbounded → skipped in metrics
+            },
+        )
+        cb.num_timesteps = 1234
+        cb._snapshot()
+
+        payload = _yaml.safe_load(open(cb.snapshot_path))
+        assert payload["total_steps"] == 42
+        assert payload["features"]["f1"] == {"min": -2.0, "max": 5.0}
+
+        assert len(logged) == 1
+        metrics, step = logged[0]
+        assert step == 1234
+        assert metrics["obs_bounds/f1/over"] == 4.0  # 5 - 1
+        assert metrics["obs_bounds/f1/under"] == 1.0  # -1 - (-2)
+        assert not any(k.startswith("obs_bounds/f2/") for k in metrics)
+
+    def test_snapshot_noop_when_disabled(self, tmp_path, monkeypatch):
+        logged = []
+        monkeypatch.setattr("train.callbacks.wandb.log", lambda m, step=None: logged.append(m))
+        cb = _make_callback(tmp_path, snapshot=None)
+        cb._snapshot()
+        assert not os.path.exists(cb.snapshot_path)
+        assert logged == []
+
+    def test_on_step_respects_save_freq(self, tmp_path):
+        cb = _make_callback(tmp_path, snapshot=None, save_freq=100)
+        calls = []
+        cb._snapshot = lambda: calls.append(cb.num_timesteps)
+
+        cb.num_timesteps = 50
+        cb._on_step()
+        assert calls == []  # below save_freq
+
+        cb.num_timesteps = 100
+        cb._on_step()
+        assert calls == [100]
+
+        cb.num_timesteps = 150
+        cb._on_step()
+        assert calls == [100]  # only 50 since last snapshot
+
+        cb.num_timesteps = 200
+        cb._on_step()
+        assert calls == [100, 200]
+
+        cb._on_training_end()
+        assert calls == [100, 200, 200]  # always snapshots at end
