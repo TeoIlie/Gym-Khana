@@ -152,7 +152,7 @@ Default configurations are stored in `/train/config/env_config.py`, with paramet
 
 ### Callback and Curriculum Learning (CL) configuration
 
-Default `SB3` callbacks used during training are `WandbCallback`, `CheckpointCallback`, and `EvalCallback`. A custom `CurriculumLearningCallback` is also available, which gradually expands the recovery state initialization ranges as the agent's success rate improves.
+Default `SB3` callbacks used during training are `WandbCallback`, `CheckpointCallback`, and `EvalCallback`. A custom `CurriculumLearningCallback` is also available, which gradually expands the recovery state initialization ranges as the agent's success rate improves. A custom `ObsMinMaxSnapshotCallback` is also attached automatically when `record_obs_min_max` is enabled — it writes periodic snapshots of merged per-subproc obs min/max trackers to `outputs/config/<run_id>/obs_min_max.yaml` and logs per-feature bounds-violation magnitudes to wandb.
 
 CL is configured in `/train/config/gym_config.yaml` under the `curriculum` heading by setting `enabled: true`. Parameters such as `n_stages`, `success_threshold`, and per-state ranges (`v_range`, `beta_range`, etc.) can be tuned there.
 
@@ -169,7 +169,7 @@ Note that CL is only supported for recovery training, with the environment `trai
     2. Optionally, also set `"arc_length_annotation_interval"` to modify the point spacing (`2.0` metres by default)
 4. Set `"render_lookahead_curvatures": True` (it is `False` by default) to visualize lookahead curvature sampling points ahead of the vehicle in **yellow**. Optional parameters:
 5. Set `"debug_frenet_projection" = True` to visualize the Frenet coordinates are correct
-6. Set `"record_obs_min_max"` to `True/False` to record min/max observation values during training, and tweak normalization bounds if necessary, defined in `utils.py::calculate_norm_bounds`. Min/max are aggregated across parallelized environments and supported regardless of whether `normalize_obs` is enabled
+6. Set `"record_obs_min_max"` to `True/False` to record min/max observation values during training, and tweak normalization bounds if necessary, defined in `utils.py::calculate_norm_bounds`. Min/max are aggregated across parallelized environments and supported regardless of whether `normalize_obs` is enabled. When enabled during training, a YAML snapshot is written periodically to `outputs/config/<run_id>/obs_min_max.yaml`, and per-feature bounds-violation magnitudes (`obs_bounds/<feature>/over` and `.../under`) are streamed to wandb for live monitoring
 
 #### Control debug panel
 

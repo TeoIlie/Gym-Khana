@@ -5,13 +5,16 @@ Gradually expands recovery state ranges as the agent demonstrates competence,
 measured by a rolling success rate from info["recovered"].
 """
 
+import os
 from collections import deque
 from dataclasses import dataclass, field
 
+import yaml
 from stable_baselines3.common.callbacks import BaseCallback
 
 import wandb
 from train.config.env_config import CKPT_SAVE_FREQ
+from train.train_utils import merge_obs_min_max
 
 
 @dataclass
@@ -255,3 +258,58 @@ def make_curriculum_callback(config: dict, training_mode: str = "") -> Curriculu
         n_stages=n_stages,
         **kwargs,
     )
+
+
+class ObsMinMaxSnapshotCallback(BaseCallback):
+    """Periodically snapshots per-subproc obs min/max trackers to disk and wandb.
+
+    Writes a YAML snapshot every ``save_freq`` env steps (and once at training end)
+    and logs per-feature bounds-violation magnitudes to wandb keyed by feature name.
+    """
+
+    def __init__(self, snapshot_path: str, save_freq: int, verbose: int = 0):
+        super().__init__(verbose)
+        self.snapshot_path = snapshot_path
+        self.save_freq = save_freq
+        self._last_snapshot_step = 0
+
+    def _on_step(self) -> bool:
+        if self.num_timesteps - self._last_snapshot_step < self.save_freq:
+            return True
+        self._snapshot()
+        self._last_snapshot_step = self.num_timesteps
+        return True
+
+    def _on_training_end(self) -> None:
+        self._snapshot()
+
+    def _snapshot(self) -> None:
+        snapshot = merge_obs_min_max(self.training_env)
+        if snapshot is None:
+            return
+
+        merged = snapshot["merged"]
+        payload = {"total_steps": snapshot["total_steps"], "features": merged}
+        with open(self.snapshot_path, "w") as fh:
+            yaml.dump(payload, fh, default_flow_style=False, sort_keys=False)
+
+        bounds = snapshot["bounds"]
+        metrics = {}
+        for f, m in merged.items():
+            theor = bounds.get(f)
+            if theor is None:
+                continue
+            theor_min, theor_max = theor
+            metrics[f"obs_bounds/{f}/over"] = max(0.0, m["max"] - theor_max)
+            metrics[f"obs_bounds/{f}/under"] = max(0.0, theor_min - m["min"])
+        if metrics:
+            wandb.log(metrics, step=self.num_timesteps)
+
+
+def make_obs_min_max_callback(
+    train_config: dict, config_dir: str, filename: str, save_freq: int = CKPT_SAVE_FREQ
+) -> ObsMinMaxSnapshotCallback | None:
+    """Factory: returns the snapshot callback when obs min/max recording is enabled."""
+    if not train_config.get("record_obs_min_max", False):
+        return None
+    return ObsMinMaxSnapshotCallback(snapshot_path=os.path.join(config_dir, filename), save_freq=save_freq)

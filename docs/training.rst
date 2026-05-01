@@ -47,6 +47,11 @@ Default SB3 callbacks used during training:
 - ``CheckpointCallback`` — save periodic checkpoints
 - ``EvalCallback`` — evaluate during training
 
+Observation min/max snapshots
+-----------------------------
+
+When ``record_obs_min_max: true`` is set in the gym config, an ``ObsMinMaxSnapshotCallback`` is attached automatically. It merges per-subproc obs min/max trackers every ``CKPT_SAVE_FREQ`` env steps (and once at training end) and persists them to ``outputs/config/<run_id>/obs_min_max.yaml``. Per-feature bounds-violation magnitudes are streamed to wandb under ``obs_bounds/<feature>/over`` and ``obs_bounds/<feature>/under`` so the offending feature is identifiable from the metric key. The end-of-training aggregated table still prints to stdout.
+
 Curriculum learning
 -------------------
 

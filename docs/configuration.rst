@@ -136,7 +136,7 @@ Debugging and visualization
        'render_arc_length_annotations': True,     # Arc-length points along centerline (orange)
        'arc_length_annotation_interval': 2.0,     # Spacing in metres (default: 2.0)
        'debug_frenet_projection': True,           # Visualize Frenet coordinate accuracy
-       'record_obs_min_max': True,                # Record min/max obs for normalization tuning (aggregated across parallel envs; works with normalize_obs on or off)
+       'record_obs_min_max': True,                # Record min/max obs for normalization tuning (aggregated across parallel envs; works with normalize_obs on or off). During training, periodic YAML snapshots are written to outputs/config/<run_id>/obs_min_max.yaml and per-feature bounds-violation magnitudes are streamed to wandb under obs_bounds/<feature>/{over,under}
    }
 
 Debug with breakpoints by looping through environment steps (see ``tests/drift_debug.py``).
