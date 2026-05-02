@@ -257,23 +257,23 @@ class TestEnvInterface(unittest.TestCase):
                     f"pose of agent {agent_id} in env {ie} should be random, got same {agent_pose} == {agent_pose0}",
                 )
 
-        # test auto reset
-        all_dones_once = [False] * num_envs
-        all_dones_twice = [False] * num_envs
+        # Test auto-reset by driving a deterministic, pathological action (full
+        # steering lock + max longitudinal command) so termination does not depend
+        # on RNG or on cross-version numba/float behavior.
+        crash_action = np.broadcast_to(vec_env.action_space.high, vec_env.action_space.shape).copy()
 
-        max_steps = 500
-        while not all(all_dones_twice) and max_steps > 0:
-            actions = vec_env.action_space.sample()
-            obss, rewards, dones, truncations, infos = vec_env.step(actions)
-
-            all_dones_once = [all_dones_once[i] or dones[i] for i in range(num_envs)]
-            all_dones_twice = [all_dones_twice[i] or all_dones_once[i] for i in range(num_envs)]
-            max_steps -= 1
+        done_counts = np.zeros(num_envs, dtype=int)
+        max_steps = 2000
+        for _ in range(max_steps):
+            obss, rewards, dones, truncations, infos = vec_env.step(crash_action)
+            done_counts += np.asarray(dones, dtype=int)
+            if (done_counts >= 2).all():
+                break
 
         vec_env.close()
         self.assertTrue(
-            all(all_dones_twice),
-            f"All envs should be done twice, got {all_dones_twice}",
+            (done_counts >= 2).all(),
+            f"All envs should auto-reset and terminate twice, got done_counts={done_counts.tolist()}",
         )
 
     def test_track_direction_config_invalid_value(self):
