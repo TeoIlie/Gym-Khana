@@ -1,9 +1,7 @@
-# Default parameters for the 1/10th scale F1TENTH car (STD model).
-# Extends the standard F1TENTH parameters with wheel dynamics and PAC2002
-# tyre coefficients adapted from full-scale values.
+# Parameters for the 1/10th scale F1TENTH car (STD model)
 
 # =========================
-# ORIGINAL PARAMS FROM f1tenth_vehicle_params
+# MEASURABLE PARAMS
 # =========================
 lf: 0.176 # measured accurately by balancing the car about the CoG
 lr: 0.15 # measured accurately by balancing the car about the CoG
@@ -19,13 +17,17 @@ v_min: -5.0
 v_max: 20.0
 width: 0.31
 length: 0.58
+h_s: 0.074  # height of center of gravity [m], copied from ETH simulator
+R_w: 0.049  # effective tire radius [m] estimated by me to be 49 mm which is 0.049 m
+I_y_w: 0.0017  # wheel inertia in [kg m^2], approximated by me using I = 1/2 * m * r^2, where m = 107.5g and r = 50 mm - consider approximating more accurately with a trifilar pendulum experiment
+T_sb: 0.5  # torque split of brakes (percent of torque sent to front axle) [no units] - I'm assuming it's even front/back
+T_se: 0.5  # torque split of engine (percent of torque sent to front axle) [no units] - For AWD I'm assuming it's even front/back
 
 # =========================
-# NEW PARAMS
-# =========================
-# 1. New params copied from multi-body config
+# PAC2002 TIRE PARAMETERS
 # =========================
 # tire parameters from ADAMS handbook
+
 # longitudinal coefficients
 tire_p_cx1: 1.6411  # Shape factor Cfx for longitudinal force
 tire_p_dx1: 1.1739  # Longitudinal friction Mux at Fznom
@@ -61,14 +63,3 @@ tire_r_vy3: -0.27568  # Variation of Svyk/Muy*Fz with camber
 tire_r_vy4: 12.12  # Variation of Svyk/Muy*Fz with alpha
 tire_r_vy5: 1.9  # Variation of Svyk/Muy*Fz with kappa
 tire_r_vy6: -10.704  # Variation of Svyk/Muy*Fz with atan(kappa)
-
-# =========================
-# 2. New params modified for 1/10 scale
-# =========================
-h_s: 0.074  # height of center of gravity [m], copied from ETH simulator
-R_w: 0.049  # effective tire radius [m] estimated by me to be 49 mm which is 0.049 m
-I_y_w: 0.0017  # wheel inertia in [kg m^2], approximated by me using I = 1/2 * m * r^2, where m = 107.5g and r = 50 mm - consider approximating more accurately with a trifilar pendulum experiment
-
-# split of brake and engine torque
-T_sb: 0.5  # torque split of brakes (percent of torque sent to front axle) [no units] - I'm assuming it's even front/back
-T_se: 0.5  # torque split of engine (percent of torque sent to front axle) [no units] - For AWD I'm assuming it's even front/back

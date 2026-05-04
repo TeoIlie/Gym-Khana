@@ -64,7 +64,7 @@ NORM_ACT = _config["normalize_act"]
 WALL_DEFLECTION = _config["wall_deflection"]
 
 # Vehicle parameters
-PARAMS = GKEnv.f1tenth_std_drift_bias_params()
+PARAMS = GKEnv.f1tenth_std_vehicle_params()
 
 # Render/debug params
 TEST_DEBUG_RENDER = _config["test_debug_render"]
