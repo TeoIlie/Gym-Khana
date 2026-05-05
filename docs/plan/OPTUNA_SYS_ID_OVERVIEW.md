@@ -17,7 +17,7 @@ Per-trial loop:
 3. For each pre-built window of real data: reset to the Vicon state with `env.reset(options={"states": ...})` (`gymkhana_env.py:1075-1192`), step through recorded commands, score the rollout against real signals.
 4. Aggregate weighted NMSE across channels and windows → trial loss.
 
-We target **STD** directly — the model used by drift RL training. STD's user state is 7 elements (`[x, y, delta, v, yaw, yaw_rate, slip_angle]`); the two extra internal states (`omega_front`, `omega_rear`) are seeded from `v` at reset (`single_track_drift.py:42-43, 244-245`), so the rollout/loss interface is the same dimensionality the env exposes for any model. STD is over-parameterized relative to what the bags can identify (no measured wheel speeds; no full-friction-circle excitation), so the param subset is small even though the model is the full PAC2002.
+We target **STD** directly — the model used by drift RL training. STD's user state is 9 elements (`[x, y, delta, v, yaw, yaw_rate, slip_angle, omega_front, omega_rear]`); the wheel speeds are seeded from VESC `rs_core_speed/R_w` (single AWD scalar to both wheels) at every window reset. STD is over-parameterized relative to what the bags can identify (no full-friction-circle excitation; longitudinal tire still effectively constrained only via `a_x` until `omega_rear` becomes a loss channel), so the param subset is small even though the model is the full PAC2002.
 
 ## Resolved design decisions
 
@@ -44,7 +44,7 @@ A **sensitivity sweep** (one-at-a-time perturbation around YAML defaults) runs *
 
 **Use the gym env, not raw dynamics calls.** Reasons:
 - `GKEnv.configure({"params": ...})` hot-swaps params on a *single* env instance — no per-trial reconstruction overhead.
-- Reset accepts a full 7-element user state directly (`gymkhana_env.py:1132-1144`), so we can warm-start from Vicon at every window without integrating from `t=0`.
+- Reset accepts a full 7- or 9-element user state directly (`gymkhana_env.py:1132-1144` + `model.user_state_lens()`), so we can warm-start from Vicon (and VESC wheel speed) at every window without integrating from `t=0`.
 - Bypassing the env (calling `p_accl`, `steering_constraint`, `vehicle_dynamics_std` directly) duplicates control-logic code that drifts out of sync the next time the env is touched.
 - Overhead is acceptable: 30 windows × 150 steps × 2000 trials ≈ 9M steps. At ~1 ms/step that's ~2.5 hours per stage on a single core; parallelism via Optuna RDB storage gives a 4–8× speedup.
 
@@ -72,7 +72,7 @@ Produces:
 - ✅ `examples/analysis/sysid/rollout.py` — `Rollout` class (env constructed once per worker, `set_params` hot-swaps PAC2002 coefficients, context-manager support, NaN/inf guard) + `make_rollout_fn` convenience wrapper. Reads body-frame `v_x`/`v_y`/`yaw_rate` from the `dynamic_state` obs dict; finite-diffs `a_x` from sim `v_x`. CLI: `python -m examples.analysis.sysid.rollout --path <bag>` produces a sim-vs-real overlay plot for visual validation.
 - ✅ `tests/sysid/test_dataset.py`, `tests/sysid/test_loss.py`, `tests/sysid/test_rollout.py` — full coverage of the three Phase-1 invariants (identity, mirror, sampler-determinism) plus warmup/weighting/aggregation, NaN guard, hot-swap, and end-to-end loss smoke test.
 
-**Exit criterion (met):** `dataset_loss` runs end-to-end on `examples/analysis/bags/circle_Apr6_100Hz.npz` with YAML defaults in ~2.6 s. Baseline (no mirror, 11 windows): **total = 4.7960**, per-channel NMSE = `{v_y: 1.83, a_x: 0.30, yaw_rate: 0.25, v_x: 0.15}` — lateral-dominant residual as expected. Identity self-test = 0 within numerical noise. Any future Optuna study must beat this baseline.
+**Exit criterion (met):** `dataset_loss` runs end-to-end on `examples/analysis/bags/circle_Apr6_100Hz.npz` with YAML defaults in ~4.5 s. Baseline (no mirror, 11 windows, **VESC-seeded omegas**): **total = 5.0224**, per-channel NMSE = `{v_y: 1.85, a_x: 0.33, yaw_rate: 0.30, v_x: 0.15}` — lateral-dominant residual as expected. Identity self-test = 0 within numerical noise. Any future Optuna study must beat this baseline.
 
 ### Phase 2 — Sensitivity analysis
 
@@ -165,19 +165,21 @@ These apply across phases and are called out here so individual sub-plans don't 
 
 ## Deferred upgrades
 
-### Wheel-speed-aware reset + `omega_rear` loss channel
+### `omega` as a loss channel
 
-**Trigger:** end of Phase 4. If `a_x` NMSE plateaus high after exhausting `tire_p_dx1` / `tire_p_ex1`, longitudinal-tire identifiability is the bottleneck and this upgrade is the right escalation. If `a_x` reduces cleanly through Stage 2 alone, skip it.
+**Status:** the *reset* half of this upgrade is done — `dataset.py` reads VESC `rs_core_speed`, `init_state` is 9-wide, and the env's 9-branch (`init_std(..., compute_wheel_speeds=False)`) consumes the seeded omegas. AWD assumption is in effect (single VESC scalar to both `omega_front` and `omega_rear`). What remains is adding wheel-speed *as a scored channel*, which is what actually constrains longitudinal-tire identifiability.
 
-**Why it matters:** the bags include VESC wheel-speed feedback (rear wheel — F1TENTH is RWD; front wheel free-rolls). Without this feature: (a) longitudinal tire params are constrained only through `a_x = (Fx_f + Fx_r)/m` — one equation, under-determined for two wheels; (b) every window's reset seeds `omega = v/R_w` (`single_track_drift.py:42-43`), so windows starting mid-drift or under hard braking begin with the wrong κ until the 0.2 s warmup absorbs the transient — which it won't, under aggressive maneuvers.
+**Trigger:** end of Phase 4. If `a_x` NMSE plateaus high after exhausting `tire_p_dx1` / `tire_p_ex1`, longitudinal-tire identifiability is the bottleneck and this is the right escalation. If `a_x` reduces cleanly through Stage 2 alone, skip it.
+
+**Why it matters:** without an omega channel, longitudinal tire params are constrained only through `a_x = (Fx_f + Fx_r)/m` — one equation, under-determined for two wheels.
 
 **Scope:**
-- `gymkhana_env.py` reset path (`gymkhana_env.py:1132`): relax `expected_state_len` to accept 7 or 9 for STD.
-- `RaceCar.reset` / `init_std` in `single_track_drift.py`: branch on input length; if 9 elements, use the provided `omega_front`, `omega_rear` directly instead of recomputing from `v`.
-- Loss: add `omega_rear` channel with default weight ~0.5; exclude `omega_front` from loss but still seed it as `v/R_w` (free-rolling).
-- Tests: 9-element reset path, omega-channel mirror invariant, identity invariant unchanged.
+- Add `omega` channel(s) to `CHANNELS` and `Window` (need to record `omega_full` slices on each window, not just the t0 sample).
+- `Rollout.run` extracts sim wheel speed(s) from `agent.state[7:9]` (no obs key today; either expose via observation or read raw state).
+- Loss: weight ~0.5 by default; mirror invariance is straightforward (omega is sign-symmetric under L/R).
+- If the AWD assumption ever needs revisiting (i.e. the rig is actually RWD), seed front from `v*cos(β)*cos(δ)/R_w` instead and only add `omega_rear` to the loss.
 
-**Pre-flight check before implementing:** plot VESC `omega_rear` vs Vicon-derived `v/R_w` on a free-rolling segment. If steady-state values disagree, VESC feedback is filtered/biased and the measurement problem must be solved (or characterized) before adding the channel — otherwise you'll fit tire params to firmware lag.
+**Pre-flight (already done):** VESC ↔ Vicon agreement was confirmed on `circle_Apr6_100Hz.npz` before pulling the reset half forward.
 
 ## Verification (cross-phase)
 

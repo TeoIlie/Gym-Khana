@@ -18,6 +18,7 @@ loaded from a real bag. Coverage:
 
 from __future__ import annotations
 
+import dataclasses
 import os
 from copy import deepcopy
 from unittest.mock import MagicMock
@@ -26,6 +27,7 @@ import numpy as np
 import pytest
 
 from examples.analysis.sysid.dataset import CHANNELS, Window, load_dataset, mirror_window
+from examples.analysis.sysid.env import SYSID_PARAMS
 from examples.analysis.sysid.loss import dataset_loss
 from examples.analysis.sysid.rollout import Rollout
 from gymkhana.envs.gymkhana_env import GKEnv
@@ -78,6 +80,30 @@ def test_initial_sample_reflects_init_state(rollout, dataset):
     assert sim["yaw_rate"][0] == pytest.approx(w.init_state[5], rel=1e-4, abs=1e-5)
     assert sim["v_x"][0] == pytest.approx(v * np.cos(beta), rel=1e-4, abs=1e-5)
     assert sim["v_y"][0] == pytest.approx(v * np.sin(beta), rel=1e-4, abs=1e-5)
+
+
+def test_reset_seeds_wheel_omegas_from_init_state(rollout, dataset):
+    """End-to-end contract: a 9-wide init_state with extreme omegas must land
+    verbatim in agent.state[7:8] after reset, with no recomputation from v.
+
+    Pins the chain dataset.py → rollout.reshape(1,9) → GKEnv.reset →
+    init_std(compute_wheel_speeds=False). Without this test, init_std could
+    silently revert to the no-slip formula and every sysid test would still
+    pass (downstream sim signals would just be wrong, not asserted-against).
+    """
+    w = dataset.windows[0]
+    # Use a value that the no-slip formula provably could not produce —
+    # 5x the reasonable steady-state omega for any speed in the bag.
+    extreme_omega = 100.0
+    seeded = w.init_state.copy()
+    seeded[7] = extreme_omega
+    seeded[8] = extreme_omega + 1.0  # different value to also pin index ordering
+    w_seeded = dataclasses.replace(w, init_state=seeded)
+
+    rollout._env.reset(options={"states": w_seeded.init_state.reshape(1, 9)})
+    agent_state = rollout._env.sim.agents[0].state
+    assert agent_state[7] == pytest.approx(extreme_omega, rel=1e-9)
+    assert agent_state[8] == pytest.approx(extreme_omega + 1.0, rel=1e-9)
 
 
 # ---------- determinism ----------
@@ -148,7 +174,7 @@ def test_mirror_invariant_under_default_params(rollout):
     n = 150
     w = Window(
         t0_idx=0,
-        init_state=np.array([0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0]),
+        init_state=np.array([0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0, 3.0 / SYSID_PARAMS["R_w"], 3.0 / SYSID_PARAMS["R_w"]]),
         cmd_steer=np.full(n, 0.15),
         cmd_speed=np.full(n, 3.0),
         real_v_x=np.zeros(n + 1),  # unused for this test

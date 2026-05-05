@@ -18,6 +18,9 @@ from examples.analysis.sysid.dataset import (
     load_dataset,
     mirror_window,
 )
+from examples.analysis.sysid.env import SYSID_PARAMS
+
+R_W = SYSID_PARAMS["R_w"]
 
 DT = 0.01
 WINDOW_S = 1.5
@@ -34,8 +37,15 @@ def _make_npz(
     yaw_rate=0.0,
     steer=0.1,
     yaw=0.0,
+    rs_core_speed=None,
+    include_rs_core_speed: bool = True,
 ):
-    """Write a synthetic 100Hz NPZ. Scalar args are broadcast to length-n arrays."""
+    """Write a synthetic 100Hz NPZ. Scalar args are broadcast to length-n arrays.
+
+    `rs_core_speed` defaults to `vx_arr` (no-slip), keeping legacy tests
+    semantically equivalent to the prior no-slip-derived omega seeding.
+    Set `include_rs_core_speed=False` to omit the field entirely.
+    """
     t = np.arange(n) * DT
     vx_arr = np.broadcast_to(np.asarray(speed, dtype=float), (n,)).copy()
     vy_arr = np.broadcast_to(np.asarray(vy, dtype=float), (n,)).copy()
@@ -44,8 +54,7 @@ def _make_npz(
     yaw_arr = np.broadcast_to(np.asarray(yaw, dtype=float), (n,)).copy()
     x = np.cumsum(vx_arr) * DT
     y = np.cumsum(vy_arr) * DT
-    np.savez(
-        path,
+    fields = dict(
         t=t,
         cmd_speed=vx_arr.copy(),
         cmd_steer=steer_arr,
@@ -56,6 +65,13 @@ def _make_npz(
         vicon_body_vy=vy_arr,
         vicon_r=yaw_rate_arr,
     )
+    if include_rs_core_speed:
+        if rs_core_speed is None:
+            rs_arr = vx_arr.copy()
+        else:
+            rs_arr = np.broadcast_to(np.asarray(rs_core_speed, dtype=float), (n,)).copy()
+        fields["rs_core_speed"] = rs_arr
+    np.savez(path, **fields)
 
 
 @pytest.fixture
@@ -86,7 +102,7 @@ def test_window_shapes(straight_npz):
         assert w.real_v_y.shape == (N_STEPS + 1,)
         assert w.real_yaw_rate.shape == (N_STEPS + 1,)
         assert w.real_a_x.shape == (N_STEPS + 1,)
-        assert w.init_state.shape == (7,)
+        assert w.init_state.shape == (9,)
 
 
 def test_window_count_and_stride(straight_npz):
@@ -236,6 +252,9 @@ def test_mirror_sign_flips(asymmetric_npz):
     np.testing.assert_allclose(m.cmd_speed, w.cmd_speed)
     np.testing.assert_allclose(m.real_v_x, w.real_v_x)
     np.testing.assert_allclose(m.real_a_x, w.real_a_x)
+    # Wheel angular speeds are positive scalars, sign-symmetric under L/R mirror.
+    assert m.init_state[7] == pytest.approx(w.init_state[7])
+    assert m.init_state[8] == pytest.approx(w.init_state[8])
     assert m.is_mirrored is True
 
 
@@ -284,6 +303,45 @@ def test_mirror_does_not_affect_variances(asymmetric_npz):
     ds_yes = load_dataset(asymmetric_npz, mirror=True)
     for k in CHANNELS:
         assert ds_yes.variances[k] == pytest.approx(ds_no.variances[k])
+
+
+# -- VESC-seeded wheel angular velocity (omega_f, omega_r) --
+
+
+def test_init_omega_seeded_from_vesc(tmp_path):
+    """omega_f = omega_r = rs_core_speed[t0] / R_w (AWD assumption)."""
+    p = tmp_path / "vesc.npz"
+    n = 500
+    # Make rs_core_speed deliberately distinct from vx so we can tell which
+    # one fed the omega seed (a no-slip seed would equal vx/R_w, not this).
+    rs = np.linspace(0.5, 2.5, n)
+    _make_npz(str(p), n=n, speed=1.0, rs_core_speed=rs)
+    ds = load_dataset(str(p), mirror=False)
+    for w in ds.windows:
+        expected = rs[w.t0_idx] / R_W
+        assert w.init_state[7] == pytest.approx(expected)
+        assert w.init_state[8] == pytest.approx(expected)
+
+
+def test_missing_rs_core_speed_raises(tmp_path):
+    p = tmp_path / "no_vesc.npz"
+    _make_npz(str(p), include_rs_core_speed=False)
+    with pytest.raises(KeyError, match="rs_core_speed"):
+        load_dataset(str(p), mirror=False)
+
+
+def test_nan_in_rs_core_speed_drops_window(tmp_path):
+    """Non-finite VESC sample at t0 must drop the window, like other channels."""
+    p = tmp_path / "vesc_nan.npz"
+    n = 500
+    rs = np.ones(n)
+    rs[200] = np.nan
+    _make_npz(str(p), n=n, speed=1.0, rs_core_speed=rs)
+    ds = load_dataset(str(p), mirror=False)
+    for w in ds.windows:
+        assert np.all(np.isfinite(w.init_state))
+    expected_no_nan = (n - N_STEPS) // STRIDE + 1
+    assert len(ds.windows) < expected_no_nan
 
 
 # -- Misc --

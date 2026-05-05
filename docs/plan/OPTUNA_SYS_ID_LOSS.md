@@ -18,7 +18,7 @@ This plan covers **only the loss function and the dataset preparation** that fee
 | Window length | Configurable, default **1.5 s** (150 samples @ 100 Hz) | Long enough to excite saturation, short enough to limit chaotic divergence. |
 | Window stride | Configurable, default 0.5 s | Overlap is fine; more samples helps TPE. |
 | Warmup discard | First **0.2 s** of each window dropped from loss | Eats steering-servo transient from `delta_init = cmd_steer[t0]` (we don't have real `delta`). |
-| Reset state | Full 7-element STD user state from Vicon at `t0`, with `delta = cmd_steer[t0]` | `env.reset(options={"states": ...})` accepts full state (confirmed); `omega_front`/`omega_rear` derived internally from `v`. |
+| Reset state | Full 9-element STD user state from Vicon at `t0`, with `delta = cmd_steer[t0]` and `omega_front = omega_rear = rs_core_speed[t0]/R_w` | `env.reset(options={"states": ...})` accepts the 9-wide branch (`user_state_lens()`); `omega` seeded from VESC under the AWD assumption (single scalar to both wheels). |
 | Low-speed mask | Drop windows where `mean(speed) < 0.3 m/s` | Kinematic blend dominates — doesn't constrain Pacejka. |
 | Mirroring | Default **on**, configurable off | Removes left/right bias from imbalanced data; STP/STD are structurally symmetric. |
 | Sim signal smoothing | None — finite-difference raw `sim_v_x` for `sim_a_x` | Sim is noise-free; smoothing just adds lag. Real `a_x` smoothed once up front. |
@@ -40,7 +40,7 @@ This plan covers **only the loss function and the dataset preparation** that fee
 @dataclass(frozen=True)
 class Window:
     t0_idx: int                          # start index in source NPZ
-    init_state: np.ndarray               # shape (7,) — STD user state vector
+    init_state: np.ndarray               # shape (9,) — STD user state vector + omega_f, omega_r
     cmd_steer: np.ndarray                # shape (N,)
     cmd_speed: np.ndarray                # shape (N,)
     real_v_x: np.ndarray                 # shape (N+1,) — body-frame
@@ -146,7 +146,7 @@ def make_rollout_fn(params: dict) -> Callable[[Window], dict[str, np.ndarray]]:
 
 Map / `training_mode="race"` are left at the drift-train defaults. Vicon coordinates do not lie on the gym track, so `boundary_exceeded` will fire on step 1 — harmless because `Rollout.run` ignores `terminated`/`truncated` and steps the full command sequence regardless.
 
-**Reset.** `env.reset(options={"states": window.init_state.reshape(1, 7)})`. The 7-element STD user state is `[x, y, delta, v, yaw, yaw_rate, beta]` exactly as `Window.init_state` is constructed. `omega_front` and `omega_rear` are seeded by `init_std` from `v` (`single_track_drift/__init__.py:65-66`) — accepted as a known limitation per the OVERVIEW's deferred-upgrade section; revisit if Phase 4 `a_x` plateaus.
+**Reset.** `env.reset(options={"states": window.init_state.reshape(1, 9)})`. The 9-element STD user state is `[x, y, delta, v, yaw, yaw_rate, beta, omega_front, omega_rear]` exactly as `Window.init_state` is constructed. Wheel angular velocities are seeded from VESC `rs_core_speed[t0]/R_w` under the AWD assumption (single scalar to both wheels); `init_std`'s 9-wide branch (`single_track_drift/__init__.py:80-82`) consumes them verbatim via `compute_wheel_speeds=False`.
 
 **Step loop.** For `k in range(N)`:
 ```python
@@ -187,7 +187,7 @@ Status: ✅ **all checks pass.** Phase 1 module set is complete.
 3. ✅ **Warmup discard / weighting / aggregation**: per-channel NMSE responds only to post-warmup error, `weighted_total = Σ wᵢ·nmseᵢ`, `dataset_loss = arithmetic mean across windows` (six dedicated tests).
 4. ✅ **Mirror symmetry (rollout)**: under default symmetric STD params, mirrored windows produce sign-flipped sim signals on antisymmetric channels and identical signals on symmetric ones (`test_mirror_invariant_under_default_params`).
 5. ✅ **Sampler determinism (rollout)**: same window replayed twice produces bit-identical sim signals (`test_run_is_deterministic`).
-6. ✅ **Identity sanity check on real bag**: `dataset_loss` runs end-to-end on `examples/analysis/bags/circle_Apr6_100Hz.npz` with YAML defaults. Recorded baseline (no mirror, 11 windows): **total = 4.7960**, per-channel NMSE = `{v_y: 1.83, a_x: 0.30, yaw_rate: 0.25, v_x: 0.15}`.
+6. ✅ **Identity sanity check on real bag**: `dataset_loss` runs end-to-end on `examples/analysis/bags/circle_Apr6_100Hz.npz` with YAML defaults. Recorded baseline (no mirror, 11 windows): **total = 5.0224**, per-channel NMSE = `{v_y: 1.85, a_x: 0.33, yaw_rate: 0.30, v_x: 0.15}`. _Updated 2026-05-05: windows now seeded with VESC wheel speed (`omega_f = omega_r = rs_core_speed/R_w`, AWD assumption). On this steady-circle bag the change is a slight uptick (was 4.7960) — no-slip seeding happens to be accurate at constant ~1 m/s. The benefit is expected on aggressive launch/drift bags where no-slip is wrong._
 7. ✅ **Smoke test integration**: full pipeline runs in ~2.6 s on 11 windows (~160 ms/window, ~1.6 ms/step) — comfortably inside the OVERVIEW's ~1 ms/step trial-budget assumption.
 8. ✅ **Channel breakdown sanity**: `v_y` dominates the residual (1.83), then `a_x` (0.30), `yaw_rate` (0.25), `v_x` (0.15) — confirms weights are sensible (lateral-heavy, exactly the regime we want Optuna to attack).
 9. ✅ **Visual validation**: `python -m examples.analysis.sysid.rollout --path <bag>` overlays sim windows onto Vicon signals across all loss channels + steering + slip; eyeball-confirmed init_state reset and command replay are correct on `circle_Apr6_100Hz.npz`.
@@ -196,6 +196,6 @@ Status: ✅ **all checks pass.** Phase 1 module set is complete.
 
 - Optuna study setup, sampler choice, parameter search-space bounds.
 - Multi-NPZ aggregation across multiple recordings.
-- Adding `omega_front`/`omega_rear` channels to the loss — wheel speeds are not measured in current bags; `a_x` is the only longitudinal-tire constraint available.
+- Adding `omega_front`/`omega_rear` channels to the loss. (VESC wheel-speed feedback is now read into the dataset for the *reset*, but not yet scored. Reset alone removes the cold-start transient; adding a loss channel would *constrain* longitudinal-tire identifiability — defer until Phase 4 `a_x` plateaus.)
 - CLI / wandb logging.
 - Per-window weighting by maneuver type.

@@ -15,6 +15,7 @@ from typing import Callable
 import numpy as np
 
 from examples.analysis.sysid.dataset import Window
+from examples.analysis.sysid.env import SYSID_PARAMS
 from gymkhana.envs.gymkhana_env import GKEnv
 from train.config.env_config import get_drift_train_config
 
@@ -39,8 +40,9 @@ _SYSID_OVERRIDES: dict = {
 def _build_sysid_config(params: dict | None) -> dict:
     config = get_drift_train_config()
     config.update(_SYSID_OVERRIDES)
-    if params is not None:
-        config["params"] = params
+    # Default to SYSID_PARAMS so the env's R_w matches what dataset.py
+    # divided VESC rs_core_speed by when seeding init_state[7:9].
+    config["params"] = params if params is not None else SYSID_PARAMS
     return config
 
 
@@ -75,6 +77,9 @@ class Rollout:
         self.close()
 
     def run(self, window: Window) -> dict[str, np.ndarray]:
+        assert window.init_state.shape == (9,), (
+            f"Expected 9-wide init_state (STD with VESC-seeded omegas); got {window.init_state.shape}"
+        )
         n = len(window.cmd_steer)
 
         v_x = np.empty(n + 1, dtype=np.float64)
@@ -83,7 +88,7 @@ class Rollout:
 
         # `dynamic_state` obs surfaces body-frame v_x, v_y, yaw_rate from
         # agent.standard_state — same quantities the bag was built from.
-        obs, _ = self._env.reset(options={"states": window.init_state.reshape(1, 7)})
+        obs, _ = self._env.reset(options={"states": window.init_state.reshape(1, 9)})
         agent_obs = obs[self._agent_id]
         v_x[0] = agent_obs["linear_vel_x"]
         v_y[0] = agent_obs["linear_vel_y"]
@@ -120,18 +125,27 @@ class Rollout:
         """Reset + step like `run`, but return the full obs trace.
 
         For visual validation only. Not on the Optuna hot path. Returns
-        body-frame velocities, world-frame pose, steering, slip, plus
-        the same finite-diff `a_x` the loss uses.
+        body-frame velocities, world-frame pose, steering, slip, wheel
+        angular velocities (omega_front, omega_rear, read from raw STD
+        state[7:9]), plus the same finite-diff `a_x` the loss uses.
         """
+        assert window.init_state.shape == (9,), (
+            f"Expected 9-wide init_state (STD with VESC-seeded omegas); got {window.init_state.shape}"
+        )
         n = len(window.cmd_steer)
         keys = ("pose_x", "pose_y", "pose_theta", "linear_vel_x", "linear_vel_y", "ang_vel_z", "delta", "beta")
         traces: dict[str, np.ndarray] = {k: np.empty(n + 1, dtype=np.float64) for k in keys}
+        traces["omega_front"] = np.empty(n + 1, dtype=np.float64)
+        traces["omega_rear"] = np.empty(n + 1, dtype=np.float64)
+        agent = self._env.sim.agents[0]
 
         def record(idx: int, agent_obs: dict) -> None:
             for k in keys:
                 traces[k][idx] = float(agent_obs[k])
+            traces["omega_front"][idx] = float(agent.state[7])
+            traces["omega_rear"][idx] = float(agent.state[8])
 
-        obs, _ = self._env.reset(options={"states": window.init_state.reshape(1, 7)})
+        obs, _ = self._env.reset(options={"states": window.init_state.reshape(1, 9)})
         record(0, obs[self._agent_id])
 
         for k in range(n):
@@ -173,6 +187,10 @@ def _plot_rollout_overlay(
     import matplotlib.pyplot as plt
     from scipy.signal import savgol_filter
 
+    from examples.analysis.sysid.env import SYSID_PARAMS
+
+    R_w = SYSID_PARAMS["R_w"]
+
     data = np.load(npz_path)
     t = data["t"]
     vicon_x = data["vicon_x"]
@@ -181,11 +199,12 @@ def _plot_rollout_overlay(
     vicon_body_vy = data["vicon_body_vy"]
     vicon_r = data["vicon_r"]
     cmd_steer = data["cmd_steer"]
+    rs_core_speed = data["rs_core_speed"]
+    real_omega = rs_core_speed / R_w
     real_a_x = np.gradient(savgol_filter(vicon_body_vx, 21, 2), dataset.dt)
 
     originals = [w for w in dataset.windows if not w.is_mirrored]
     n_steps = len(originals[0].cmd_steer) if originals else 0
-    warmup_steps = int(round(warmup_s / dataset.dt))
 
     # Run sim once per window with default params (Rollout's GKEnv is built
     # from get_drift_train_config()'s params).
@@ -199,8 +218,16 @@ def _plot_rollout_overlay(
         f"Rollout overlay (default STD params) — {os.path.basename(npz_path)} ({len(originals)} windows)",
         fontsize=14,
     )
-    grid[0, 3].axis("off")
-    axes = [grid[0, 0], grid[0, 1], grid[0, 2], grid[1, 0], grid[1, 1], grid[1, 2], grid[1, 3]]
+    axes = [
+        grid[0, 0],
+        grid[0, 1],
+        grid[0, 2],
+        grid[1, 0],
+        grid[1, 1],
+        grid[1, 2],
+        grid[1, 3],
+        grid[0, 3],  # wheel angular velocity overlay
+    ]
 
     def shade_warmup(ax):
         for w in originals:
@@ -278,6 +305,23 @@ def _plot_rollout_overlay(
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Slip angle β (rad)")
     ax.set_title("Slip angle β")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # --- Wheel angular velocity: VESC vs sim ω_f / ω_r ---
+    ax = axes[7]
+    ax.plot(t, real_omega, label=f"VESC ω (rs_core_speed/R_w, R_w={R_w:.4f})", linewidth=1.0, color="C0")
+    first = True
+    for w, tr in zip(originals, sim_traces):
+        tt = window_t(w)
+        ax.plot(tt, tr["omega_front"], "--", color="C1", linewidth=1.2, label="Sim ω_front" if first else None)
+        ax.plot(tt, tr["omega_rear"], "--", color="C2", linewidth=1.2, label="Sim ω_rear" if first else None)
+        ax.plot(tt[0], tr["omega_front"][0], "o", color="C1", markersize=4)
+        first = False
+    shade_warmup(ax)
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Angular velocity (rad/s)")
+    ax.set_title("Wheel ω — VESC vs Sim (init ω_f = ω_r seeded from VESC, AWD)")
     ax.legend()
     ax.grid(True, alpha=0.3)
 

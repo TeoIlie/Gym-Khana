@@ -33,7 +33,9 @@ WARMUP_STEPS = int(round(WARMUP_S / DT))  # 20
 def _make_window(rng: np.random.Generator, t0_idx: int = 0) -> Window:
     return Window(
         t0_idx=t0_idx,
-        init_state=np.array([0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]),
+        init_state=np.array(
+            [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 20.0, 20.0]
+        ),  # omega values arbitrary; loss tests don't read init_state
         cmd_steer=rng.normal(0, 0.1, N),
         cmd_speed=rng.normal(2.0, 0.2, N),
         real_v_x=rng.normal(2.0, 0.5, N + 1),

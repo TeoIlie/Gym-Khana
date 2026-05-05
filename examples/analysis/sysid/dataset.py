@@ -5,7 +5,9 @@ suitable for sim-vs-real loss evaluation, and (optionally) appends mirrored
 copies to neutralize left/right asymmetry in the data.
 
 Each Window holds:
-  - the 7-element STD user state at t0 (used for env.reset),
+  - the 9-element STD user state at t0 (`[x, y, delta, v, yaw, yaw_rate,
+    beta, omega_front, omega_rear]`), with wheel angular velocities seeded
+    from VESC `rs_core_speed/R_w` (AWD: same scalar to both wheels),
   - the command sequence to replay (cmd_steer, cmd_speed),
   - the real body-frame signals to score against (v_x, v_y, yaw_rate, a_x).
 
@@ -19,18 +21,23 @@ from dataclasses import dataclass
 import numpy as np
 from scipy.signal import savgol_filter
 
+from examples.analysis.sysid.env import SYSID_PARAMS
+
 CHANNELS = ("yaw_rate", "v_y", "a_x", "v_x")
 
-# init_state layout: [x, y, delta, v, yaw, yaw_rate, beta]
+# init_state layout (9-wide, matches STD's `user_state_lens()` 9-branch):
+#   [x, y, delta, v, yaw, yaw_rate, beta, omega_front, omega_rear]
 # Under left/right mirror (reflection across the longitudinal body axis):
-#   x, v stay; y, delta, yaw, yaw_rate, beta flip sign.
-_MIRROR_INIT_SIGNS = np.array([1.0, -1.0, -1.0, 1.0, -1.0, -1.0, -1.0])
+#   x, v stay; y, delta, yaw, yaw_rate, beta flip sign; wheel speeds are
+#   positive scalars and stay (a left-mirrored car still spins its wheels
+#   forward at the same rate).
+_MIRROR_INIT_SIGNS = np.array([1.0, -1.0, -1.0, 1.0, -1.0, -1.0, -1.0, 1.0, 1.0])
 
 
 @dataclass(frozen=True)
 class Window:
     t0_idx: int
-    init_state: np.ndarray  # shape (7,)
+    init_state: np.ndarray  # shape (9,) — see _MIRROR_INIT_SIGNS for layout
     cmd_steer: np.ndarray  # shape (N,)
     cmd_speed: np.ndarray  # shape (N,)
     real_v_x: np.ndarray  # shape (N+1,)
@@ -81,6 +88,15 @@ def load_dataset(
     vicon_body_vx = data["vicon_body_vx"]
     vicon_body_vy = data["vicon_body_vy"]
     vicon_r = data["vicon_r"]
+    if "rs_core_speed" not in data.files:
+        raise KeyError(
+            f"NPZ {npz_path!r} is missing 'rs_core_speed' (VESC wheel-speed feedback). "
+            "Sysid requires VESC-seeded wheel angular velocity for the 9-wide STD reset; "
+            "re-export the bag with rs_core_speed included."
+        )
+    # AWD assumption: a single VESC scalar seeds both omega_front and omega_rear.
+    # R_w must match what `Rollout` passes to GKEnv; both pull from SYSID_PARAMS.
+    omega_full = data["rs_core_speed"] / SYSID_PARAMS["R_w"]
 
     n_total = len(t)
     n_steps = int(round(window_length_s / dt))
@@ -104,10 +120,11 @@ def load_dataset(
         rvy = vicon_body_vy[t0 : end + 1]
         rr = vicon_r[t0 : end + 1]
         rax = real_a_x_full[t0 : end + 1]
+        omega0 = omega_full[t0]  # scalar — only t0 sample feeds init_state[7:9]
 
         if np.mean(speed_full[t0 : end + 1]) < min_speed:
             continue
-        if not all(np.all(np.isfinite(a)) for a in (rvx, rvy, rr, rax, cmd_s, cmd_v)):
+        if not all(np.all(np.isfinite(a)) for a in (rvx, rvy, rr, rax, cmd_s, cmd_v, omega0)):
             continue
 
         init_state = np.array(
@@ -119,6 +136,8 @@ def load_dataset(
                 vicon_yaw[t0],
                 vicon_r[t0],
                 beta_full[t0],
+                omega0,
+                omega0,
             ],
             dtype=float,
         )
@@ -173,6 +192,8 @@ def _plot_dataset_overview(dataset: Dataset, npz_path: str, out_path: str, mirro
     vicon_r = data["vicon_r"]
     cmd_speed = data["cmd_speed"]
     cmd_steer = data["cmd_steer"]
+    rs_core_speed = data["rs_core_speed"]
+    omega_full = rs_core_speed / SYSID_PARAMS["R_w"]
 
     if mirror:
         # Reflect raw bag signals so they match the mirrored windows we're about to overlay.
@@ -180,6 +201,7 @@ def _plot_dataset_overview(dataset: Dataset, npz_path: str, out_path: str, mirro
         vicon_body_vy = -vicon_body_vy
         vicon_r = -vicon_r
         cmd_steer = -cmd_steer
+        # omega is sign-symmetric under L/R mirror — no flip.
 
     real_a_x = np.gradient(savgol_filter(vicon_body_vx, 21, 2), dataset.dt)
     real_speed = np.hypot(vicon_body_vx, vicon_body_vy)
@@ -194,8 +216,16 @@ def _plot_dataset_overview(dataset: Dataset, npz_path: str, out_path: str, mirro
         f"Dataset overview{suffix} — {os.path.basename(npz_path)} ({len(selected)} windows)",
         fontsize=14,
     )
-    grid[0, 3].axis("off")
-    axes = [grid[0, 0], grid[0, 1], grid[0, 2], grid[1, 0], grid[1, 1], grid[1, 2], grid[1, 3]]
+    axes = [
+        grid[0, 0],
+        grid[0, 1],
+        grid[0, 2],
+        grid[1, 0],
+        grid[1, 1],
+        grid[1, 2],
+        grid[1, 3],
+        grid[0, 3],  # wheel angular velocity
+    ]
 
     def shade_windows(ax):
         for w in selected:
@@ -273,6 +303,17 @@ def _plot_dataset_overview(dataset: Dataset, npz_path: str, out_path: str, mirro
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Slip angle β (rad)")
     ax.set_title("Slip angle (orange dots = init beta)")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    ax = axes[7]
+    shade_windows(ax)
+    ax.plot(t, omega_full, label=f"VESC ω (rs_core_speed/R_w, R_w={SYSID_PARAMS['R_w']:.4f})", linewidth=1)
+    for w in selected:
+        ax.plot(t[w.t0_idx], w.init_state[7], "o", color="orange", markersize=4)
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Angular velocity (rad/s)")
+    ax.set_title("Wheel ω (orange dots = init ω_f = init ω_r, AWD)")
     ax.legend()
     ax.grid(True, alpha=0.3)
 
