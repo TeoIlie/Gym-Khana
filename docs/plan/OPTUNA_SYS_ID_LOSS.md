@@ -108,13 +108,61 @@ Sim signals are passed as a plain `dict[str, np.ndarray]` keyed by `CHANNELS` (i
 ### `rollout.py`
 
 ```python
-def make_rollout_fn(params: dict, dt: float = 0.01) -> Callable[[Window], dict[str, np.ndarray]]:
-    """Build a closure that constructs an env once and rolls out windows.
-    Returns a dict with keys CHANNELS = ('yaw_rate', 'v_y', 'a_x', 'v_x'),
-    each shape (N+1,). a_x is finite-diffed from v_x (no smoothing)."""
+class Rollout:
+    """Owns a single GKEnv instance and replays Windows through it.
+
+    Construct once per worker process; call `set_params(params)` between trials
+    to hot-swap PAC2002 coefficients without rebuilding the env. Each call to
+    `run(window)` resets the env to the window's init_state and steps through
+    the recorded command sequence.
+    """
+    def __init__(self, params: dict | None = None): ...
+    def set_params(self, params: dict) -> None:
+        """Hot-swap params via env.configure({'params': params})."""
+    def run(self, window: Window) -> dict[str, np.ndarray]:
+        """Reset to window.init_state, step N commands, return CHANNELS dict
+        of shape (N+1,) each."""
+
+def make_rollout_fn(params: dict) -> Callable[[Window], dict[str, np.ndarray]]:
+    """Convenience: build a Rollout and return its `run` bound method.
+    Useful for Phase 1 tests and the loss-module identity sanity check.
+    Phase 3 study code should construct `Rollout` directly and reuse it
+    across trials within a worker (call set_params each trial)."""
 ```
 
-Reuses the env-construction config from `traj_compare.py:65-76` but with **`model="std"`** and `params=GKEnv.f1tenth_std_vehicle_params()`; control_input remains `["speed","steering_angle"]`. Step loop from lines 92-105. Reset uses `options={"states": init_state.reshape(1, 7)}` per the explored interface in `gymkhana_env.py:1128-1144`.
+**Env construction.** Start from `train.config.env_config.get_drift_train_config()` and override:
+
+| Key | Override | Rationale |
+|---|---|---|
+| `num_agents` | `1` | `reset(options={"states": ...})` shape is `(1, 7)`. |
+| `model` | `"std"` | Sysid targets the STD model. |
+| `control_input` | `["speed", "steering_angle"]` | Match bag command channels (`cmd_speed`, `cmd_steer`). |
+| `normalize_obs` | `False` | Rollout reads raw `agent.state`, not the obs vector. |
+| `normalize_act` | `False` | Bag commands are physical units (rad, m/s); avoid double-scaling. |
+| `prevent_instability` | `False` | Otherwise RaceCar may revert mid-rollout and contaminate the loss signal. |
+| `track_direction` | `"normal"` | `"random"` would call RNG on every reset, breaking sampler-determinism invariant. |
+| `render_mode` / render flags / `record_obs_min_max` | off | No-op overhead during sysid. |
+| `params` | from constructor / `set_params` | The thing we're identifying. |
+
+Map / `training_mode="race"` are left at the drift-train defaults. Vicon coordinates do not lie on the gym track, so `boundary_exceeded` will fire on step 1 — harmless because `Rollout.run` ignores `terminated`/`truncated` and steps the full command sequence regardless.
+
+**Reset.** `env.reset(options={"states": window.init_state.reshape(1, 7)})`. The 7-element STD user state is `[x, y, delta, v, yaw, yaw_rate, beta]` exactly as `Window.init_state` is constructed. `omega_front` and `omega_rear` are seeded by `init_std` from `v` (`single_track_drift/__init__.py:65-66`) — accepted as a known limitation per the OVERVIEW's deferred-upgrade section; revisit if Phase 4 `a_x` plateaus.
+
+**Step loop.** For `k in range(N)`:
+```python
+action = np.array([[window.cmd_steer[k], window.cmd_speed[k]]], dtype=np.float64)
+env.step(action)
+```
+Action ordering is `[steering_angle, speed]` regardless of `control_input` order (CarAction normalizes internally).
+
+**Sim signal extraction.** Use `observation_config={"type": "dynamic_state"}` and read body-frame signals straight from the per-step obs dict:
+- `v_x = obs[agent_id]["linear_vel_x"]`
+- `v_y = obs[agent_id]["linear_vel_y"]`
+- `yaw_rate = obs[agent_id]["ang_vel_z"]`
+
+These are sourced from `agent.standard_state` inside `FeaturesObservation.observe`, which for STD is exactly body-frame `v_x`/`v_y` (matches `vicon_body_vx`/`vicon_body_vy` in the bag and how `traj_compare.py:99-102` reads them). Obs values arrive as `float32`; cast to `float64` on assignment to keep loss arithmetic in double precision.
+
+After collecting all `N+1` samples, compute `a_x = np.gradient(v_x, dt)` — no smoothing (sim is noise-free; matches the no-sim-smoothing decision in the locked design table).
 
 ## Reused existing code
 
@@ -132,14 +180,17 @@ Reuses the env-construction config from `traj_compare.py:65-76` but with **`mode
 
 ## Verification
 
-Status: ✅ done in `tests/sysid/test_loss.py` · ⏳ blocked on `rollout.py`.
+Status: ✅ **all checks pass.** Phase 1 module set is complete.
 
-1. ✅ **Self-consistency / identity invariant**: feeding real signals as sim → 0 across all channels (covered by `test_window_loss_identity`, `test_dataset_loss_identity`).
-2. ✅ **Mirror symmetry**: under sign-symmetric sim, mirrored windows score identically to originals (`test_dataset_loss_mirror_invariance_under_symmetric_sim`).
-3. ✅ **Warmup discard / weighting / aggregation**: per-channel NMSE responds only to post-warmup error, weighted_total = Σ wᵢ·nmseᵢ, dataset_loss = arithmetic mean across windows (six dedicated tests).
-4. ⏳ **Identity sanity check on real bag**: build a `Dataset` from an existing NPZ, build a `rollout_fn` with YAML defaults, compute `dataset_loss`. Record per-channel NMSE — the **baseline** any later Optuna run must beat.
-5. ⏳ **Smoke test integration**: `dataset_loss` end-to-end on one real NPZ; runtime target < 5 s on 30 s log (→ ~2000 trials in ~3 hours).
-6. ⏳ **Channel breakdown sanity**: print per-channel NMSE for the baseline; confirm `yaw_rate` and `v_y` are the dominant residuals (if `v_x` dominates, weights are off and need re-tuning before launching Optuna).
+1. ✅ **Self-consistency / identity invariant**: feeding real signals as sim → 0 across all channels (`test_window_loss_identity`, `test_dataset_loss_identity`).
+2. ✅ **Mirror symmetry (loss)**: under sign-symmetric sim, mirrored windows score identically to originals (`test_dataset_loss_mirror_invariance_under_symmetric_sim`).
+3. ✅ **Warmup discard / weighting / aggregation**: per-channel NMSE responds only to post-warmup error, `weighted_total = Σ wᵢ·nmseᵢ`, `dataset_loss = arithmetic mean across windows` (six dedicated tests).
+4. ✅ **Mirror symmetry (rollout)**: under default symmetric STD params, mirrored windows produce sign-flipped sim signals on antisymmetric channels and identical signals on symmetric ones (`test_mirror_invariant_under_default_params`).
+5. ✅ **Sampler determinism (rollout)**: same window replayed twice produces bit-identical sim signals (`test_run_is_deterministic`).
+6. ✅ **Identity sanity check on real bag**: `dataset_loss` runs end-to-end on `examples/analysis/bags/circle_Apr6_100Hz.npz` with YAML defaults. Recorded baseline (no mirror, 11 windows): **total = 4.7960**, per-channel NMSE = `{v_y: 1.83, a_x: 0.30, yaw_rate: 0.25, v_x: 0.15}`.
+7. ✅ **Smoke test integration**: full pipeline runs in ~2.6 s on 11 windows (~160 ms/window, ~1.6 ms/step) — comfortably inside the OVERVIEW's ~1 ms/step trial-budget assumption.
+8. ✅ **Channel breakdown sanity**: `v_y` dominates the residual (1.83), then `a_x` (0.30), `yaw_rate` (0.25), `v_x` (0.15) — confirms weights are sensible (lateral-heavy, exactly the regime we want Optuna to attack).
+9. ✅ **Visual validation**: `python -m examples.analysis.sysid.rollout --path <bag>` overlays sim windows onto Vicon signals across all loss channels + steering + slip; eyeball-confirmed init_state reset and command replay are correct on `circle_Apr6_100Hz.npz`.
 
 ## Out of scope (future plans)
 

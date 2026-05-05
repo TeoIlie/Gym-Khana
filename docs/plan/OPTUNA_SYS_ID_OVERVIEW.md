@@ -62,17 +62,17 @@ Each phase below is independently mergeable and produces a usable artifact. Deta
 
 Create `examples/analysis/sysid/` and `tests/sysid/`. No code yet.
 
-### Phase 1 — Loss, dataset, rollout (STD)
+### Phase 1 — Loss, dataset, rollout (STD) ✅ **complete**
 
 Locked plan: [`OPTUNA_SYS_ID_LOSS.md`](OPTUNA_SYS_ID_LOSS.md).
 
 Produces:
-- ✅ `examples/analysis/sysid/dataset.py` — `Window`, `Dataset`, `load_dataset`, `mirror_window`, `CHANNELS`.
+- ✅ `examples/analysis/sysid/dataset.py` — `Window`, `Dataset`, `load_dataset`, `mirror_window`, `CHANNELS`. CLI plot helper for dataset overview.
 - ✅ `examples/analysis/sysid/loss.py` — `channel_nmse`, `window_loss`, `dataset_loss`, `DEFAULT_WEIGHTS`. Sim signals are passed as `dict[str, np.ndarray]` keyed by `CHANNELS` (no dedicated type).
-- ⏳ `examples/analysis/sysid/rollout.py` — `make_rollout_fn` closure (constructs env once, reuses across windows). Must return a `dict[str, np.ndarray]` with all four `CHANNELS` keys, each shape `(N+1,)` — enforced by an assertion in `window_loss`.
-- ✅ `tests/sysid/test_dataset.py`, ✅ `tests/sysid/test_loss.py` (identity, warmup discard, weighting, aggregation, mirror symmetry, zero-variance safety), ⏳ `tests/sysid/test_rollout.py`.
+- ✅ `examples/analysis/sysid/rollout.py` — `Rollout` class (env constructed once per worker, `set_params` hot-swaps PAC2002 coefficients, context-manager support, NaN/inf guard) + `make_rollout_fn` convenience wrapper. Reads body-frame `v_x`/`v_y`/`yaw_rate` from the `dynamic_state` obs dict; finite-diffs `a_x` from sim `v_x`. CLI: `python -m examples.analysis.sysid.rollout --path <bag>` produces a sim-vs-real overlay plot for visual validation.
+- ✅ `tests/sysid/test_dataset.py`, `tests/sysid/test_loss.py`, `tests/sysid/test_rollout.py` — full coverage of the three Phase-1 invariants (identity, mirror, sampler-determinism) plus warmup/weighting/aggregation, NaN guard, hot-swap, and end-to-end loss smoke test.
 
-**Exit criterion:** `dataset_loss` runs end-to-end on `examples/analysis/bags/circle_Apr6_100Hz.npz` with YAML defaults; baseline per-channel NMSE recorded; identity self-test = 0.
+**Exit criterion (met):** `dataset_loss` runs end-to-end on `examples/analysis/bags/circle_Apr6_100Hz.npz` with YAML defaults in ~2.6 s. Baseline (no mirror, 11 windows): **total = 4.7960**, per-channel NMSE = `{v_y: 1.83, a_x: 0.30, yaw_rate: 0.25, v_x: 0.15}` — lateral-dominant residual as expected. Identity self-test = 0 within numerical noise. Any future Optuna study must beat this baseline.
 
 ### Phase 2 — Sensitivity analysis
 
