@@ -67,10 +67,10 @@ Create `examples/analysis/sysid/` and `tests/sysid/`. No code yet.
 Locked plan: [`OPTUNA_SYS_ID_LOSS.md`](OPTUNA_SYS_ID_LOSS.md).
 
 Produces:
-- `examples/analysis/sysid/dataset.py` — `Window`, `Dataset`, `load_dataset`.
-- `examples/analysis/sysid/loss.py` — `channel_nmse`, `window_loss`, `dataset_loss`, `DEFAULT_WEIGHTS`.
-- `examples/analysis/sysid/rollout.py` — `make_rollout_fn` closure (constructs env once, reuses across windows).
-- `tests/sysid/test_loss.py` — identity, perturbation, mirror-symmetry tests.
+- ✅ `examples/analysis/sysid/dataset.py` — `Window`, `Dataset`, `load_dataset`, `mirror_window`, `CHANNELS`.
+- ✅ `examples/analysis/sysid/loss.py` — `channel_nmse`, `window_loss`, `dataset_loss`, `DEFAULT_WEIGHTS`. Sim signals are passed as `dict[str, np.ndarray]` keyed by `CHANNELS` (no dedicated type).
+- ⏳ `examples/analysis/sysid/rollout.py` — `make_rollout_fn` closure (constructs env once, reuses across windows). Must return a `dict[str, np.ndarray]` with all four `CHANNELS` keys, each shape `(N+1,)` — enforced by an assertion in `window_loss`.
+- ✅ `tests/sysid/test_dataset.py`, ✅ `tests/sysid/test_loss.py` (identity, warmup discard, weighting, aggregation, mirror symmetry, zero-variance safety), ⏳ `tests/sysid/test_rollout.py`.
 
 **Exit criterion:** `dataset_loss` runs end-to-end on `examples/analysis/bags/circle_Apr6_100Hz.npz` with YAML defaults; baseline per-channel NMSE recorded; identity self-test = 0.
 

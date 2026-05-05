@@ -82,7 +82,7 @@ def channel_nmse(sim: np.ndarray, real: np.ndarray, variance: float) -> float:
     return float(np.mean((sim - real) ** 2) / (variance + 1e-9))
 
 def window_loss(
-    sim_states: SimStates,               # bag of (v_x, v_y, yaw_rate, a_x) arrays of shape (N+1,)
+    sim: dict[str, np.ndarray],          # keys = CHANNELS, each shape (N+1,)
     window: Window,
     variances: dict[str, float],
     weights: dict[str, float],
@@ -91,7 +91,7 @@ def window_loss(
     """Returns (weighted_total, per_channel_dict). Slices off warmup before scoring."""
 
 def dataset_loss(
-    rollout_fn: Callable[[Window], SimStates],
+    rollout_fn: Callable[[Window], dict[str, np.ndarray]],
     dataset: Dataset,
     weights: dict[str, float] = DEFAULT_WEIGHTS,
     warmup_s: float = 0.2,
@@ -101,14 +101,17 @@ def dataset_loss(
 DEFAULT_WEIGHTS = {"yaw_rate": 3.0, "v_y": 2.0, "a_x": 1.0, "v_x": 0.5}
 ```
 
+Sim signals are passed as a plain `dict[str, np.ndarray]` keyed by `CHANNELS` (imported from `dataset.py`), not a dedicated dataclass. This keeps the interface symmetric with `variances` / `weights` / per-channel return dicts, removes a cross-module type-placement question, and makes identity tests trivial (pass `{"v_x": w.real_v_x, ...}` directly).
+
 `dataset_loss` is what the eventual Optuna objective will call: it accepts a `rollout_fn` closure that captures the trial's params dict, so the loss module stays independent of Optuna and the env.
 
 ### `rollout.py`
 
 ```python
-def make_rollout_fn(params: dict, dt: float = 0.01) -> Callable[[Window], SimStates]:
+def make_rollout_fn(params: dict, dt: float = 0.01) -> Callable[[Window], dict[str, np.ndarray]]:
     """Build a closure that constructs an env once and rolls out windows.
-    Returns SimStates with v_x, v_y, yaw_rate, a_x (finite-diffed from v_x, no smoothing)."""
+    Returns a dict with keys CHANNELS = ('yaw_rate', 'v_y', 'a_x', 'v_x'),
+    each shape (N+1,). a_x is finite-diffed from v_x (no smoothing)."""
 ```
 
 Reuses the env-construction config from `traj_compare.py:65-76` but with **`model="std"`** and `params=GKEnv.f1tenth_std_vehicle_params()`; control_input remains `["speed","steering_angle"]`. Step loop from lines 92-105. Reset uses `options={"states": init_state.reshape(1, 7)}` per the explored interface in `gymkhana_env.py:1128-1144`.
@@ -120,13 +123,23 @@ Reuses the env-construction config from `traj_compare.py:65-76` but with **`mode
 - `GKEnv.f1tenth_std_vehicle_params()` — base params loaded from `gymkhana/envs/params/f1tenth_std.yaml`.
 - Savitzky–Golay smoothing config — copied from `traj_compare.py:136`.
 
+## Implementation notes (post-build)
+
+- `loss.py` imports `CHANNELS` from `dataset.py` as the single source of truth for channel keys; `getattr(window, f"real_{ch}")` is used to fetch the real-signal array (channel names match `Window.real_*` field suffixes).
+- `window_loss` asserts `sim[ch].shape == real[ch].shape` per channel, catching rollout shape bugs immediately rather than letting numpy broadcast silently. **Contract for `rollout.py`:** the returned dict must have all four `CHANNELS` keys, each a numpy array of shape `(N+1,)` matching `Window.real_v_x`.
+- `dataset_loss` raises `ValueError` if `warmup_steps >= signal_len` instead of silently returning NaN from `np.mean([])`.
+- Per-channel aggregation across windows is the **arithmetic mean** of per-window NMSEs (equal weight per window), not a globally pooled MSE / total variance.
+
 ## Verification
 
-1. **Identity sanity check**: build a `Dataset` from an existing NPZ, build a `rollout_fn` with the YAML defaults, compute `dataset_loss`. Record per-channel NMSE values — these are the **baseline** any later Optuna run must beat.
-2. **Self-consistency**: feed real signals as if they were sim signals (`sim = real`) → loss must be 0 across all channels.
-3. **Mirror symmetry test** (`tests/sysid/test_loss.py`): for symmetric STD params, loss on mirrored window must equal loss on original window (within 1e-6). Catches sign-flip bugs in the mirror transform.
-4. **Smoke test integration**: run `dataset_loss` end-to-end on one real NPZ; confirm runtime is acceptable (target < 5 s on 30 s log → enables 2000 trials in ~3 hours).
-5. **Channel breakdown sanity**: print per-channel NMSE for the baseline; confirm `yaw_rate` and `v_y` are the dominant residuals (if `v_x` dominates, weights are off and need re-tuning before launching Optuna).
+Status: ✅ done in `tests/sysid/test_loss.py` · ⏳ blocked on `rollout.py`.
+
+1. ✅ **Self-consistency / identity invariant**: feeding real signals as sim → 0 across all channels (covered by `test_window_loss_identity`, `test_dataset_loss_identity`).
+2. ✅ **Mirror symmetry**: under sign-symmetric sim, mirrored windows score identically to originals (`test_dataset_loss_mirror_invariance_under_symmetric_sim`).
+3. ✅ **Warmup discard / weighting / aggregation**: per-channel NMSE responds only to post-warmup error, weighted_total = Σ wᵢ·nmseᵢ, dataset_loss = arithmetic mean across windows (six dedicated tests).
+4. ⏳ **Identity sanity check on real bag**: build a `Dataset` from an existing NPZ, build a `rollout_fn` with YAML defaults, compute `dataset_loss`. Record per-channel NMSE — the **baseline** any later Optuna run must beat.
+5. ⏳ **Smoke test integration**: `dataset_loss` end-to-end on one real NPZ; runtime target < 5 s on 30 s log (→ ~2000 trials in ~3 hours).
+6. ⏳ **Channel breakdown sanity**: print per-channel NMSE for the baseline; confirm `yaw_rate` and `v_y` are the dominant residuals (if `v_x` dominates, weights are off and need re-tuning before launching Optuna).
 
 ## Out of scope (future plans)
 
