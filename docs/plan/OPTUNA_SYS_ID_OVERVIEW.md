@@ -29,14 +29,16 @@ These were the open questions in the original draft.
 
 **Freeze permanently:**
 - All camber-coupled coefficients (`tire_p_dx3`, `tire_p_dy3`, `tire_p_hy3`, `tire_p_vy3`) — 1/10 cars run ~zero camber.
-- Pure-shift terms with negligible effect (`tire_p_hx1`, `tire_p_vx1`, `tire_p_hy1`) — they trade off against many other params.
+- Pure-shift terms (`tire_p_hx1`, `tire_p_vx1`, `tire_p_hy1`, `tire_p_vy1`) — `_vy1` added to the original 3 because for a symmetric tire it should be ≈0 and the bag can't constrain it. Phase 2's frozen-audit pass empirically verifies the freeze decision rather than assuming it.
 
 **Multi-stage fit** (each stage opens a small, identifiable subset):
 - **Stage 1 — linear regime (4 params):** `tire_p_ky1`, `tire_p_kx1`, `tire_p_cy1`, `tire_p_cx1`. Restrict to low-slip windows.
 - **Stage 2 — saturation (+4 params):** `tire_p_dy1`, `tire_p_dx1`, `tire_p_ey1`, `tire_p_ex1`. Use full dataset; initialize from Stage 1 best.
 - **Stage 3 — combined slip (optional):** unfreeze a small subset of `r_*` coefficients only if Stage 2 residuals show systematic combined-slip error.
 
-A **sensitivity sweep** (one-at-a-time perturbation around YAML defaults) runs *before* any Optuna study and finalizes the ranked subset. Tight, physically motivated bounds (e.g., `D ∈ [0.5, 1.5]`, `C ∈ [1.0, 2.0]`) — wide bounds waste trials.
+**Vehicle-dynamics candidates (Stage-1 promotion candidates):** `I_z`, `I_y_w`, `sv_min`, `sv_max`, `a_max` — chassis/servo params that were estimated rather than measured precisely. Phase 2's `--vehicle-dyn` sweep ranks them; high-sensitivity ones join Stage 1 search. Smoke testing already shows `I_z` is the single most sensitive parameter in the bag and `I_y_w` couples strongly to `a_x`. Bounds for these come from physical priors, not auto-`propose_bounds` (which emits narrow fallbacks when sensitivity is large enough to push past the 2× baseline threshold at small δ).
+
+A **sensitivity sweep** (one-at-a-time perturbation around YAML defaults) runs *before* any Optuna study and finalizes the ranked subset. Tight, physically motivated bounds (e.g., `D ∈ [0.5, 1.5]`, `C ∈ [1.0, 2.0]`) — wide bounds waste trials. A **wide-δ orientation pass** (`--wide-deltas`, `±90% to +200%`) precedes the standard sweep when YAML defaults come from a different vehicle scale (current case: PAC2002 dict from a full-scale-vehicle reference) — confirms the loss surface is basin-shaped near defaults rather than a cliff.
 
 **Sampler:** TPE for Stage 1 (≤4 dims, fast). Switch to `CmaEsSampler` for Stages 2–3 (better behavior in 8+ continuous dims).
 
@@ -74,16 +76,18 @@ Produces:
 
 **Exit criterion (met):** `dataset_loss` runs end-to-end on `examples/analysis/bags/circle_Apr6_100Hz.npz` with YAML defaults in ~4.5 s. Baseline (no mirror, 11 windows, **VESC-seeded omegas**): **total = 5.0224**, per-channel NMSE = `{v_y: 1.85, a_x: 0.33, yaw_rate: 0.30, v_x: 0.15}` — lateral-dominant residual as expected. Identity self-test = 0 within numerical noise. Any future Optuna study must beat this baseline.
 
-### Phase 2 — Sensitivity analysis
+### Phase 2 — Sensitivity analysis ✅ **code complete; awaiting full-bag run**
 
-Sub-plan: `OPTUNA_SYS_ID_SENSITIVITY.md` (to be written).
+Locked plan: [`OPTUNA_SYS_ID_SENSITIVITY.md`](OPTUNA_SYS_ID_SENSITIVITY.md).
 
 Produces:
-- `examples/analysis/sysid/sensitivity.py` — for each candidate param, perturb ±10%/±25%/±50% around YAML default, compute `dataset_loss`, plot per-channel response.
-- A markdown report or CSV ranking params by `dLoss/dParam` magnitude.
-- A **maneuver coverage audit**: histograms of `α_front`, `α_rear`, `κ_front`, `κ_rear` across the dataset. If `|α|` never exceeds ~5°, saturation params are unidentifiable regardless of trial budget — must surface this before Phase 3.
+- ✅ `examples/analysis/sysid/sensitivity.py` — multi-mode sweep runner. Three sweep groups: (a) Stage-1/2 tire candidates (multiplicative, default ±50% ladder), (b) frozen-param audit (absolute mode, per-param ladders, review-only ranking), (c) vehicle-dyn sweep (`I_z`, `I_y_w`, `sv_min`, `sv_max`, `a_max`, multiplicative −0.7 .. +2.0 ladder). Plus a wide-δ orientation preset (`--wide-deltas`) and CLI flags `--frozen-audit` / `--vehicle-dyn` / `--include-combined`.
+- ✅ Coverage audit: histograms of `α_front`, `α_rear`, `κ_front`, `κ_rear` across the dataset with default-Pacejka 95%-of-peak saturation-knee annotations and warning flags when coverage falls short. If `|α|` never exceeds ~5°, saturation params are unidentifiable regardless of trial budget — surfaced loudly in `ranking.md` before Phase 3 launches.
+- ✅ Auto-generated proposed Optuna bounds (`p₀ · (1 ± 1.5·δ_safe)`, threshold = 2× baseline). Marked review-only; for high-sensitivity params (where the ±δ_safe interval collapses to the smallest sampled δ), the report flags this and bounds come from physical priors instead.
+- ✅ `tests/sysid/test_sensitivity.py` — 6 invariants (frozen-list disjointness, frozen-audit-ladder completeness, vehicle-dyn disjointness, frozen opt-in gate, coverage geometry signs, baseline-anchor δ=0 reproducibility).
+- Full Phase-2 run on `rosbag2_2026_05_04-17_54_17_100Hz.npz` and the resulting `OPTUNA_SYS_ID_SENSITIVITY_REPORT.md` are pending — the report locks Stage-1/2 search-space membership.
 
-**Exit criterion:** ranked param list + coverage histograms reviewed; final Stage 1/2/3 search-space membership confirmed.
+**Exit criterion:** ranked param list + coverage histograms reviewed; final Stage 1/2/3 search-space membership confirmed in the report; `I_z` / `I_y_w` confirmed as Stage-1 promotions if their sensitivity holds at full-bag scale.
 
 ### Phase 3 — Stage 1 Optuna study (STD, lateral-linear)
 
@@ -135,18 +139,19 @@ examples/analysis/
     study.py                         # Phase 3 (CLI lives here)
 
 tests/sysid/                         # NEW
-  test_loss.py                       # Phase 1
-  test_dataset.py                    # Phase 1
-  test_rollout.py                    # Phase 1
-  test_sensitivity.py                # Phase 2
+  test_loss.py                       # Phase 1 ✅
+  test_dataset.py                    # Phase 1 ✅
+  test_rollout.py                    # Phase 1 ✅
+  test_sensitivity.py                # Phase 2 ✅
 
 gymkhana/envs/params/                # existing
   f1tenth_std_optuna.yaml            # NEW — Phase 3/4/5 output (per-stage suffixes while iterating)
 
 docs/plan/
   OPTUNA_SYS_ID_OVERVIEW.md          # this document
-  OPTUNA_SYS_ID_LOSS.md              # locked
-  OPTUNA_SYS_ID_SENSITIVITY.md       # to be written (Phase 2)
+  OPTUNA_SYS_ID_LOSS.md              # locked (Phase 1)
+  OPTUNA_SYS_ID_SENSITIVITY.md       # locked (Phase 2)
+  OPTUNA_SYS_ID_SENSITIVITY_REPORT.md  # to be written after the Phase-2 full-bag run
   OPTUNA_SYS_ID_STUDY.md             # to be written (Phase 3, reused for 4 and 5)
   OPTUNA_SYS_ID_CLI.md               # to be written (Phase 6)
 ```
@@ -155,7 +160,7 @@ docs/plan/
 
 These apply across phases and are called out here so individual sub-plans don't have to re-derive them.
 
-- **`delta_init` is a hidden parameter, not just a warmup choice.** `delta_init = cmd_steer[t0]` is a guess; the servo's actual transient depends on slew rate (`sv_max`) and prior cmd history. Two cleaner options if the 0.2 s discard proves insufficient: (a) warm up with 0.3–0.5 s of pre-`t0` commands instead of cold-starting `delta`; (b) treat `delta_init` as a per-window nuisance variable. Defer until Phase 1 baseline exposes the residual.
+- **`delta_init` is a hidden parameter, not just a warmup choice.** `delta_init = cmd_steer[t0]` is a guess; the servo's actual transient depends on slew rate (`sv_max`) and prior cmd history. Two cleaner options if the 0.2 s discard proves insufficient: (a) warm up with 0.3–0.5 s of pre-`t0` commands instead of cold-starting `delta`; (b) treat `delta_init` as a per-window nuisance variable. Note that `sv_max` and `sv_min` are themselves Phase-2 vehicle-dyn candidates — if the slew rate sweep shows non-trivial sensitivity, that's a signal the warmup-discard window may be inadequate.
 - **Mirroring vs. real asymmetry.** The existing `f1tenth_std_drift_bias.yaml` implies LR asymmetry on the real car. Default mirroring (locked in the LOSS plan) averages this out — fine for a symmetric RL target policy, wrong if asymmetry is what we're trying to capture. Be explicit in each study's README which assumption holds.
 - **Held-out validation set.** With ~tens of windows, overfitting to bag-specific noise is real. Reserve at least one bag from every study; report on it post-hoc.
 - **Pruning.** `MedianPruner` with per-window `trial.report(loss, window_idx)` kills bad trials in <10% of full cost. Treat as required, not optional, from Phase 3 onward.
