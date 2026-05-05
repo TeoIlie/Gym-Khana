@@ -23,6 +23,7 @@ This plan covers **only the loss function and the dataset preparation** that fee
 | Mirroring | Default **on**, configurable off | Removes left/right bias from imbalanced data; STP/STD are structurally symmetric. |
 | Sim signal smoothing | None — finite-difference raw `sim_v_x` for `sim_a_x` | Sim is noise-free; smoothing just adds lag. Real `a_x` smoothed once up front. |
 | Real `a_x` smoothing | Savitzky–Golay, window=21, polyorder=2 (matches `traj_compare.py:136`) | Done once at dataset load, not per trial. |
+| Variance domain | Computed on non-mirrored windows only | Decouples the NMSE scale from the mirror flag — antisymmetric channels (`v_y`, `yaw_rate`) would otherwise show inflated variance when mirroring is enabled. |
 
 ## Files to create
 
@@ -58,11 +59,11 @@ def load_dataset(
     npz_path: str,
     window_length_s: float = 1.5,
     stride_s: float = 0.5,
-    warmup_s: float = 0.2,               # passed through; consumed in loss, not here
     min_speed: float = 0.3,
     mirror: bool = True,
     sg_window: int = 21,
     sg_polyorder: int = 2,
+    dt: float = 0.01,
 ) -> Dataset
 ```
 
@@ -71,8 +72,8 @@ Construction order:
 2. Pre-compute `real_a_x = gradient(savgol_filter(vicon_body_vx, ...), t)`.
 3. Slide window: at each candidate `t0`, build init state `[vicon_x, vicon_y, cmd_steer, speed, vicon_yaw, vicon_r, beta]` where `speed = hypot(vx,vy)` and `beta = atan2(vy,vx)` (masked at low speed → 0).
 4. Skip windows failing the speed mask or containing NaNs.
-5. Compute per-channel variances over all retained windows' real signals.
-6. If `mirror`, append a flipped copy per `mirror(window)` (negate `y, yaw, yaw_rate, v_y, beta, cmd_steer`).
+5. Compute per-channel variances over the non-mirrored retained windows' real signals (so the NMSE scale is independent of the mirror flag).
+6. If `mirror`, append a flipped copy per `mirror_window(w)` (negate `y, delta, yaw, yaw_rate, v_y, beta, cmd_steer`).
 
 ### `loss.py`
 
