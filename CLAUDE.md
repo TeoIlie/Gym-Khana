@@ -240,7 +240,23 @@ Maps are managed through a two-tier system:
 
 The download URL is configured in `gymkhana/envs/track/track_utils.py::MAPS_URL`.
 
-The `maps/` submodule is self-contained for standalone track authoring: it ships its own `pyproject.toml` declaring the dependencies needed by `extract_centerline.py`, `mirror_centerline.py`, and `convert_to_grayscale.py`. Authors who only want to create new tracks can clone `F1TENTH_Racetracks` directly and `pip install -e .` without pulling in the simulator's RL stack. The post-training script `train/extract_global_track_norm_bounds.py` lives in the parent repo because it imports from `train.train_utils`.
+### `maps/` runs in its own Python 3.8 environment
+
+The `maps/` submodule is **not** installable into the parent simulator's poetry env. Its scripts (`extract_centerline.py`, `extract_raceline.py`, `mirror_centerline.py`, `convert_to_grayscale.py`) depend on a strict pin set mirroring [ETH race_stack](https://github.com/ForzaETH/race_stack)'s Docker stack: `trajectory_planning_helpers==0.76`, `scipy==1.6.3`, `quadprog==0.1.7`, `numpy==1.22.4`. None of these have wheels for Python 3.10+, which is why the parent simulator (poetry, Python 3.10–3.12) and `maps/` (pyenv, Python 3.8.18) live in entirely separate environments and never share dependencies.
+
+Dependency management in `maps/`:
+- `.python-version` → contents `maps`; pyenv-virtualenv auto-activates the venv whenever a shell is inside `maps/`
+- `requirements.txt` → race_stack-style loose pins (with the critical ones — numpy, scipy, quadprog, tph — frozen)
+- `requirements.lock.txt` → exact-version lockfile (preferred for reproducibility)
+- **No `pyproject.toml`, no `poetry.lock`, no `setup.py`** — the directory is a script bundle, not a Python package. `pip install -e maps/` will fail by design; the correct flow is `cd maps && pip install -r requirements.lock.txt` inside the `maps` pyenv venv.
+
+Full bootstrap (pyenv install, system apt deps, venv creation, smoke test) is documented in `maps/README.md` under the Install section. The short version: install `pyenv` + `pyenv-virtualenv`, install Ubuntu build deps (`build-essential libssl-dev libopenblas-dev gfortran ...`), `pyenv install 3.8.18`, `pyenv virtualenv 3.8.18 maps`, `cd maps`, `pip install -r requirements.lock.txt`.
+
+**Known gotchas** (full troubleshooting in `maps/README.md`):
+- `tph 0.76` hard-pins `quadprog==0.1.7`. If pip serves a stale locally-built wheel from cache, `import quadprog` raises `undefined symbol: _Z7qpgen2_...`. Fix: `pip install --no-cache-dir --force-reinstall --no-binary=quadprog quadprog==0.1.7`, then restore `cython<3` and `numpy==1.22.4` (which `--force-reinstall` will clobber).
+- When regenerating the lockfile, **always** run `PYTHONPATH= pip freeze --local > requirements.lock.txt`. A sourced ROS environment otherwise leaks ~150 ROS2 packages (`ament-*`, `rclpy`, `nav2-*`, etc.) into the freeze, producing a lockfile that fails on every fresh install.
+
+The post-training script `train/extract_global_track_norm_bounds.py` lives in the parent repo (not `maps/`) because it imports from `train.train_utils`.
 
 ## Wandb Integration
 
