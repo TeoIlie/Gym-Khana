@@ -38,7 +38,7 @@ def make_subprocvecenv(seed: int, config: dict, n_envs: int, track_pool: list[st
         n_envs: How many parallel envs to create
         track_pool: Optional list of maps to distribute across envs.
                    If provided, envs will cycle through these maps.
-                   Example: ["Drift", "Drift2", "Drift_large"]
+                   Example: ["Drift", "Drift2", "Drift_mirror"]
     Returns:
         SubprocVecEnv parallelized gym env distributed across track pool (if provided)
     """
@@ -168,9 +168,9 @@ def compute_global_track_bounds(track_pool: list[str], track_scale: float = 1.0)
     when new tracks are added. It is not called at runtime.
 
     Usage:
-        python maps/extract_global_track_norm_bounds.py
+        python train/extract_global_track_norm_bounds.py
         # Or directly:
-        from train.training_utils import compute_global_track_bounds
+        from train.train_utils import compute_global_track_bounds
         bounds = compute_global_track_bounds(["Drift", "Drift2", "Austin", ...])
 
     Args:
