@@ -31,16 +31,16 @@ These were the open questions in the original draft.
 - All camber-coupled coefficients (`tire_p_dx3`, `tire_p_dy3`, `tire_p_hy3`, `tire_p_vy3`) — 1/10 cars run ~zero camber.
 - Pure-shift terms (`tire_p_hx1`, `tire_p_vx1`, `tire_p_hy1`, `tire_p_vy1`) — `_vy1` added to the original 3 because for a symmetric tire it should be ≈0 and the bag can't constrain it. Phase 2's frozen-audit pass empirically verifies the freeze decision rather than assuming it.
 
-**Multi-stage fit** (each stage opens a small, identifiable subset):
-- **Stage 1 — linear regime (4 params):** `tire_p_ky1`, `tire_p_kx1`, `tire_p_cy1`, `tire_p_cx1`. Restrict to low-slip windows.
-- **Stage 2 — saturation (+4 params):** `tire_p_dy1`, `tire_p_dx1`, `tire_p_ey1`, `tire_p_ex1`. Use full dataset; initialize from Stage 1 best.
+**Multi-stage fit** (locked by Phase 2 — see [`OPTUNA_SYS_ID_SENSITIVITY_REPORT.md`](OPTUNA_SYS_ID_SENSITIVITY_REPORT.md)):
+- **Stage 1 — chassis + linear regime (6 params):** `I_z`, `a_max`, `I_y_w` (chassis, promoted), plus `tire_p_cy1`, `tire_p_cx1`, `tire_p_ky1` (tire). Chassis params dominate sensitivity on the drift bag (`I_z` Δ=155, `a_max` Δ=144) and must be locked before tire-saturation params, otherwise the latter sponge chassis residuals into non-physical values.
+- **Stage 2 — saturation (4 params):** `tire_p_dy1`, `tire_p_dx1`, `tire_p_ex1`, `tire_p_ey1`. Initialize from Stage 1 best. `dy1` / `dx1` bounds from physical priors (μ ∈ [0.7, 1.5]); the wide-δ pass placed their unconstrained minima at non-physical μ values, indicating they were absorbing chassis-inertia / longitudinal-cap error that Stage 1 should remove.
 - **Stage 3 — combined slip (optional):** unfreeze a small subset of `r_*` coefficients only if Stage 2 residuals show systematic combined-slip error.
 
-**Vehicle-dynamics candidates (Stage-1 promotion candidates):** `I_z`, `I_y_w`, `sv_min`, `sv_max`, `a_max` — chassis/servo params that were estimated rather than measured precisely. Phase 2's `--vehicle-dyn` sweep ranks them; high-sensitivity ones join Stage 1 search. Smoke testing already shows `I_z` is the single most sensitive parameter in the bag and `I_y_w` couples strongly to `a_x`. Bounds for these come from physical priors, not auto-`propose_bounds` (which emits narrow fallbacks when sensitivity is large enough to push past the 2× baseline threshold at small δ).
+**Demoted from search after Phase 2:** `tire_p_kx1` (Δ=1.87, flat), `sv_min` / `sv_max` (slew limits not exercised by the bag). `tire_p_ey1` is retained in Stage 2 only to close the lateral curve shape and is the first drop candidate if convergence is otherwise clean.
 
-A **sensitivity sweep** (one-at-a-time perturbation around YAML defaults) runs *before* any Optuna study and finalizes the ranked subset. Tight, physically motivated bounds (e.g., `D ∈ [0.5, 1.5]`, `C ∈ [1.0, 2.0]`) — wide bounds waste trials. A **wide-δ orientation pass** (`--wide-deltas`, `±90% to +200%`) precedes the standard sweep when YAML defaults come from a different vehicle scale (current case: PAC2002 dict from a full-scale-vehicle reference) — confirms the loss surface is basin-shaped near defaults rather than a cliff.
+A **sensitivity sweep** (one-at-a-time perturbation around YAML defaults) runs *before* any Optuna study and finalizes the ranked subset. Tight, physically motivated bounds (e.g., `D ∈ [0.5, 1.5]`, `C ∈ [1.0, 2.0]`) — wide bounds waste trials. A **wide-δ orientation pass** (`--wide-deltas`, `±90% to +200%`) precedes the standard sweep when YAML defaults come from a different vehicle scale (current case: PAC2002 dict from a full-scale-vehicle reference) — confirms the loss surface is basin-shaped near defaults rather than a cliff. On the drift bag this pass revealed `dy1`/`dx1`/`ky1` minima past the sampled range at non-physical values; the vehicle-dyn pass then showed `I_z`/`a_max` were the actual culprits, justifying the chassis-first Stage-1.
 
-**Sampler:** TPE for Stage 1 (≤4 dims, fast). Switch to `CmaEsSampler` for Stages 2–3 (better behavior in 8+ continuous dims).
+**Sampler:** `CmaEsSampler` from Stage 1 onward (Stage 1 is 6-dimensional after chassis promotion, past TPE's comfort zone).
 
 ### How to perform rollouts?
 
@@ -76,7 +76,7 @@ Produces:
 
 **Exit criterion (met):** `dataset_loss` runs end-to-end on `examples/analysis/bags/circle_Apr6_100Hz.npz` with YAML defaults in ~4.5 s. Baseline (no mirror, 11 windows, **VESC-seeded omegas**): **total = 5.0224**, per-channel NMSE = `{v_y: 1.85, a_x: 0.33, yaw_rate: 0.30, v_x: 0.15}` — lateral-dominant residual as expected. Identity self-test = 0 within numerical noise. Any future Optuna study must beat this baseline.
 
-### Phase 2 — Sensitivity analysis ✅ **code complete; awaiting full-bag run**
+### Phase 2 — Sensitivity analysis ✅ **complete**
 
 Locked plan: [`OPTUNA_SYS_ID_SENSITIVITY.md`](OPTUNA_SYS_ID_SENSITIVITY.md).
 
@@ -85,9 +85,53 @@ Produces:
 - ✅ Coverage audit: histograms of `α_front`, `α_rear`, `κ_front`, `κ_rear` across the dataset with default-Pacejka 95%-of-peak saturation-knee annotations and warning flags when coverage falls short. If `|α|` never exceeds ~5°, saturation params are unidentifiable regardless of trial budget — surfaced loudly in `ranking.md` before Phase 3 launches.
 - ✅ Auto-generated proposed Optuna bounds (`p₀ · (1 ± 1.5·δ_safe)`, threshold = 2× baseline). Marked review-only; for high-sensitivity params (where the ±δ_safe interval collapses to the smallest sampled δ), the report flags this and bounds come from physical priors instead.
 - ✅ `tests/sysid/test_sensitivity.py` — 6 invariants (frozen-list disjointness, frozen-audit-ladder completeness, vehicle-dyn disjointness, frozen opt-in gate, coverage geometry signs, baseline-anchor δ=0 reproducibility).
-- Full Phase-2 run on `rosbag2_2026_05_04-17_54_17_100Hz.npz` and the resulting `OPTUNA_SYS_ID_SENSITIVITY_REPORT.md` are pending — the report locks Stage-1/2 search-space membership.
+- ✅ Full Phase-2 run on `rosbag2_2026_05_04-17_54_17_100Hz.npz` and [`OPTUNA_SYS_ID_SENSITIVITY_REPORT.md`](OPTUNA_SYS_ID_SENSITIVITY_REPORT.md) — locks Stage-1/2 membership above.
 
-**Exit criterion:** ranked param list + coverage histograms reviewed; final Stage 1/2/3 search-space membership confirmed in the report; `I_z` / `I_y_w` confirmed as Stage-1 promotions if their sensitivity holds at full-bag scale.
+**Headline findings from the run** (full detail in the report):
+- **Coverage:** |α| and |κ| both exceed default-Pacejka 95%-of-peak knees by orders of magnitude. No identifiability veto on saturation params.
+- **Chassis dominance:** `I_z` (Δ=155, truth past +200% of default) and `a_max` (Δ=144, truth below −70%) are the most impactful parameters on this bag, exceeding every tire coefficient. Both are promoted into Stage 1.
+- **Wide-δ tire minima are spurious:** `dy1`/`dx1`/`ky1` wide-δ optima land at non-physical μ values — they were sponging chassis-inertia / longitudinal-cap residuals. Hence chassis-first Stage 1, then re-evaluate tire bounds in Stage 2.
+- **Frozen audit:** 6/8 frozen params show dLoss = 0 across their ladders (camber and lateral pure-shift confirmed). `tire_p_vx1` shows non-zero sensitivity (Δ=19.7) and acts as a longitudinal-bias absorber — **stays frozen** for physical reasons; the implied bias is investigated outside the tire model in Phase 4.
+
+**Recommended run sequence** (single drift bag, `rosbag2_2026_05_04-17_54_17_100Hz.npz`):
+
+1. **Orientation pass** — *check that defaults aren't on a cliff before trusting local sensitivity*
+
+   ```bash
+   python -m examples.analysis.sysid.sensitivity --wide-deltas --no-mirror --progress
+   ```
+
+   The PAC2002 defaults in `f1tenth_std.yaml` are lifted from a full-scale-vehicle reference; some coefficients (esp. `tire_p_ky1`, `tire_p_kx1`) could plausibly be 2–3× off the true 1/10 values. The wide ladder (`±90% .. +200%`) tells us *where* the loss minimum is, not just the local gradient. Outputs go to `figures/analysis/sysid/sensitivity/<bag>_wide/` so they don't clobber the main run.
+
+   **What to look for in `<bag>_wide/sweep_total.png`:**
+   - Clear U with min at δ=0 → defaults are in the basin, the standard sweep is meaningful.
+   - U with min at δ≠0 → defaults are off-center; the truth is at `p₀ · (1 + δ_min)`. Re-anchor before the main sweep, or lock Optuna bounds around the new min.
+   - Strictly monotone → defaults are on a cliff; truth is past the sampled range. Don't trust `propose_bounds`; set Optuna search from physical priors.
+
+2. **Full Phase-2 deliverable** — *the headline run*
+
+   ```bash
+   python -m examples.analysis.sysid.sensitivity --frozen-audit --vehicle-dyn --progress
+   ```
+
+   Produces all three rankings + coverage audit in one go (single `Rollout` reused). Outputs land in `figures/analysis/sysid/sensitivity/<bag>/`.
+
+   **What each output tells us:**
+   - `ranking.md` — which of the 8 tire candidates dominate `dLoss/dParam`. Drives Stage-1 vs Stage-2 split. Flat-line params get demoted; high-sensitivity ones stay. Top-of-page ⚠️ flags fire if `|α|` or `|κ|` coverage is below the default-Pacejka 95% saturation knee — that's a hard veto on identifying the corresponding saturation params (`tire_p_dy1` / `tire_p_ey1` / `tire_p_dx1` / `tire_p_ex1`) on this bag.
+   - `ranking_frozen.md` — empirically confirms the freeze decisions (camber-coupled coefficients should show dLoss ≈ 0 across ±1.0 absolute; pure-shift terms may show some sensitivity but stay frozen for physical reasons — they're indistinguishable from steering bias / sensor offset). If a frozen param shows huge unexpected sensitivity, that's a signal something is off and merits investigation, not promotion.
+   - `ranking_vehicle_dyn.md` — decides whether `I_z`, `I_y_w`, `sv_min`, `sv_max`, `a_max` join Stage 1. Smoke testing already showed `I_z` and `I_y_w` are highly sensitive on a stride-5s subset; full-stride is expected to confirm and likely promote both.
+   - `coverage.png` — slip-angle / slip-ratio histograms with red knee lines. Confirms (or refutes) that the bag excites the saturation regime.
+   - `sweep_total.png` / `sweep_per_channel.png` — visual confirmation of the ranking; reveal which channel each param drives (e.g. `tire_p_ky1` → yaw_rate, `tire_p_dx1` → a_x).
+
+3. **Stage-3 r-coefficient sweep** — *defer*
+
+   ```bash
+   python -m examples.analysis.sysid.sensitivity --include-combined --progress
+   ```
+
+   Adds 16 combined-slip `tire_r_*` coefficients to the main sweep (~30 min extra). **Don't run this yet** — it's only useful once Phase 4 residuals show *systematic* combined-slip error (e.g. correlated `a_x` and `v_y` residuals under braking-while-cornering). Running it pre-emptively wastes time on rankings whose interpretation depends on later context.
+
+**Exit criterion (met):** all three rankings + coverage histograms reviewed; Stage 1/2 search-space membership locked in `OPTUNA_SYS_ID_SENSITIVITY_REPORT.md`; `I_z`, `a_max`, `I_y_w` promoted into Stage 1; `tire_p_kx1`, `sv_min`, `sv_max` demoted; bounds for `dy1`/`dx1`/`ky1` taken from physical priors (auto-bounds did not contain the true minima).
 
 ### Phase 3 — Stage 1 Optuna study (STD, lateral-linear)
 
@@ -103,7 +147,11 @@ Produces:
 
 ### Phase 4 — Stage 2 Optuna study (STD, saturation)
 
-Reuses Phase 3 infrastructure. Initial point = Stage 1 best. Sampler switches to CMA-ES. No new sub-plan unless the search-space management diverges materially.
+Reuses Phase 3 infrastructure. Initial point = Stage 1 best. Sampler stays CMA-ES. No new sub-plan unless the search-space management diverges materially.
+
+**Pre-Stage-2 investigation:** address the longitudinal-bias source flagged by the frozen audit (`tire_p_vx1` absorbs ~2 NMSE points on `a_x` despite physically belonging at zero). Candidates: VESC current-to-Fx map error, IMU `a_x` offset, drivetrain coastdown drag. If the bias can be calibrated outside the tire model before Stage 2, `tire_p_dx1` won't have to absorb it.
+
+**Stage-2 sentinel:** if `dy1` or `dx1` saturate against their physical-prior bounds (μ_y or μ_x at 1.5), Stage 1 did not fully absorb the chassis residual — investigate (likely `I_z` upper bound, or unmodeled bias) before extending the bound.
 
 **Exit criterion:** Stage 2 best loss < Stage 1 best; per-channel residual breakdown shows balanced reduction (not just one channel); identified params beat the hand-tuned `f1tenth_std_drift_bias.yaml` on a held-out bag.
 
