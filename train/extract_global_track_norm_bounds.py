@@ -4,9 +4,6 @@ Extract global track normalization bounds across all available maps.
 This script scans the maps/ directory for all track folders and computes
 global normalization bounds for observation normalization.
 
-Note "Drift" map has very different proportions than other tracks, and
-is therefore ignored.
-
 Usage:
     python train/extract_global_track_norm_bounds.py
 
@@ -28,7 +25,7 @@ def get_all_track_names() -> list[str]:
     track_names = []
     for subdir in MAPS_DIR.iterdir():
         track_name = subdir.name
-        if subdir.is_dir() and not track_name.startswith(".") and track_name != "Drift":
+        if subdir.is_dir() and not track_name.startswith("."):
             track_names.append(track_name)
     return sorted(track_names)
 

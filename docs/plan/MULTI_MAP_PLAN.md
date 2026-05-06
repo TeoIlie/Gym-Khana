@@ -11,7 +11,7 @@ Enable the F1TENTH Gym to train reinforcement learning agents across multiple tr
 - Agents may overfit to specific track geometry and fail to generalize
 
 ### Available Resources
-- **11 tracks total**: 7 large racing circuits (Austin, Catalunya, IMS, Monza, MoscowRaceway, Spielberg, Spielberg_blank) + 3 drift tracks (Drift, Drift2, Drift_large)
+- **11 tracks total**: 7 large racing circuits (Austin, Catalunya, IMS, Monza, MoscowRaceway, Spielberg, Spielberg_blank) + 3 drift tracks (Drift, Drift2, Drift)
 - **Parallel training**: `SubprocVecEnv` runs 32 parallel environments (2 × CPU cores)
 - **Existing randomization**: `track_direction="random"` successfully randomizes driving direction per episode
 
@@ -112,7 +112,7 @@ For example, with 32 parallel envs and 3 drift tracks, each track gets ~10-11 en
 | Catalunya       | 1.1740   | 2.2000    | 2.2000    |
 | Drift           | 2.4450   | 0.8000    | 1.0000    |
 | Drift2          | 1.4424   | 1.8000    | 2.0000    |
-| Drift_large     | 1.6023   | 1.2000    | 1.4000    |
+| Drift     | 1.6023   | 1.2000    | 1.4000    |
 | IMS             | 0.0750   | 2.2000    | 2.2000    |
 | Monza           | 1.4637   | 2.2000    | 2.2000    |
 | MoscowRaceway   | 1.3523   | 2.2000    | 2.2000    |
@@ -241,7 +241,7 @@ def make_subprocvecenv(
         n_envs: Number of parallel environments
         track_pool: Optional list of maps to distribute across envs.
                    If provided, envs will cycle through these maps.
-                   Example: ["Drift", "Drift2", "Drift_large"]
+                   Example: ["Drift", "Drift2", "Drift"]
 
     Returns:
         SubprocVecEnv with environments distributed across track pool (if provided)
@@ -296,7 +296,7 @@ def make_subprocvecenv(
 track_pool:
   - "Drift"
   - "Drift2"
-  - "Drift_large"
+  - "Drift"
 # For single-map training, set to null or comment out:
 # track_pool: null
 ```
@@ -378,7 +378,7 @@ The existing `make_eval_env` function requires no changes. Both training and eva
 ```python
 # Global track bounds for observation normalization
 # Pre-computed across all available tracks (Austin, Catalunya, Drift, Drift2,
-# Drift_large, IMS, Monza, MoscowRaceway, Spielberg, Spielberg_blank)
+# Drift, IMS, Monza, MoscowRaceway, Spielberg, Spielberg_blank)
 #
 # IMPORTANT: If you add a new track with geometry outside these bounds,
 # run compute_global_track_bounds() from train/training_utils.py and update these values.
@@ -567,7 +567,7 @@ After training with multi-map support:
    - Boundary violation frequency
 
 2. **Cross-track generalization**: Train on 2 tracks, evaluate on held-out 3rd track
-   - Example: Train on `["Drift", "Drift2"]`, test on `"Drift_large"`
+   - Example: Train on `["Drift", "Drift2"]`, test on `"Drift"`
 
 3. **Compare to baseline**: Train identical policy on single map, compare generalization
 
@@ -588,13 +588,13 @@ map: "Drift"  # Fallback/default
 track_pool:
   - "Drift"
   - "Drift2"
-  - "Drift_large"
+  - "Drift"
 ```
 
 ### Example 2: Single-Map Training (Original Behavior)
 ```yaml
 # gym_config.yaml
-map: "Drift_large"
+map: "Drift"
 track_pool: null  # Disable multi-map
 ```
 
@@ -649,7 +649,7 @@ track_pool:
 **Validation**:
 ```python
 from train.config.env_config import TRACK_POOL
-print(TRACK_POOL)  # Should print ["Drift", "Drift2", "Drift_large"] or None
+print(TRACK_POOL)  # Should print ["Drift", "Drift2", "Drift"] or None
 ```
 
 ---

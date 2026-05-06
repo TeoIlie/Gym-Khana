@@ -274,26 +274,26 @@ if __name__ == "__main__":
 
 ### Step 5 — Verification
 
-End-to-end on `Drift_large` (a known-working map with an existing centerline):
+End-to-end on `Drift` (a known-working map with an existing centerline):
 
 ```bash
 # From maps repo root
 git submodule update --init --recursive
 poetry install   # from parent gymkhana repo
 
-# Centerline already exists for Drift_large; if not, run extract first:
-python3 extract_centerline.py --map Drift_large
+# Centerline already exists for Drift; if not, run extract first:
+python3 extract_centerline.py --map Drift
 
 # Generate the raceline
-python3 extract_raceline.py --map Drift_large --visualize
+python3 extract_raceline.py --map Drift --visualize
 ```
 
 Expected outputs:
-- `Drift_large/Drift_large_raceline.csv` exists, ~same number of rows as the centerline (likely a bit different due to optimizer resampling).
+- `Drift/Drift_raceline.csv` exists, ~same number of rows as the centerline (likely a bit different due to optimizer resampling).
 - First line is exactly: `# s_m; x_m; y_m; psi_rad; kappa_radpm; vx_mps; ax_mps2`.
 - Each data row has 7 semicolon-separated floats.
 - Column 6 (vx_mps) is uniformly `8.0000`; column 7 (ax_mps2) is uniformly `0.0000`.
-- `Drift_large/generation/raceline_final.png` shows a red curve clearly *inside* the track that cuts the apex of corners (visibly different from the centerline).
+- `Drift/generation/raceline_final.png` shows a red curve clearly *inside* the track that cuts the apex of corners (visibly different from the centerline).
 - Console prints an "estimated lap time" and final waypoint count.
 
 Spot-check a second map (e.g. `Drift`) to confirm it generalizes.

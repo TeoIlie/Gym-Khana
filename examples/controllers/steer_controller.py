@@ -174,7 +174,7 @@ class StanleyController(Controller):
         return steering_angle
 
 
-def get_config(obs_type=OBS_TYPE, lookahead_n_points=LOOKAHEAD_N_POINTS, lookahead_ds=LOOKAHEAD_DS, map="Drift_large"):
+def get_config(obs_type=OBS_TYPE, lookahead_n_points=LOOKAHEAD_N_POINTS, lookahead_ds=LOOKAHEAD_DS, map="Drift"):
     """
     Helper function to create steering controlelrs
     """

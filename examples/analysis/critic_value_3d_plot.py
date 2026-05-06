@@ -1,7 +1,7 @@
 """
 3D Critic Value Visualization for PPO Policy
 
-Creates a 3D visualization of the PPO critic (value function) over the Drift_large map:
+Creates a 3D visualization of the PPO critic (value function) over the Drift map:
 - X, Y axes: Position coordinates on the track (meters)
 - Z axis: Critic value V(s) - expected return from that position
 - Expected pattern: High values near raceline, decreasing outward, very low values off-track
@@ -54,7 +54,7 @@ def parse_args():
 
 
 def create_grid(spacing):
-    """Create meshgrid covering the Drift_large track area."""
+    """Create meshgrid covering the Drift track area."""
     xs = np.arange(X_MIN, X_MAX, spacing)
     ys = np.arange(Y_MIN, Y_MAX, spacing)
     X_grid, Y_grid = np.meshgrid(xs, ys)
