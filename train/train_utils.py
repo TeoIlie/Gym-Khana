@@ -168,9 +168,9 @@ def compute_global_track_bounds(track_pool: list[str], track_scale: float = 1.0)
     when new tracks are added. It is not called at runtime.
 
     Usage:
-        python maps/extract_global_track_norm_bounds.py
+        python train/extract_global_track_norm_bounds.py
         # Or directly:
-        from train.training_utils import compute_global_track_bounds
+        from train.train_utils import compute_global_track_bounds
         bounds = compute_global_track_bounds(["Drift", "Drift2", "Austin", ...])
 
     Args:

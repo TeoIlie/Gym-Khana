@@ -5,8 +5,10 @@ import numpy as np
 
 KeyType = TypeVar("KeyType")
 
-# Global track bounds for normalization, computed across all available tracks
-# Update these values when creating a new custom track
+# Global track bounds for normalization, computed across all available tracks.
+# When adding a new custom track, regenerate these by running:
+#     python train/extract_global_track_norm_bounds.py
+# then paste the printed GLOBAL_* values below.
 GLOBAL_MAX_CURVATURE = 1.95
 GLOBAL_MIN_WIDTH = 1.2
 GLOBAL_MAX_WIDTH = 2.2

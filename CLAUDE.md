@@ -240,6 +240,8 @@ Maps are managed through a two-tier system:
 
 The download URL is configured in `gymkhana/envs/track/track_utils.py::MAPS_URL`.
 
+The `maps/` submodule is self-contained for standalone track authoring: it ships its own `pyproject.toml` declaring the dependencies needed by `extract_centerline.py`, `mirror_centerline.py`, and `convert_to_grayscale.py`. Authors who only want to create new tracks can clone `F1TENTH_Racetracks` directly and `pip install -e .` without pulling in the simulator's RL stack. The post-training script `train/extract_global_track_norm_bounds.py` lives in the parent repo because it imports from `train.train_utils`.
+
 ## Wandb Integration
 
 Models and training runs are logged to: https://wandb.ai/teo-altum-quinque-queen-s-university/projects
