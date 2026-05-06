@@ -15,13 +15,13 @@ predictive_collision: false
 wall_deflection: false
 
 # Map
-map: "Drift_large"
+map: "Drift"
 # Multi-map training (optional)
 # If specified, parallel environments will train on different maps from this list
 # See /train/training_utils.py make_subprocvecenv
 track_pool:
-  - "Drift_large"
-  - "Drift_large_mirror"
+  - "Drift"
+  - "Drift_mirror"
   # - "Drift2"
   # - "Drift2_mirror"
 # For single-map training, set to null or comment out:

@@ -110,7 +110,7 @@ class TestMakeSubprocvecenvMultiMap(unittest.TestCase):
 
         config = get_drift_train_config()
         n_envs = 3
-        track_pool = ["Drift", "Drift2", "Drift_large"]
+        track_pool = ["Drift", "Drift2", "Drift_mirror"]
 
         # Create multi-map environment
         env = make_subprocvecenv(seed=42, config=config, n_envs=n_envs, track_pool=track_pool)
@@ -131,15 +131,15 @@ class TestMakeSubprocvecenvMultiMap(unittest.TestCase):
 
         config = get_drift_train_config()
         n_envs = 3
-        track_pool = ["Drift", "Drift2", "Drift_large"]
+        track_pool = ["Drift", "Drift2", "Drift_mirror"]
 
         # Expected distribution using same logic as implementation
         expected_distribution = Counter(track_pool[i % len(track_pool)] for i in range(n_envs))
 
-        # With 3 envs and 3 tracks: Drift=1, Drift2=1, Drift_large=1
+        # With 3 envs and 3 tracks: Drift=1, Drift2=1, Drift_mirror=1
         self.assertEqual(expected_distribution["Drift"], 1)
         self.assertEqual(expected_distribution["Drift2"], 1)
-        self.assertEqual(expected_distribution["Drift_large"], 1)
+        self.assertEqual(expected_distribution["Drift_mirror"], 1)
 
         # Create environment (this will print the actual distribution)
         env = make_subprocvecenv(seed=42, config=config, n_envs=n_envs, track_pool=track_pool)
