@@ -46,6 +46,7 @@ def main():
     vicon_body_vx = data["vicon_body_vx"]
     vicon_body_vy = data["vicon_body_vy"]
     vicon_r = data["vicon_r"]
+    rs_core_speed = data["rs_core_speed"] if "rs_core_speed" in data.files else None
 
     # Output path
     stem = Path(args.path).stem
@@ -76,6 +77,14 @@ def main():
     env = gym.make("gymkhana:gymkhana-v0", config=config)
     obs, _ = env.reset(options={"poses": np.array([[vicon_x[0], vicon_y[0], vicon_yaw[0]]])})
 
+    has_wheel_omegas = args.model == "std"
+    sim_omega_front = []
+    sim_omega_rear = []
+    if has_wheel_omegas:
+        state = env.unwrapped.sim.agents[0].state
+        sim_omega_front.append(float(state[7]))
+        sim_omega_rear.append(float(state[8]))
+
     # Record initial state
     agent_obs = obs["agent_0"]
     sim_x = [float(agent_obs["pose_x"])]
@@ -103,8 +112,15 @@ def main():
         sim_beta.append(float(agent_obs["beta"]))
         sim_cmd_speed.append(cmd_speed[i])
         sim_cmd_steer.append(cmd_steer[i])
+        if has_wheel_omegas:
+            state = env.unwrapped.sim.agents[0].state
+            sim_omega_front.append(float(state[7]))
+            sim_omega_rear.append(float(state[8]))
 
     env.close()
+
+    sim_omega_front = np.array(sim_omega_front)
+    sim_omega_rear = np.array(sim_omega_rear)
 
     # Convert to arrays
     sim_x = np.array(sim_x)
@@ -143,7 +159,6 @@ def main():
 
     fig, axes_grid = plt.subplots(2, 4, figsize=(32, 14))
     fig.suptitle(f"Sim2Real Comparison — {model_label} model ({stem})", fontsize=14)
-    axes_grid[0, 3].axis("off")
     axes = [
         axes_grid[0, 0],  # XY
         axes_grid[0, 1],  # vx
@@ -152,6 +167,7 @@ def main():
         axes_grid[1, 1],  # yaw rate
         axes_grid[1, 2],  # long. accel
         axes_grid[1, 3],  # slip angle
+        axes_grid[0, 3],  # wheel angular velocities
     ]
 
     # --- Plot 1: XY Trajectory ---
@@ -230,6 +246,23 @@ def main():
     ax.set_title("Slip Angle — Real vs Sim")
     ax.legend()
     ax.grid(True, alpha=0.3)
+
+    # --- Plot 8: Wheel angular velocities ---
+    ax = axes[7]
+    if has_wheel_omegas:
+        R_w = params["R_w"]
+        ax.plot(sim_t[:n_real], sim_omega_front[:n_real], label="Sim ω_front", linewidth=1.5, linestyle="--")
+        ax.plot(sim_t[:n_real], sim_omega_rear[:n_real], label="Sim ω_rear", linewidth=1.5, linestyle="--")
+        if rs_core_speed is not None:
+            real_omega = rs_core_speed / R_w
+            ax.plot(t[:n_real], real_omega[:n_real], label=f"VESC ω (rs_core_speed/R_w, R_w={R_w})", linewidth=1)
+        ax.set_xlabel("Time (s)")
+        ax.set_ylabel("Angular velocity (rad/s)")
+        ax.set_title("Wheel Angular Velocity — VESC vs Sim")
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+    else:
+        ax.axis("off")
 
     fig.tight_layout()
     fig.savefig(out_path, dpi=150, bbox_inches="tight")
