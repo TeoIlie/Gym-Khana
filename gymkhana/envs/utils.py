@@ -29,7 +29,7 @@ def deep_update(mapping: Dict[KeyType, Any], *updating_mappings: Dict[KeyType, A
     return updated_mapping
 
 
-def calculate_norm_bounds(env, features: list[str]):
+def calculate_norm_bounds(env, features: list[str], frenet_reference: str = "centerline"):
     """
     Calculate normalization bounds for requested observation features.
 
@@ -46,6 +46,9 @@ def calculate_norm_bounds(env, features: list[str]):
         The environment to extract parameters from
     features : list[str]
         List of feature names that require normalization bounds
+    frenet_reference : str
+        Line that 'frenet_n' is measured against, "centerline" (default) or "raceline".
+        Only affects the 'frenet_n' bound; see Notes.
 
     Returns
     -------
@@ -63,6 +66,8 @@ def calculate_norm_bounds(env, features: list[str]):
     - ValueError raised if required params are missing for requested features
     - Track-dependent bounds require track/centerline to be available
     - Asymmetric physical bounds (e.g., wheel speed ≥ 0) still map to [-1, 1] for best DRL training
+    - 'frenet_n' bounds differ by reference line, so a normalized frenet_n is only comparable
+      across runs sharing the same reference
     """
     params = env.params
     bounds = {}
@@ -73,20 +78,29 @@ def calculate_norm_bounds(env, features: list[str]):
     # ===========================
 
     # Longitudinal velocity: [v_min, v_max]
-    if "linear_vel_x" in features_set or "integrated_vel_cmd" in features_set or "linear_vel_y" in features_set:
+    if (
+        "linear_vel_x" in features_set
+        or "integrated_vel_cmd" in features_set
+        or "linear_vel_y" in features_set
+        or "raceline_vxs" in features_set
+    ):
         v_max = params.get("v_max", None)  # m/s
         v_min = params.get("v_min", None)  # m/s
 
         if v_max is None or v_min is None:
             raise ValueError(
-                "Features 'linear_vel_x', 'linear_vel_y' and 'integrated_vel_cmd' require 'v_max' and 'v_min' parameters. "
-                "Please ensure these are configured in env.params."
+                "Features 'linear_vel_x', 'linear_vel_y', 'integrated_vel_cmd' and 'raceline_vxs' require "
+                "'v_max' and 'v_min' parameters. Please ensure these are configured in env.params."
             )
 
         if "linear_vel_x" in features_set:
             bounds["linear_vel_x"] = (v_min, v_max)
         if "integrated_vel_cmd" in features_set:
             bounds["integrated_vel_cmd"] = (v_min, v_max)
+        # Same bound as linear_vel_x on purpose: a controller subtracts the measured speed from
+        # this reference, so the two must share a scale once normalized.
+        if "raceline_vxs" in features_set:
+            bounds["raceline_vxs"] = (v_min, v_max)
         if "linear_vel_y" in features_set:
             linear_vel_bound = 0.5 * v_max
             bounds["linear_vel_y"] = (-linear_vel_bound, linear_vel_bound)
@@ -234,8 +248,15 @@ def calculate_norm_bounds(env, features: list[str]):
             min_width, max_width = GLOBAL_MIN_WIDTH, GLOBAL_MAX_WIDTH
 
             if "frenet_n" in features_set:
-                half_max_width = 0.5 * max_width
-                bounds["frenet_n"] = (-half_max_width, half_max_width)
+                if frenet_reference not in ("centerline", "raceline"):
+                    raise ValueError(
+                        f"Invalid frenet_reference {frenet_reference!r} for 'frenet_n' bounds. "
+                        "Must be 'centerline' or 'raceline'."
+                    )
+                # Centerline is mid-track so |ey| <= half width; a raceline hugs the apex and can
+                # sit nearly a full width from the far boundary.
+                max_deviation = max_width if frenet_reference == "raceline" else 0.5 * max_width
+                bounds["frenet_n"] = (-max_deviation, max_deviation)
 
             if "lookahead_widths" in features_set:
                 bounds["lookahead_widths"] = (min_width, max_width)
@@ -257,7 +278,7 @@ def calculate_norm_bounds(env, features: list[str]):
             f"Supported features: linear_vel_x, linear_vel_y, ang_vel_z, delta, "
             f"prev_steering_cmd, curr_steering_cmd, prev_throttle_cmd, curr_throttle_cmd, "
             f"prev_avg_wheel_omega, curr_avg_wheel_omega, integrated_vel_cmd, "
-            f"frenet_u, frenet_n, lookahead_widths, lookahead_curvatures, beta"
+            f"frenet_u, frenet_n, lookahead_widths, lookahead_curvatures, raceline_vxs, beta"
         )
 
     # Ensure all bounds have min <= max (allow min == max for constant features)

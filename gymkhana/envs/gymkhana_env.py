@@ -156,6 +156,9 @@ class GKEnv(gym.Env):
             - ``ego_idx`` (int): Index of the ego agent (default ``0``).
             - ``control_input`` (list): Action types, e.g. ``["speed", "steering_angle"]``.
             - ``observation_config`` (dict): Observation type config, e.g. ``{"type": "drift"}``.
+              Vector types also accept ``frenet_reference`` — ``"centerline"`` (default) or
+              ``"raceline"`` — the line ``frenet_u``/``frenet_n`` are measured against.
+              Lookahead curvatures and widths stay centerline-based either way.
             - ``normalize_obs`` (bool | None): Observation normalisation; ``None`` = auto.
             - ``normalize_act`` (bool): Action normalisation (default ``True``).
             - ``training_mode`` (str): ``"race"`` or ``"recover"`` (default ``"race"``).
@@ -186,6 +189,8 @@ class GKEnv(gym.Env):
         self.ego_idx = self.config["ego_idx"]
         # Per-step Frenet cache, (num_agents, 3): [s, ey, ephi]. Populated each step in _update_frenet_cache.
         self._frenet_cache = np.zeros((self.num_agents, 3), dtype=np.float64)
+        # Same, against the raceline. Only filled when frenet_reference="raceline"; zeros otherwise.
+        self._frenet_cache_raceline = np.zeros((self.num_agents, 3), dtype=np.float64)
         self.integrator = IntegratorType.from_string(self.config["integrator"])
         self.model = DynamicModel.from_string(self.config["model"])
         self.observation_config = self.config["observation_config"]
@@ -264,6 +269,8 @@ class GKEnv(gym.Env):
         self.render_lookahead_curvatures = self.config["render_lookahead_curvatures"]
         self.lookahead_n_points = self.config["lookahead_n_points"]
         self.lookahead_ds = self.config["lookahead_ds"]
+        self.raceline_vx_n_points = self.config["raceline_vx_n_points"]
+        self.raceline_vx_ds = self.config["raceline_vx_ds"]
         self.sparse_width_obs = self.config["sparse_width_obs"]
         self.debug_frenet_projection = self.config["debug_frenet_projection"]
         self.record_obs_min_max = self.config["record_obs_min_max"]
@@ -307,6 +314,12 @@ class GKEnv(gym.Env):
 
         if self.lookahead_n_points < 2:
             raise ValueError("Minimum of 2 lookahead track observation points required")
+
+        if self.raceline_vx_n_points < 1:
+            raise ValueError("Minimum of 1 raceline velocity observation point required")
+
+        if self.raceline_vx_ds <= 0:
+            raise ValueError("raceline_vx_ds must be positive")
 
         # radius to consider done
         self.start_thresh = 0.5  # 10cm
@@ -396,7 +409,7 @@ class GKEnv(gym.Env):
         normalize_obs = self.config["normalize_obs"]
 
         # Identify whether the chosen observation type is supported for normalization
-        supported_obs_types = ["drift", "drift_real", "race", "frenet", "drift_st"]
+        supported_obs_types = ["drift", "drift_real", "drift_real_vref", "race", "frenet", "drift_st"]
         obs_norm_supported = obs_type in supported_obs_types
 
         if normalize_obs is None:
@@ -427,6 +440,20 @@ class GKEnv(gym.Env):
 
         self.observation_type = observation_factory(env=self, **self.observation_config)
         self.observation_space = self.observation_type.space()
+
+        # Gate for the raceline projection, read off the observation so there is one source of
+        # truth. getattr default keeps dict-based observation types working unchanged.
+        self._use_raceline_frenet = getattr(self.observation_type, "frenet_reference", "centerline") == "raceline"
+
+        # Track.__init__ aliases the raceline to the centerline when a map ships none, which would
+        # make frenet_reference="raceline" a silent no-op.
+        if self._use_raceline_frenet and self.track.raceline_regular is self.track.centerline_regular:
+            raise ValueError(
+                f"observation_config requested frenet_reference='raceline', but track "
+                f"'{getattr(self.track.spec, 'name', self.map)}' has no raceline "
+                f"(no <map>_raceline.csv found, so the raceline falls back to the centerline). "
+                f"Use a map with a raceline, or set frenet_reference='centerline'."
+            )
 
         # Initialize observation min/max tracking if requested.
         if self.record_obs_min_max:
@@ -621,6 +648,8 @@ class GKEnv(gym.Env):
             "render_lookahead_curvatures": False,
             "lookahead_n_points": 10,
             "lookahead_ds": 0.3,
+            "raceline_vx_n_points": 15,
+            "raceline_vx_ds": 0.4,
             "sparse_width_obs": False,
             "debug_frenet_projection": False,
             "normalize_obs": None,  # None = auto-set based on observation type
@@ -793,16 +822,27 @@ class GKEnv(gym.Env):
 
         ``debug=True`` fires only for the ego row to match the prior per-step
         debug-print cadence (previously emitted from ``observe`` only).
+
+        When the observation requests ``frenet_reference="raceline"``, a second projection
+        fills ``_frenet_cache_raceline``; that branch is skipped entirely otherwise. The
+        centerline projection is never skipped — reward progress, Frenet boundary checking,
+        and recovery success all read it.
         """
         poses = self.sim.agent_poses
+
         for i in range(self.num_agents):
+            # cartesian_to_frenet also stores the projected point drawn by
+            # render_frenet_projection, so debug goes to whichever line the observation reads.
             debug = self.debug_frenet_projection and i == self.ego_idx
-            s, ey, ephi = self.track.cartesian_to_frenet(
-                poses[i, 0], poses[i, 1], poses[i, 2], use_raceline=False, debug=debug
+
+            self._frenet_cache[i] = self.track.cartesian_to_frenet(
+                poses[i, 0], poses[i, 1], poses[i, 2], use_raceline=False, debug=debug and not self._use_raceline_frenet
             )
-            self._frenet_cache[i, 0] = s
-            self._frenet_cache[i, 1] = ey
-            self._frenet_cache[i, 2] = ephi
+
+            if self._use_raceline_frenet:
+                self._frenet_cache_raceline[i] = self.track.cartesian_to_frenet(
+                    poses[i, 0], poses[i, 1], poses[i, 2], use_raceline=True, debug=debug
+                )
 
     def _update_state(self):
         """Update env state from the simulator after a step.

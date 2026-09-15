@@ -11,6 +11,10 @@ from numba import njit
 
 from gymkhana.envs.utils import calculate_norm_bounds, normalize_feature
 
+# Reference lines frenet_u/frenet_n can be measured against, set per observation via the
+# "frenet_reference" key of observation_config.
+FRENET_REFERENCES = ("centerline", "raceline")
+
 
 def sample_lookahead_curvatures(track, current_s: float, n_points: int, ds: float) -> np.ndarray:
     """Sample curvature values ahead of the vehicle along the centerline.
@@ -373,6 +377,108 @@ def sample_lookahead_widths_fast(track, current_s: float, n_points: int = 10, ds
     return _sample_widths_numba(current_s, n_points, ds, track_length, ss, w_lefts, w_rights)
 
 
+@njit(cache=True)
+def _sample_raceline_velocities_numba(
+    current_s: float,
+    n_points: int,
+    ds: float,
+    line_length: float,
+    ss: np.ndarray,
+    vxs: np.ndarray,
+) -> np.ndarray:
+    """Numba-optimized raceline velocity sampling from pre-extracted arc length and velocity arrays.
+
+    Args:
+        current_s: Current arc length position on the raceline (meters).
+        n_points: Number of points to sample.
+        ds: Spacing between points in meters.
+        line_length: Total raceline length for wrap-around.
+        ss: Arc length values along the raceline (monotonically increasing).
+        vxs: Target velocity at each raceline waypoint (m/s).
+
+    Returns:
+        Target velocity at each sampled point (m/s), shape ``(n_points,)``.
+    """
+    velocities = np.zeros(n_points, dtype=np.float32)
+
+    for i in range(n_points):
+        # Sampling starts at the current position (offset 0), unlike the curvature/width
+        # samplers: vx at the car's own s is the reference the controller tracks right now.
+        s_ahead = (current_s + i * ds) % line_length
+
+        # Find nearest arc length index using binary search (O(log n))
+        min_idx = _binary_search_nearest(ss, s_ahead)
+
+        velocities[i] = vxs[min_idx]
+
+    return velocities
+
+
+def sample_raceline_velocities_fast(track, current_s: float, n_points: int = 15, ds: float = 0.4) -> np.ndarray:
+    """Sample the raceline's precomputed velocity profile ahead of the vehicle.
+
+    Reads ``Raceline.vxs`` (the ``vx_mps`` column of ``<map>_raceline.csv``) by
+    nearest-neighbour lookup on ``Raceline.ss``. The velocity profile is *not* available
+    from the spline: :class:`Raceline` builds its ``CubicSpline2D`` from x/y only, so the
+    spline's velocity channel is a constant fill.
+
+    ``current_s`` must be an arc length along the *raceline*, not the centerline — the two
+    parameterizations differ (e.g. Drift: 22.8 m vs 24.6 m). Callers should use
+    ``GKEnv._frenet_cache_raceline``.
+
+    Args:
+        track: Track object with a valid raceline.
+        current_s: Current arc length position on the raceline (meters).
+        n_points: Number of points to sample, starting at ``current_s`` (default 15).
+        ds: Spacing between points in meters (default 0.4).
+
+    Returns:
+        Target velocity at each sampled point (m/s), shape ``(n_points,)``.
+
+    Raises:
+        ValueError: If track, raceline, or its arc length / velocity data is None/invalid.
+
+    Note:
+        Under ``track_direction="reverse"`` this samples the reversed raceline, whose
+        velocities are the forward magnitudes in reverse order. That is well defined but
+        not an optimal profile for the reversed direction.
+    """
+    if track is None or getattr(track, "raceline", None) is None:
+        raise ValueError("Track and raceline must be valid")
+
+    if n_points <= 0:
+        raise ValueError("n_points must be positive")
+
+    if ds <= 0:
+        raise ValueError("ds must be positive")
+
+    raceline = track.raceline
+
+    if getattr(raceline, "ss", None) is None:
+        raise ValueError("Raceline must have arc length data")
+
+    if getattr(raceline, "vxs", None) is None:
+        raise ValueError("Raceline must have velocity data")
+
+    line_length = float(raceline.ss[-1])
+
+    # Raceline.ss is documented as "sometimes normalized to [0,1]", which would silently make the
+    # wrap-around modulo meaningless and hand the controller a wrong speed reference. Compare
+    # against the polyline length, which is always in meters.
+    if abs(line_length - raceline.length) > 0.05 * raceline.length:
+        raise ValueError(
+            f"Raceline arc length ss[-1]={line_length:.4f} disagrees with its polyline length "
+            f"{raceline.length:.4f}. raceline_vxs needs ss in meters, not a normalized "
+            "parameterization."
+        )
+
+    # Cast for numba: raceline.ss is a strided float32 column view when loaded from CSV.
+    ss = np.asarray(raceline.ss, dtype=np.float64)
+    vxs = np.asarray(raceline.vxs, dtype=np.float64)
+
+    return _sample_raceline_velocities_numba(current_s, n_points, ds, line_length, ss, vxs)
+
+
 class Observation:
     """Abstract base class for observation types.
 
@@ -667,11 +773,40 @@ class VectorObservation(Observation):
     Args:
         env: The Gymnasium environment instance.
         features: Ordered list of feature names to concatenate.
+        frenet_reference: Line ``frenet_u`` / ``frenet_n`` are measured against —
+            ``"centerline"`` (default) or ``"raceline"``. ``lookahead_curvatures``
+            and ``lookahead_widths`` stay centerline-sampled either way. The
+            ``raceline_vxs`` feature is the exception: it is sampled along the raceline
+            and therefore requires ``"raceline"``.
+
+    Note:
+        ``"raceline"`` only works for the observation held by the env as
+        ``observation_type``: ``GKEnv`` populates the raceline Frenet cache solely for
+        that instance. A ``VectorObservation`` constructed directly on a live env would
+        read a stale, all-zero cache.
     """
 
-    def __init__(self, env, features: List[str]):
+    def __init__(self, env, features: List[str], frenet_reference: str = "centerline"):
         super().__init__(env)
         self.features = features
+
+        if frenet_reference not in FRENET_REFERENCES:
+            raise ValueError(
+                f"Invalid frenet_reference {frenet_reference!r}. Must be one of: {list(FRENET_REFERENCES)}."
+            )
+        self.frenet_reference = frenet_reference
+
+        # raceline_vxs is sampled at the raceline arc length, which GKEnv only projects when the
+        # observation asks for a raceline reference. Requiring it here also inherits GKEnv's check
+        # that the map actually ships a raceline (without it, Track aliases the raceline to the
+        # centerline, whose vxs is a meaningless constant fill).
+        if "raceline_vxs" in self.features and self.frenet_reference != "raceline":
+            raise ValueError(
+                "Observation feature 'raceline_vxs' requires frenet_reference='raceline', but the "
+                f"observation is configured with '{self.frenet_reference}'. Add "
+                "'frenet_reference': 'raceline' to observation_config, on a map that ships a "
+                "<map>_raceline.csv."
+            )
 
         # integrated_vel_cmd is only meaningful under accl control; under speed mode it's a
         # redundant low-pass of the user's speed command.
@@ -687,7 +822,7 @@ class VectorObservation(Observation):
         self.bounds = {}
         self.normalize_obs = self.env.unwrapped.normalize_obs
         if self.normalize_obs:
-            self.bounds = calculate_norm_bounds(self.env.unwrapped, self.features)
+            self.bounds = calculate_norm_bounds(self.env.unwrapped, self.features, frenet_reference=frenet_reference)
 
     def space(self):
         scan_size = self.env.unwrapped.sim.agents[0].scan_simulator.num_beams
@@ -720,6 +855,7 @@ class VectorObservation(Observation):
             "curr_throttle_cmd": 1,
             "lookahead_curvatures": lookahead_points,
             "lookahead_widths": 2 if self.env.unwrapped.sparse_width_obs else lookahead_points,
+            "raceline_vxs": self.env.unwrapped.raceline_vx_n_points,
             "curr_avg_wheel_omega": 1,
             "prev_avg_wheel_omega": 1,
             "integrated_vel_cmd": 1,
@@ -768,16 +904,25 @@ class VectorObservation(Observation):
         lookahead_curvatures = np.zeros(n_lookahead, dtype=np.float32)
         n_widths = 2 if self.env.unwrapped.sparse_width_obs else n_lookahead
         lookahead_widths = np.zeros(n_widths, dtype=np.float32)
+        n_raceline_vx = self.env.unwrapped.raceline_vx_n_points
+        raceline_vxs = np.zeros(n_raceline_vx, dtype=np.float32)
 
         track = getattr(self.env.unwrapped, "track", None)
         if track is not None and getattr(track, "centerline", None) is not None:
             try:
                 # Read from GKEnv._frenet_cache populated each step. Index [0] is single-agent (asserted in space()).
+                # s stays centerline-based: the lookahead samplers below are, and
+                # s_raceline != s_centerline would sample the wrong part of the track.
                 cache = self.env.unwrapped._frenet_cache
-                s, ey, ephi = float(cache[0, 0]), float(cache[0, 1]), float(cache[0, 2])
+                s = float(cache[0, 0])
 
-                frenet_u = ephi  # heading error (vehicle heading - track heading)
-                frenet_n = ey  # lateral distance from centerline (left=-ve, right=+ve)
+                # Only the Frenet errors follow the reference line, not the lookahead features.
+                if self.frenet_reference == "raceline":
+                    cache = self.env.unwrapped._frenet_cache_raceline
+                ey, ephi = float(cache[0, 1]), float(cache[0, 2])
+
+                frenet_u = ephi  # heading error (vehicle heading - reference line heading)
+                frenet_n = ey  # lateral distance from the reference line (left=-ve, right=+ve)
 
                 lookahead_curvatures = sample_lookahead_curvatures_fast(track, s, n_points=n_lookahead, ds=ds_lookahead)
                 lookahead_widths = sample_lookahead_widths_fast(track, s, n_points=n_lookahead, ds=ds_lookahead)
@@ -785,6 +930,17 @@ class VectorObservation(Observation):
                 if self.env.unwrapped.sparse_width_obs:
                     # only take 1st and last width observations if sparse_width_obs enabled
                     lookahead_widths = np.array([lookahead_widths[0], lookahead_widths[-1]], dtype=np.float32)
+
+                if self.frenet_reference == "raceline":
+                    # Indexed by raceline s, not the centerline s used above: the two
+                    # parameterizations differ (Drift: 22.8 m vs 24.6 m).
+                    s_raceline = float(self.env.unwrapped._frenet_cache_raceline[0, 0])
+                    raceline_vxs = sample_raceline_velocities_fast(
+                        track,
+                        s_raceline,
+                        n_points=n_raceline_vx,
+                        ds=self.env.unwrapped.raceline_vx_ds,
+                    )
 
             except Exception as e:
                 # Fall back to zero defaults set above; print so the failure is visible.
@@ -812,6 +968,7 @@ class VectorObservation(Observation):
             "curr_throttle_cmd": agent.curr_throttle_cmd,
             "lookahead_curvatures": lookahead_curvatures,
             "lookahead_widths": lookahead_widths,
+            "raceline_vxs": raceline_vxs,
             "curr_avg_wheel_omega": curr_avg_wheel_omega,
             "prev_avg_wheel_omega": prev_avg_wheel_omega,
             "integrated_vel_cmd": agent.integrated_vel_cmd,
@@ -843,9 +1000,10 @@ def observation_factory(env, type: str | None, **kwargs) -> Observation:
         type: Observation type string. Supported values:
             ``"original"``, ``"features"``, ``"kinematic_state"``,
             ``"dynamic_state"``, ``"frenet_dynamic_state"``, ``"rl"``,
-            ``"drift"``, ``"drift_real"``, ``"frenet"``, ``"race"``, ``"drift_st"``.
-            Defaults to ``"original"`` if None.
-        **kwargs: Additional arguments forwarded to the observation constructor.
+            ``"drift"``, ``"drift_real"``, ``"drift_real_vref"``, ``"frenet"``,
+            ``"race"``, ``"drift_st"``. Defaults to ``"original"`` if None.
+        **kwargs: Additional arguments forwarded to the observation constructor —
+            ``frenet_reference`` for vector types, ``features`` for ``"features"``.
 
     Returns:
         An :class:`Observation` subclass instance.
@@ -890,13 +1048,13 @@ def observation_factory(env, type: str | None, **kwargs) -> Observation:
         features = [
             "scan",
         ]
-        return VectorObservation(env, features=features)
+        return VectorObservation(env, features=features, **kwargs)
     elif type == "drift":
         features = [
             "linear_vel_x",  # vx - longitudinal velocity, vehicle frame
             "linear_vel_y",  # vy - lateral velocity, vehicle frame
             "frenet_u",  # u - angle between car heading, track heading, in Frenet coords
-            "frenet_n",  # n - lateral distance from centerline, in Frenet coords
+            "frenet_n",  # n - lateral distance from the reference line, in Frenet coords
             "ang_vel_z",  # r - yaw rate
             "delta",  # δ - measured steering angle
             "beta",  # β - slip angle (vehicle velocity angle relative to body axis)
@@ -907,45 +1065,61 @@ def observation_factory(env, type: str | None, **kwargs) -> Observation:
             "lookahead_curvatures",  # c - track curvatures
             "lookahead_widths",  # w - track widths
         ]
-        return VectorObservation(env, features=features)
+        return VectorObservation(env, features=features, **kwargs)
     elif type == "drift_real":
         features = [
             "linear_vel_x",  # vx - longitudinal velocity, vehicle frame
             "linear_vel_y",  # vy - lateral velocity, vehicle frame
             "frenet_u",  # u - angle between car heading, track heading, in Frenet coords
-            "frenet_n",  # n - lateral distance from centerline, in Frenet coords
+            "frenet_n",  # n - lateral distance from the reference line, in Frenet coords
             "ang_vel_z",  # r - yaw rate
             "beta",  # β - slip angle (vehicle velocity angle relative to body axis)
             "curr_avg_wheel_omega",  # ω - current measured wheel speed
             "lookahead_curvatures",  # c - track curvatures
             "lookahead_widths",  # w - track widths
         ]
-        return VectorObservation(env, features=features)
+        return VectorObservation(env, features=features, **kwargs)
+    elif type == "drift_real_vref":
+        # drift_real plus the raceline's precomputed velocity profile, appended last so the
+        # leading indices stay identical to drift_real. Requires frenet_reference="raceline".
+        features = [
+            "linear_vel_x",  # vx - longitudinal velocity, vehicle frame
+            "linear_vel_y",  # vy - lateral velocity, vehicle frame
+            "frenet_u",  # u - angle between car heading, track heading, in Frenet coords
+            "frenet_n",  # n - lateral distance from the reference line, in Frenet coords
+            "ang_vel_z",  # r - yaw rate
+            "beta",  # β - slip angle (vehicle velocity angle relative to body axis)
+            "curr_avg_wheel_omega",  # ω - current measured wheel speed
+            "lookahead_curvatures",  # c - track curvatures
+            "lookahead_widths",  # w - track widths
+            "raceline_vxs",  # vx_ref - raceline target speed, sampled ahead along the raceline
+        ]
+        return VectorObservation(env, features=features, **kwargs)
     elif type == "drift_st":
         features = [
             "linear_vel_x",  # vx - longitudinal velocity, vehicle frame
             "linear_vel_y",  # vy - lateral velocity, vehicle frame
             "frenet_u",  # u - angle between car heading, track heading, in Frenet coords
-            "frenet_n",  # n - lateral distance from centerline, in Frenet coords
+            "frenet_n",  # n - lateral distance from the reference line, in Frenet coords
             "ang_vel_z",  # r - yaw rate
             "beta",  # β - slip angle (vehicle velocity angle relative to body axis)
             "prev_steering_cmd",  # δ_ref - previous commanded steering angle
             "lookahead_curvatures",  # c - track curvatures
             "lookahead_widths",  # w - track widths
         ]
-        return VectorObservation(env, features=features)
+        return VectorObservation(env, features=features, **kwargs)
     elif type == "frenet":
         features = ["frenet_u", "frenet_n"]
-        return VectorObservation(env, features=features)
+        return VectorObservation(env, features=features, **kwargs)
     elif type == "race":
         features = [
             "linear_vel_x",  # vx - longitudinal velocity, vehicle frame
             "linear_vel_y",  # vy - lateral velocity, vehicle frame
             "frenet_u",  # u - angle between car heading, track heading, in Frenet coords
-            "frenet_n",  # n - lateral distance from centerline, in Frenet coords
+            "frenet_n",  # n - lateral distance from the reference line, in Frenet coords
             "ang_vel_z",  # r - yaw rate
             "lookahead_curvatures",  # c - track curvatures
         ]
-        return VectorObservation(env, features=features)
+        return VectorObservation(env, features=features, **kwargs)
     else:
         raise ValueError(f"Invalid observation type {type}.")
