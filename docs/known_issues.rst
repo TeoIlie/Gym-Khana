@@ -78,3 +78,27 @@ acados_template install fails with ``No module named 'vcs_versioning'``
    ``~/software/acados/bin/t_renderer`` is absent after a source build. This is not an error —
    ``acados_template`` downloads the binary automatically on the first ``AcadosOcpSolver(...)`` call.
    Expect a one-time network fetch when you first build a solver.
+
+.. _vscode-pytest-discovery:
+
+VS Code pytest discovery fails on Arch
+--------------------------------------
+
+.. warning::
+
+   The Testing tab reports a pytest discovery error while ``python3 -m pytest`` collects cleanly
+   from the activated virtual environment.
+
+   **Cause.** VS Code selected ``/usr/bin/python`` for the workspace instead of ``.venv``. On Arch
+   that is Python 3.14, outside this project's ``>=3.10,<3.13`` range and without ``pytest``:
+
+   .. code::
+
+      /usr/bin/python: No module named pytest
+
+   **Fix.** ``Ctrl+Shift+P`` → **Python: Select Interpreter** → ``./.venv/bin/python``, then
+   ``Ctrl+Shift+P`` → **Test: Refresh Tests**.
+
+   ``.vscode/settings.json`` pins ``python.defaultInterpreterPath`` to ``.venv`` for fresh clones,
+   but that is ignored once an interpreter has been selected, so a bad selection still needs the
+   steps above.

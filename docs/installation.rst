@@ -6,7 +6,7 @@
 Installation
 ============
 
-Gym-Khana is a pure Python package.
+Gym-Khana is a pure Python package and requires Python 3.10-3.12.
 
 .. tip::
 
@@ -28,8 +28,34 @@ Using poetry
 
 .. code:: bash
 
-   poetry install
-   source $(poetry env info -p)/bin/activate  # or prefix commands with `poetry run`
+   git clone --recurse-submodules https://github.com/TeoIlie/Gym-Khana.git
+   cd Gym-Khana
+   mise install  # mise users only: installs the Python 3.12 pinned in mise.toml
+   poetry install --all-groups
+   source .venv/bin/activate  # or prefix commands with `poetry run`
+
+Two small config files are tracked in the repository so that this works the same way on every
+machine: ``poetry.toml`` places the virtualenv at ``.venv/`` in the project root, and ``mise.toml``
+pins Python 3.12.
+
+.. note::
+
+   Check your interpreter with ``python3 --version``. If it falls outside 3.10-3.12 -- common on
+   rolling-release distros, which ship a newer default -- install `mise <https://mise.jdx.dev>`_ and
+   run ``mise install`` before ``poetry install``. Poetry then resolves the pinned interpreter
+   automatically, with no ``poetry env use`` needed. If your ``python3`` is already in range, skip
+   that step entirely.
+
+.. note::
+
+   **Distro support.** Nothing here is distro-specific: ``poetry.toml`` and ``mise.toml`` are plain
+   config files, and mise installs a prebuilt, glibc-linked interpreter, so ``mise install`` works on
+   any mainstream Linux distribution (and on macOS) without a compiler. Two exceptions need mise to
+   build Python from source instead -- musl-based systems such as Alpine, and NixOS, where the
+   prebuilt binary's dynamic loader is absent. On those, either set ``mise settings python.compile=1``
+   and install the usual CPython build dependencies, or skip mise and supply a Python 3.10-3.12 on
+   ``PATH`` by other means (the distro's own package, ``pyenv``, ``uv``, conda); poetry only needs a
+   matching ``python3``, not mise specifically.
 
 Pre-commit hooks
 ----------------

@@ -34,10 +34,17 @@ source $(poetry env info -p)/bin/activate
 ```
 
 ### Virtual Environment
-This project uses a virtual environment at `rl_env/`. Always activate it before running commands:
+This project uses an in-project virtual environment at `.venv/` (from the tracked `poetry.toml`).
+Always activate it before running commands:
 ```bash
-source rl_env/bin/activate
+source .venv/bin/activate
 ```
+The tracked `mise.toml` pins Python 3.12; if the system `python3` is outside `>=3.10,<3.13`,
+run `mise install` before `poetry install --all-groups`.
+
+Note that some versions and older checkouts of this repo use `rl_env/` as the virtual environment
+name instead of `.venv/`. If `.venv/` is absent, check for `rl_env/` and activate that
+(`source rl_env/bin/activate`), or run `poetry env info -p` to locate the active environment.
 
 ### Testing
 Run all tests:

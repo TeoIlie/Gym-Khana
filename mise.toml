@@ -1,0 +1,4 @@
+# Pins the interpreter for this project; poetry then resolves it automatically.
+# Required where the system Python is outside pyproject's >=3.10,<3.13 (e.g. Arch).
+[tools]
+python = "3.12"

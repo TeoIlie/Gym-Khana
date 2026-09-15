@@ -57,10 +57,13 @@ Alternatively, to use all features, or for development (training, controllers, a
 ```bash
 git clone --recurse-submodules https://github.com/TeoIlie/Gym-Khana.git
 cd Gym-Khana
+mise install # mise users only: installs the Python 3.12 pinned in mise.toml
 poetry install --all-groups
-source $(poetry env info -p)/bin/activate # or instead of sourcing, prefix commands with `poetry run`
+source .venv/bin/activate # or instead of sourcing, prefix commands with `poetry run`
 pre-commit install # wire up the git hook for ruff formatting/linting on commit
 ```
+
+Gym-Khana requires Python 3.10–3.12 — check yours with `python3 --version`. Two tracked config files keep the setup identical across machines: `poetry.toml` puts the virtualenv at `.venv/` in the project root, and `mise.toml` pins Python 3.12. If your `python3` falls outside the supported range (common on rolling-release distros), install [mise](https://mise.jdx.dev) and run `mise install` first; poetry then picks up the pinned interpreter on its own. If it is already in range, skip that line.
 
 Then you're off to the races! 🏎️
 
@@ -98,7 +101,7 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/software/acados/lib
 
 ```
 
-Next, install the `acados_template` inside your virtual environment, with editable mode. For example, open a shell inside the virtual env with `poetry shell` and then run the following command:
+Next, install the `acados_template` inside your virtual environment, with editable mode. Activate it with `source .venv/bin/activate` and then run the following command:
 
 ```bash
 # Python interface
