@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+import cv2
 import numpy as np
 from PIL import Image
 
@@ -461,6 +462,122 @@ class TestRenderer(unittest.TestCase):
         env.reset()
         with self.assertRaises(RuntimeError):
             env.unwrapped.save_frame()
+        env.close()
+
+    @staticmethod
+    def _read_video(path: str) -> tuple[int, int, int, float]:
+        """Return (frame_count, width, height, fps) of a video file."""
+        cap = cv2.VideoCapture(path)
+        assert cap.isOpened(), f"could not open video {path}"
+        count = 0
+        while cap.read()[0]:
+            count += 1
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        cap.release()
+        return count, width, height, fps
+
+    @staticmethod
+    def _step_and_render(env, n_steps: int) -> None:
+        for _ in range(n_steps):
+            env.step(env.action_space.sample())
+            env.render()
+
+    def test_record_video(self):
+        """Frames are sampled in sim time at video_fps, and a second start does not open a second file."""
+        size = 200
+        env = self._make_env(
+            config={"render_config": {"window_size": size, "video_fps": 20}},
+            render_mode="rgb_array",
+        )
+        env.reset()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target = os.path.join(tmpdir, "video.mp4")
+            self.assertEqual(env.unwrapped.start_recording(target), target)
+            self.assertTrue(env.unwrapped.is_recording)
+            # starting again while recording keeps the current file
+            self.assertEqual(env.unwrapped.start_recording(), target)
+
+            # 50 steps at dt=0.01 is 0.5s of sim time -> 10 frames at 20 fps
+            self._step_and_render(env, 50)
+            self.assertEqual(env.unwrapped.stop_recording(), target)
+            self.assertFalse(env.unwrapped.is_recording)
+            self.assertIsNone(env.unwrapped.stop_recording(), "stopping twice should be a no-op")
+
+            count, width, height, fps = self._read_video(target)
+            self.assertIn(count, (10, 11), "frames are not sampled at video_fps in sim time")
+            self.assertEqual(width, size)
+            self.assertGreaterEqual(height, size)
+            self.assertAlmostEqual(fps, 20, places=3)
+            self.assertEqual(len(os.listdir(tmpdir)), 1, "a second start_recording created another file")
+
+        env.close()
+
+    def test_record_video_across_reset(self):
+        """Recording keeps sampling after an episode reset sends sim time back to zero."""
+        env = self._make_env(
+            config={"render_config": {"window_size": 200, "video_fps": 20}},
+            render_mode="rgb_array",
+        )
+        env.reset()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target = os.path.join(tmpdir, "video.mp4")
+            env.unwrapped.start_recording(target)
+            self._step_and_render(env, 50)
+            env.reset()
+            self._step_and_render(env, 50)
+            env.unwrapped.stop_recording()
+
+            count, _, _, _ = self._read_video(target)
+            self.assertIn(count, range(20, 23), "recording stalled after the reset")
+
+        env.close()
+
+    def test_record_video_finalized_on_close(self):
+        """Closing the env finalizes a video still being recorded."""
+        env = self._make_env(config={"render_config": {"window_size": 200}}, render_mode="rgb_array")
+        env.reset()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target = os.path.join(tmpdir, "video.mp4")
+            env.unwrapped.start_recording(target)
+            self._step_and_render(env, 20)
+            env.close()
+
+            count, _, _, _ = self._read_video(target)
+            self.assertGreater(count, 0, "the video was not finalized by close()")
+
+    def test_record_video_scale(self):
+        """video_scale supersamples the recorded frames."""
+        size = 200
+        env = self._make_env(
+            config={"render_config": {"window_size": size, "video_scale": 2}},
+            render_mode="rgb_array",
+        )
+        env.reset()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target = os.path.join(tmpdir, "video.mp4")
+            env.unwrapped.start_recording(target)
+            self._step_and_render(env, 5)
+            env.unwrapped.stop_recording()
+
+            _, width, _, _ = self._read_video(target)
+            self.assertEqual(width, size * 2, "video_scale was ignored")
+
+        env.close()
+
+    def test_record_video_without_renderer(self):
+        """An env without a renderer fails loudly on start, and stop is a no-op."""
+        env = self._make_env()
+        env.reset()
+        with self.assertRaises(RuntimeError):
+            env.unwrapped.start_recording()
+        self.assertIsNone(env.unwrapped.stop_recording())
+        self.assertFalse(env.unwrapped.is_recording)
         env.close()
 
     def test_obs_debug_disabled(self):

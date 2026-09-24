@@ -14,10 +14,10 @@ from .pyqt_objects import (
     Car,
     TextObject,
 )
-from .renderer import EnvRenderer, RenderSpec
+from .renderer import WINDOW_TITLE, EnvRenderer, RenderSpec
 
 # one-line instructions visualized at the top of the screen (if show_info=True)
-INSTRUCTION_TEXT = "Mouse (L/M/R): Change POV - 'S': render on/off - 'P': save frame"
+INSTRUCTION_TEXT = "Mouse (L/M/R): Change POV - 'S': render on/off - 'P': save frame - 'R': record video"
 
 # control debug panel constants
 _DEBUG_PANEL_HEIGHT = 140
@@ -335,7 +335,7 @@ class PyQtEnvRenderer(EnvRenderer):
             self.obs_overlay.setGeometry(0, 0, ws, ws)
             self.obs_overlay.raise_()
 
-        self.window.setWindowTitle("F1Tenth Gym")
+        self.window.setWindowTitle(WINDOW_TITLE)
         self.canvas: pg.PlotItem = self._plot_widget.addPlot()
 
         # Disable interactivity
@@ -418,7 +418,7 @@ class PyQtEnvRenderer(EnvRenderer):
             signal.signal(signal.SIGINT, signal.SIG_DFL)
             self.window.show()
         elif self.render_mode == "rgb_array":
-            pass  # rgb_array captured via QWidget.grab() in render()
+            pass  # rgb_array captured via _render_to_array() in render()
 
     def update(self, state: dict) -> None:
         """
@@ -484,12 +484,10 @@ class PyQtEnvRenderer(EnvRenderer):
             self.draw_flag_changed = True
         elif event.key() == QtCore.Qt.Key.Key_P:
             logging.debug("Pressed P key -> Save frame")
-            try:
-                self.save_frame()
-            except Exception as ex:
-                # an unhandled exception in a Qt event handler aborts the process,
-                # so a failed save must never escape the key handler
-                logging.error(f"Failed to save frame: {ex}")
+            self._run_key_action(self.save_frame, "save frame")
+        elif event.key() == QtCore.Qt.Key.Key_R:
+            logging.debug("Pressed R key -> Start/stop video recording")
+            self._run_key_action(self.toggle_recording, "toggle video recording")
 
     def save_frame(self, path: Optional[str] = None, scale: Optional[int] = None) -> str:
         """
@@ -521,10 +519,37 @@ class PyQtEnvRenderer(EnvRenderer):
         scale = int(scale if scale is not None else self.render_spec.screenshot_scale)
         out_path = self.resolve_frame_path(path)
 
+        image = self._render_to_qimage(scale)
+        if not image.save(str(out_path)):
+            raise RuntimeError(f"Could not write frame to {out_path}")
+
+        print(f"Saved {image.width()}x{image.height()} frame to {out_path.resolve()}")
+        return str(out_path)
+
+    def _render_to_qimage(self, scale: int) -> QtGui.QImage:
+        """
+        Re-render the whole window into an image with a device pixel ratio of `scale`.
+
+        Parameters
+        ----------
+        scale : int
+            resolution multiplier over the on-screen window size
+
+        Returns
+        -------
+        QtGui.QImage
+            RGB32 image of the window, `scale` times its on-screen size
+
+        Raises
+        ------
+        RuntimeError
+            if the image cannot be allocated
+        """
         width, height = self.window.width() * scale, self.window.height() * scale
-        image = QtGui.QImage(width, height, QtGui.QImage.Format.Format_ARGB32)
+        # RGB32 is the fastest format for the raster paint engine to draw into
+        image = QtGui.QImage(width, height, QtGui.QImage.Format.Format_RGB32)
         if image.isNull():
-            raise RuntimeError(f"Could not allocate a {width}x{height} image, try a smaller screenshot_scale")
+            raise RuntimeError(f"Could not allocate a {width}x{height} image, try a smaller scale")
         image.setDevicePixelRatio(scale)
         image.fill(QtCore.Qt.GlobalColor.white)
 
@@ -534,11 +559,52 @@ class PyQtEnvRenderer(EnvRenderer):
         self.window.render(painter)
         painter.end()
 
-        if not image.save(str(out_path)):
-            raise RuntimeError(f"Could not write frame to {out_path}")
+        return image
 
-        print(f"Saved {width}x{height} frame to {out_path.resolve()}")
-        return str(out_path)
+    def _render_to_array(self, scale: int, channels: list[int]) -> np.ndarray:
+        """
+        Re-render the whole window into a numpy array.
+
+        Parameters
+        ----------
+        scale : int
+            resolution multiplier over the on-screen window size
+        channels : list[int]
+            byte order of the output channels, indexing into B, G, R: [0, 1, 2] for BGR, [2, 1, 0] for RGB
+
+        Returns
+        -------
+        np.ndarray
+            image of shape (H, W, 3) and dtype uint8
+        """
+        image = self._render_to_qimage(scale)
+        ptr = image.bits()
+        ptr.setsize(image.sizeInBytes())
+        # RGB32 pixels are 0xffRRGGBB words, i.e. bytes B, G, R, 0xff on little-endian machines
+        pixels = np.frombuffer(ptr, dtype=np.uint8).reshape(image.height(), image.bytesPerLine() // 4, 4)
+        return pixels[:, : image.width(), channels]  # fancy indexing copies out of the QImage buffer
+
+    def _capture_frame(self) -> np.ndarray:
+        """
+        Capture the whole window at ``video_scale`` times its on-screen size for video recording.
+
+        Returns
+        -------
+        np.ndarray
+            BGR image of shape (H, W, 3) and dtype uint8
+        """
+        return self._render_to_array(int(self.render_spec.video_scale), channels=[0, 1, 2])
+
+    def _set_window_title(self, title: str) -> None:
+        """
+        Set the render window title.
+
+        Parameters
+        ----------
+        title : str
+            window title
+        """
+        self.window.setWindowTitle(title)
 
     def mouse_clicked(self, event: QtGui.QMouseEvent) -> None:
         """
@@ -616,22 +682,14 @@ class PyQtEnvRenderer(EnvRenderer):
 
         self.app.processEvents()
 
+        self._record_frame_if_due()
+
         if self.render_mode in ["human", "human_fast"]:
             assert self.window is not None
 
         else:
-            # rgb_array mode => grab the whole window so debug widgets are included
-            pixmap = self.window.grab()
-            qImage = pixmap.toImage().convertToFormat(QtGui.QImage.Format.Format_RGBA8888)
-
-            width = qImage.width()
-            height = qImage.height()
-
-            ptr = qImage.bits()
-            ptr.setsize(height * width * 4)
-            frame = np.array(ptr).reshape(height, width, 4)  # Copies the data
-
-            return frame[:, :, :3]  # remove alpha channel
+            # rgb_array mode => render the whole window so debug widgets are included
+            return self._render_to_array(1, channels=[2, 1, 0])
 
     def render_points(
         self,

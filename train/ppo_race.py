@@ -9,6 +9,9 @@ Usage:
     python train/ppo_race.py --m e
     python train/ppo_race.py --m e --path /path/to/model.zip
 
+    # Evaluate and record a video to figures/videos/ (or press 'R' in the window to start/stop)
+    python train/ppo_race.py --m e --record
+
     # Download model from wandb and evaluate (uses cache if already downloaded)
     python train/ppo_race.py --m d --run_id <wandb_run_id>
 

@@ -15,16 +15,19 @@ from .objects import (
     Map,
     TextObject,
 )
-from .renderer import EnvRenderer, RenderSpec
+from .renderer import WINDOW_TITLE, EnvRenderer, RenderSpec
 
 # one-line instructions visualized at the top of the screen (if show_info=True)
-INSTRUCTION_TEXT = "Mouse (L/M/R): Change POV - 'S': render on/off - 'P': save frame"
+INSTRUCTION_TEXT = "Mouse (L/M/R): Change POV - 'S': render on/off - 'P': save frame - 'R': record video"
 
 
 class PygameEnvRenderer(EnvRenderer):
     """
     Renderer of the environment using Pygame.
     """
+
+    # pygame draws into a fixed-size surface
+    supports_supersampling = False
 
     def __init__(
         self,
@@ -76,6 +79,7 @@ class PygameEnvRenderer(EnvRenderer):
             pygame.display.init()
             pygame.event.set_allowed([])
             self.window = pygame.display.set_mode((width, height))
+            pygame.display.set_caption(WINDOW_TITLE)
             self.window.fill((255, 255, 255))  # white background
 
         self.canvas = pygame.Surface((width, height))
@@ -223,10 +227,13 @@ class PygameEnvRenderer(EnvRenderer):
             pygame.event.pump()
             pygame.display.update()
 
+            self._record_frame_if_due()
+
             # We need to ensure that human-rendering occurs at the predefined framerate.
             # The following line will automatically add a delay to keep the framerate stable.
             self.clock.tick(self.render_fps)
         else:  # rgb_array
+            self._record_frame_if_due()
             frame = np.transpose(np.array(pygame.surfarray.pixels3d(self.canvas)), axes=(1, 0, 2))
             if frame.shape[0] > 2000:
                 frame = cv2.resize(frame, dsize=(2000, 2000), interpolation=cv2.INTER_AREA)
@@ -242,6 +249,7 @@ class PygameEnvRenderer(EnvRenderer):
             - Middle mouse button: change to map view
             - S key: enable/disable rendering
             - P key: save the current frame to an image file
+            - R key: start/stop recording a video
         """
         for event in pygame.event.get():
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -280,11 +288,11 @@ class PygameEnvRenderer(EnvRenderer):
 
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_p:
                 logging.debug("Pressed P key -> Save frame")
-                try:
-                    self.save_frame()
-                except Exception as ex:
-                    # a failed save must not interrupt the simulation loop
-                    logging.error(f"Failed to save frame: {ex}")
+                self._run_key_action(self.save_frame, "save frame")
+
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+                logging.debug("Pressed R key -> Start/stop video recording")
+                self._run_key_action(self.toggle_recording, "toggle video recording")
 
     def save_frame(self, path: Optional[str] = None, scale: Optional[int] = None) -> str:
         """
@@ -311,11 +319,43 @@ class PygameEnvRenderer(EnvRenderer):
             logging.warning("The pygame renderer cannot supersample; saving the frame at window resolution instead.")
 
         out_path = self.resolve_frame_path(path)
-        surface = self.window if self.window is not None else self.canvas
+        surface = self._frame_surface
         pygame.image.save(surface, str(out_path))
 
         print(f"Saved {surface.get_width()}x{surface.get_height()} frame to {out_path.resolve()}")
         return str(out_path)
+
+    @property
+    def _frame_surface(self) -> pygame.Surface:
+        """Surface holding the last rendered frame: the window in human modes, else the canvas."""
+        return self.window if self.window is not None else self.canvas
+
+    def _capture_frame(self) -> np.ndarray:
+        """
+        Capture the current frame at window resolution for video recording.
+
+        Returns
+        -------
+        np.ndarray
+            BGR image of shape (H, W, 3) and dtype uint8
+        """
+        # pixels3d is a (W, H, RGB) view that locks the surface, so copy it out in one pass
+        pixels = pygame.surfarray.pixels3d(self._frame_surface)
+        frame = np.ascontiguousarray(pixels.transpose(1, 0, 2)[:, :, ::-1])
+        del pixels
+        return frame
+
+    def _set_window_title(self, title: str) -> None:
+        """
+        Set the render window title.
+
+        Parameters
+        ----------
+        title : str
+            window title
+        """
+        if self.window is not None:
+            pygame.display.set_caption(title)
 
     def render_points(
         self,

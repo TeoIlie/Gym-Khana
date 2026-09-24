@@ -8,6 +8,8 @@ show_ctr_debug: True # [bool] it toggles the control debug panel at the bottom o
 show_obs_debug: True  # [bool] it toggles the observation debug overlay on top of the map
 render_type: "pyqt6"  # [str] rendering type. Options: "pygame", "pyqt6"
 screenshot_scale: 4   # [int] resolution multiplier over window_size for frames saved with the 'P' key (pyqt6 only)
+video_fps: 30         # [int] playback fps of videos recorded with the 'R' key; frames are sampled in sim time
+video_scale: 1        # [int] resolution multiplier over window_size for recorded videos (pyqt6 only; >2 slows the sim)
 vehicle_palette:      # [list] cyclic list of colors for the vehicles
   - "#984ea3"
   - "#e41a1c"

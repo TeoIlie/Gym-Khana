@@ -6,6 +6,7 @@ import argparse
 import os
 from dataclasses import dataclass
 from functools import partial
+from typing import Callable
 
 import gymnasium as gym
 import numpy as np
@@ -185,7 +186,7 @@ def train(profile: TrainingProfile):
     run.finish()
 
 
-def evaluate(profile: TrainingProfile, model_path: str = ""):
+def evaluate(profile: TrainingProfile, model_path: str = "", record: bool = False):
     print_header(profile.display_name + " Evaluation")
 
     proj_root, _ = get_output_dirs()
@@ -196,6 +197,11 @@ def evaluate(profile: TrainingProfile, model_path: str = ""):
     model = PPO.load(model_path, print_system_info=True, device="cpu")
     print(f"Loaded model from {model_path}")
 
+    run_eval_episode(profile, lambda obs: model.predict(obs, deterministic=True)[0], record=record)
+
+
+def run_eval_episode(profile: TrainingProfile, policy: Callable[[np.ndarray], np.ndarray], record: bool = False):
+    """Render one evaluation episode of `policy` on the test config, optionally recording a video."""
     eval_env = gym.make(
         get_env_id(),
         config=profile.test_config,
@@ -206,14 +212,17 @@ def evaluate(profile: TrainingProfile, model_path: str = ""):
     done, trunc = False, False
     total_reward = 0.0
 
-    while not (done or trunc):
-        action, _states = model.predict(obs, deterministic=True)
+    # close() finalizes any video being recorded, so it must also run if the episode raises
+    try:
+        if record:
+            eval_env.unwrapped.start_recording()
 
-        obs, reward, done, trunc, info = eval_env.step(action)
-        total_reward += reward
-        eval_env.render()
-
-    eval_env.close()
+        while not (done or trunc):
+            obs, reward, done, trunc, info = eval_env.step(policy(obs))
+            total_reward += reward
+            eval_env.render()
+    finally:
+        eval_env.close()
     print(f"Total reward: {total_reward}")
 
 
@@ -492,7 +501,7 @@ def transfer_train(
     run.finish()
 
 
-def evaluate_onnx(profile: TrainingProfile, onnx_path: str):
+def evaluate_onnx(profile: TrainingProfile, onnx_path: str, record: bool = False):
     """Evaluate an ONNX-exported policy in the simulation environment."""
     from gymkhana.inference import OnnxPolicyRunner
 
@@ -501,27 +510,10 @@ def evaluate_onnx(profile: TrainingProfile, onnx_path: str):
     runner = OnnxPolicyRunner(onnx_path)
     print(f"Loaded ONNX model from {onnx_path}")
 
-    eval_env = gym.make(
-        get_env_id(),
-        config=profile.test_config,
-        render_mode="human",
-    )
-    np.random.seed()
-    obs, info = eval_env.reset()
-    done, trunc = False, False
-    total_reward = 0.0
-
-    while not (done or trunc):
-        action = runner.predict(obs)
-        obs, reward, done, trunc, info = eval_env.step(np.array([action]))
-        total_reward += reward
-        eval_env.render()
-
-    eval_env.close()
-    print(f"Total reward: {total_reward}")
+    run_eval_episode(profile, lambda obs: np.array([runner.predict(obs)]), record=record)
 
 
-def download_and_evaluate(profile: TrainingProfile, run_id: str):
+def download_and_evaluate(profile: TrainingProfile, run_id: str, record: bool = False):
     """Download model from wandb and evaluate it."""
     print_header("Downloading and Evaluating Model from WandB")
 
@@ -537,7 +529,7 @@ def download_and_evaluate(profile: TrainingProfile, run_id: str):
         model_cache_path = download_model_from_wandb(run_id, download_dir, profile.model_prefix, profile.project_name)
         print(f"Model cached to {download_dir}")
 
-    evaluate(profile=profile, model_path=model_cache_path)
+    evaluate(profile=profile, model_path=model_cache_path, record=record)
 
 
 def main(profile: TrainingProfile):
@@ -561,16 +553,24 @@ def main(profile: TrainingProfile):
         default="",
         help="Wandb run ID to download model from (required for mode 'd')",
     )
+    parser.add_argument(
+        "--record",
+        action="store_true",
+        help="Record a video of the evaluation episode to figures/videos/ (modes 'e', 'd', 'x')",
+    )
     args = parser.parse_args()
+
+    if args.record and args.m not in ("e", "d", "x"):
+        parser.error("--record is only supported by the evaluation modes 'e', 'd' and 'x'")
 
     if args.m == "t":
         train(profile=profile)
     elif args.m == "e":
-        evaluate(profile=profile, model_path=args.path)
+        evaluate(profile=profile, model_path=args.path, record=args.record)
     elif args.m == "d":
         if not args.run_id:
             parser.error("--run_id is required when using mode 'd' (download)")
-        download_and_evaluate(profile=profile, run_id=args.run_id)
+        download_and_evaluate(profile=profile, run_id=args.run_id, record=args.record)
     elif args.m == "c":
         if not args.path:
             parser.error("--path is required when using mode 'c' (continue training)")
@@ -582,4 +582,4 @@ def main(profile: TrainingProfile):
     elif args.m == "x":
         if not args.path:
             parser.error("--path is required when using mode 'x' (evaluate ONNX)")
-        evaluate_onnx(profile=profile, onnx_path=args.path)
+        evaluate_onnx(profile=profile, onnx_path=args.path, record=args.record)

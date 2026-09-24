@@ -214,7 +214,7 @@ config = {
 
 Debug with breakpoints by looping through environment steps (see `tests/drift_debug.py`).
 
-### Saving Frames
+### Saving Frames and Videos
 
 Press `P` in a render window to save the current frame under `figures/frames/` (gitignored), or call
 `env.unwrapped.save_frame(path=None, scale=None)` from a script. The pyqt6 renderer re-renders the window
@@ -227,6 +227,16 @@ config = {
     'render_config': {'screenshot_scale': 8, 'show_ctr_debug': False, 'show_info': False},
 }
 ```
+
+Press `R` to start recording a video to `figures/videos/` (gitignored), and press `R` again to stop. The
+window title shows `● REC` while recording. You can also pass `--record` to `train/ppo_race.py` /
+`train/ppo_recover.py` in modes `e`, `d`, `x` to record the whole evaluation episode, or call
+`env.unwrapped.start_recording(path=None)` / `stop_recording()` from a script. Frames are sampled in sim time
+at `video_fps` (`rendering.yaml`, default 30), so playback is real time in both `human` and `human_fast`
+modes, and one video continues across episode resets. `video_scale` (default 1) supersamples like
+`screenshot_scale` (pyqt6 only; values above 2 slow the sim). The mp4 (`mp4v` codec) is only playable once
+recording stops: press `R`, let the episode end, or call `env.close()`. The pyqt6 renderer makes Ctrl+C kill
+the process immediately, so a recording still in progress is lost.
 
 ## Branches and Fork History
 

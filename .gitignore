@@ -196,8 +196,9 @@ mpc-ref/
 figures/analysis/
 figures/tests/
 
-# Frames saved from the renderer with the 'P' key
+# Frames and videos saved from the renderer with the 'P' and 'R' keys
 figures/frames/
+figures/videos/
 
 # ROS2 bags for analysis
 examples/analysis/bags

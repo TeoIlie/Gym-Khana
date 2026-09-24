@@ -1366,6 +1366,42 @@ class GKEnv(gym.Env):
             raise RuntimeError("Cannot save a frame: the environment was created without a render_mode.")
         return self.renderer.save_frame(path=path, scale=scale)
 
+    def start_recording(self, path: str | None = None) -> str:
+        """Start recording the rendered frames to a video file.
+
+        Also bound to the ``R`` key (press again to stop) while a render window is open.
+        Frames are sampled in sim time at the ``video_fps`` render config field, so the video
+        plays back in real time. The video is only playable once recording stops, via
+        :meth:`stop_recording` or :meth:`close`.
+
+        Args:
+            path: Output file path. Defaults to a timestamped mp4 under ``figures/videos/``.
+
+        Returns:
+            Path of the video being recorded.
+
+        Raises:
+            RuntimeError: If the environment was created without a ``render_mode``.
+        """
+        if self.renderer is None:
+            raise RuntimeError("Cannot record a video: the environment was created without a render_mode.")
+        return self.renderer.start_recording(path=path)
+
+    def stop_recording(self) -> str | None:
+        """Stop recording and finalize the video file.
+
+        Returns:
+            Path of the written video, or None if not recording.
+        """
+        if self.renderer is None:
+            return None
+        return self.renderer.stop_recording()
+
+    @property
+    def is_recording(self) -> bool:
+        """Whether a video is currently being recorded."""
+        return self.renderer is not None and self.renderer.is_recording
+
     def render(self, mode="human"):
         """Render the environment.
 
@@ -1396,5 +1432,6 @@ class GKEnv(gym.Env):
             self._print_obs_min_max_stats()
 
         if self.renderer is not None:
+            self.renderer.stop_recording()  # finalize any video still being recorded
             self.renderer.close()
         super().close()
