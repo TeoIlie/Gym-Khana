@@ -98,6 +98,16 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/software/acados/lib
 
 ```
 
+**GCC 14 and newer** (Arch, Fedora 40+, and other recent distros): the bundled qpOASES has a
+long-standing type error in `src/QProblem.c`, where `ConstraintsCPY` is handed a `Constraints**`
+instead of a `Constraints*`. GCC 14 promotes `-Wincompatible-pointer-types` from a warning to an
+error, so the build fails partway through `qpOASES_e`. Demote it back to a warning, which matches
+how older GCC (and therefore the Ubuntu build) treats it:
+
+```bash
+cmake -DACADOS_WITH_QPOASES=ON -DCMAKE_C_FLAGS="-Wno-error=incompatible-pointer-types" ..
+```
+
 Next, install the `acados_template` inside your virtual environment, with editable mode. For example, open a shell inside the virtual env with `poetry shell` and then run the following command:
 
 ```bash
