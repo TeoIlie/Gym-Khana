@@ -464,6 +464,48 @@ class TestRenderer(unittest.TestCase):
             env.unwrapped.save_frame()
         env.close()
 
+    def _assert_supersampled_content(self, show_ctr_debug: bool) -> None:
+        """Assert a supersampled frame shows the same content as the window, only at a higher resolution."""
+        size, scale = 200, 3
+        env = self._make_env(
+            config={
+                "render_config": {
+                    "window_size": size,
+                    "render_type": "pyqt6",
+                    "show_ctr_debug": show_ctr_debug,
+                    "focus_on": None,  # map view, so a mis-scaled frame differs clearly
+                }
+            },
+            render_mode="rgb_array",
+        )
+        env.reset()
+        env.step(env.action_space.sample())
+        env.render()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            base = env.unwrapped.save_frame(os.path.join(tmpdir, "base.png"), scale=1)
+            scaled = env.unwrapped.save_frame(os.path.join(tmpdir, "scaled.png"), scale=scale)
+            with Image.open(base) as image:
+                base_pixels = np.asarray(image.convert("L"), dtype=np.float32)
+            with Image.open(scaled) as image:
+                # box-filter back down to the window size to compare against the on-screen frame
+                downscaled = image.convert("L").resize(base_pixels.shape[::-1], Image.BOX)
+                scaled_pixels = np.asarray(downscaled, dtype=np.float32)
+
+        env.close()
+
+        # only anti-aliasing should differ; a mis-scaled frame shows a zoomed-in crop of the window
+        mean_diff = np.abs(base_pixels - scaled_pixels).mean()
+        self.assertLess(mean_diff, 5.0, "the supersampled frame does not show the same content as the window")
+
+    def test_save_frame_supersampled_content(self):
+        """Supersampling keeps the window content when the window is a plain QWidget holding the debug panel."""
+        self._assert_supersampled_content(show_ctr_debug=True)
+
+    def test_save_frame_supersampled_content_without_debug_panel(self):
+        """Supersampling keeps the window content when the window is the pyqtgraph QGraphicsView itself."""
+        self._assert_supersampled_content(show_ctr_debug=False)
+
     @staticmethod
     def _read_video(path: str) -> tuple[int, int, int, float]:
         """Return (frame_count, width, height, fps) of a video file."""

@@ -556,7 +556,8 @@ class PyQtEnvRenderer(EnvRenderer):
         painter = QtGui.QPainter(image)
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
         painter.setRenderHint(QtGui.QPainter.RenderHint.TextAntialiasing)
-        self.window.render(painter)
+        # not self.window.render(): QGraphicsView's override would apply the device pixel ratio twice
+        QtWidgets.QWidget.render(self.window, painter)
         painter.end()
 
         return image
