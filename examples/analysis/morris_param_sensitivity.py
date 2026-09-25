@@ -14,6 +14,10 @@ Produces:
   Near the origin: negligible — skip calibration.
 - Console table: ranked parameters with mu_star and sigma values
 
+Both figures are written as vector PDFs styled to match LaTeX body text (see
+`examples/analysis/fig_format.py`). Add --no-title to omit the figure titles, useful when
+embedding in LaTeX where the caption carries the description.
+
 Requires: SALib (`pip install SALib`)
 
 Usage:
@@ -39,6 +43,7 @@ try:
 except ImportError:
     raise ImportError("SALib is required for Morris sensitivity analysis. Install with: pip install SALib")
 
+from examples.analysis.fig_format import latex_style
 from train.config.env_config import PARAMS, get_drift_test_config, get_env_id
 
 # Category mapping for parameters that may appear in a vehicle param set.
@@ -98,6 +103,48 @@ CATEGORY_LABELS = {
     "wheel": "Wheel / Drivetrain",
 }
 
+# Math-mode display names, so the figures read like the thesis body text rather than
+# like code identifiers. Anything missing falls back to the raw name with underscores
+# escaped (see ``param_label``).
+# fmt: off
+PARAM_LABELS = {
+    "mu":         r"$\mu$",
+    "C_Sf":       r"$C_{Sf}$",
+    "C_Sr":       r"$C_{Sr}$",
+    "lf":         r"$l_f$",
+    "lr":         r"$l_r$",
+    "m":          r"$m$",
+    "I_z":        r"$I_z$",
+    "h_s":        r"$h_s$",
+    "tire_p_cx1": r"$p_{Cx1}$",
+    "tire_p_dx1": r"$p_{Dx1}$",
+    "tire_p_ex1": r"$p_{Ex1}$",
+    "tire_p_kx1": r"$p_{Kx1}$",
+    "tire_p_hx1": r"$p_{Hx1}$",
+    "tire_p_vx1": r"$p_{Vx1}$",
+    "tire_r_bx1": r"$r_{Bx1}$",
+    "tire_p_cy1": r"$p_{Cy1}$",
+    "tire_p_dy1": r"$p_{Dy1}$",
+    "tire_p_ey1": r"$p_{Ey1}$",
+    "tire_p_ky1": r"$p_{Ky1}$",
+    "tire_p_hy1": r"$p_{Hy1}$",
+    "tire_p_vy1": r"$p_{Vy1}$",
+    "tire_r_by1": r"$r_{By1}$",
+    "R_w":        r"$R_w$",
+    "I_y_w":      r"$I_{y,w}$",
+    "T_sb":       r"$T_{sb}$",
+    "T_se":       r"$T_{se}$",
+    "a_max":      r"$a_{max}$",
+}
+# fmt: on
+
+
+def param_label(name: str) -> str:
+    """Display name for a parameter, falling back to the escaped raw name."""
+    if name in PARAM_LABELS:
+        return PARAM_LABELS[name]
+    return name.replace("_", r"\_")
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Morris method parameter sensitivity analysis for STD dynamics model")
@@ -120,6 +167,11 @@ def parse_args():
         help="Fractional perturbation range, e.g. 0.2 = +-20%% (default: 0.2)",
     )
     parser.add_argument("--output", type=str, default=None, help="Output directory (default: auto-generated)")
+    parser.add_argument(
+        "--no-title",
+        action="store_true",
+        help="Omit the figure titles (for LaTeX figures where the caption describes them)",
+    )
     args = parser.parse_args()
     if args.run_id is None and args.path is None:
         parser.error("must provide either --run_id or --path")
@@ -204,8 +256,17 @@ def evaluate_samples(env, model, sample_matrix, param_names, nominal_params, n_e
     return results
 
 
-def create_bar_plot(si, param_names, output_path, run_id):
-    """Create ranked bar chart of mu_star values."""
+def create_bar_plot(si, param_names, output_path, run_id, show_title=True):
+    """Create ranked bar chart of mu_star values.
+
+    Args:
+        si: SALib Morris analysis result dict.
+        param_names: Parameter names matching the ``si`` arrays.
+        output_path: File path to write the figure to (``.pdf`` for LaTeX use).
+        run_id: Run identifier shown in the title.
+        show_title: When False, the title is omitted entirely (for LaTeX figures
+            where the caption carries the description).
+    """
     mu_star = si["mu_star"]
     sigma = si["sigma"]
     categories = [PARAM_DEFINITIONS[name] for name in param_names]
@@ -213,67 +274,104 @@ def create_bar_plot(si, param_names, output_path, run_id):
     # Sort by mu_star descending
     ranked = np.argsort(mu_star)[::-1]
 
-    fig, ax = plt.subplots(figsize=(14, 6))
+    with latex_style():
+        fig, ax = plt.subplots(figsize=(12, 5))
 
-    x = np.arange(len(param_names))
-    colors = [CATEGORY_COLORS[categories[idx]] for idx in ranked]
-    labels = [param_names[idx] for idx in ranked]
-    values = mu_star[ranked]
-    errors = sigma[ranked]
+        x = np.arange(len(param_names))
+        colors = [CATEGORY_COLORS[categories[idx]] for idx in ranked]
+        labels = [param_label(param_names[idx]) for idx in ranked]
+        values = mu_star[ranked]
+        errors = sigma[ranked]
 
-    ax.bar(x, values, yerr=errors, color=colors, edgecolor="black", linewidth=0.5, capsize=3)
+        ax.bar(x, values, yerr=errors, color=colors, edgecolor="black", linewidth=0.5, capsize=3)
 
-    ax.set_xlabel("Dynamics Model Parameter", fontsize=12)
-    ax.set_ylabel("$\\mu^*$ (Mean Absolute Elementary Effect)", fontsize=12)
-    ax.set_title(f"Morris Parameter Sensitivity — {run_id}", fontsize=13)
-    ax.set_xticks(x)
-    ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=9)
-    ax.grid(axis="y", alpha=0.3)
+        ax.set_xlabel("Dynamics model parameter")
+        ax.set_ylabel(r"$\mu^*$ (mean absolute elementary effect)")
+        if show_title:
+            ax.set_title(f"Morris Parameter Sensitivity: {run_id}")
+        ax.set_xticks(x)
+        ax.set_xticklabels(labels, rotation=45, ha="right")
+        ax.set_xlim(-0.75, len(param_names) - 0.25)
+        ax.grid(axis="y", alpha=0.3)
+        ax.set_axisbelow(True)
+        for side in ("top", "right"):
+            ax.spines[side].set_visible(False)
 
-    legend_elements = [
-        Patch(facecolor=color, edgecolor="black", label=CATEGORY_LABELS[cat]) for cat, color in CATEGORY_COLORS.items()
-    ]
-    ax.legend(handles=legend_elements, loc="upper right", fontsize=10)
+        legend_elements = [
+            Patch(facecolor=color, edgecolor="black", label=CATEGORY_LABELS[cat])
+            for cat, color in CATEGORY_COLORS.items()
+        ]
+        ax.legend(handles=legend_elements, loc="upper right", frameon=False)
 
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches="tight")
-    print(f"Bar plot saved to: {output_path}")
-    plt.close(fig)
+        fig.tight_layout()
+        fig.savefig(output_path, bbox_inches="tight")
+        print(f"Bar plot saved to: {output_path}")
+        plt.close(fig)
 
 
-def create_scatter_plot(si, param_names, output_path, run_id):
-    """Create mu_star vs sigma scatter plot (standard Morris visualization)."""
+def create_scatter_plot(si, param_names, output_path, run_id, show_title=True):
+    """Create mu_star vs sigma scatter plot (standard Morris visualization).
+
+    Args:
+        si: SALib Morris analysis result dict.
+        param_names: Parameter names matching the ``si`` arrays.
+        output_path: File path to write the figure to (``.pdf`` for LaTeX use).
+        run_id: Run identifier shown in the title.
+        show_title: When False, the title is omitted entirely.
+    """
     mu_star = si["mu_star"]
     sigma = si["sigma"]
     categories = [PARAM_DEFINITIONS[name] for name in param_names]
 
-    fig, ax = plt.subplots(figsize=(10, 8))
+    with latex_style():
+        fig, ax = plt.subplots(figsize=(8, 6.5))
 
-    for i, name in enumerate(param_names):
-        color = CATEGORY_COLORS[categories[i]]
-        ax.scatter(mu_star[i], sigma[i], color=color, s=60, edgecolor="black", linewidth=0.5, zorder=3)
+        for i, name in enumerate(param_names):
+            color = CATEGORY_COLORS[categories[i]]
+            ax.scatter(mu_star[i], sigma[i], color=color, s=60, edgecolor="black", linewidth=0.5, zorder=3)
+            ax.annotate(
+                param_label(name),
+                (mu_star[i], sigma[i]),
+                fontsize=9,
+                ha="left",
+                va="bottom",
+                xytext=(4, 4),
+                textcoords="offset points",
+            )
+
+        # Reference line: sigma = mu_star (above = strong interactions/nonlinearity)
+        max_val = max(mu_star.max(), sigma.max()) * 1.1
+        ax.plot([0, max_val], [0, max_val], "k--", alpha=0.3, linewidth=1, zorder=1)
         ax.annotate(
-            name, (mu_star[i], sigma[i]), fontsize=7, ha="left", va="bottom", xytext=(4, 4), textcoords="offset points"
+            r"$\sigma = \mu^*$",
+            (max_val, max_val),
+            fontsize=11,
+            ha="right",
+            va="top",
+            xytext=(-4, -6),
+            textcoords="offset points",
+            alpha=0.6,
         )
 
-    # Reference line: sigma = mu_star (above = strong interactions/nonlinearity)
-    max_val = max(mu_star.max(), sigma.max()) * 1.1
-    ax.plot([0, max_val], [0, max_val], "k--", alpha=0.3, linewidth=1, label="$\\sigma = \\mu^*$")
+        ax.set_xlabel(r"$\mu^*$ (importance)")
+        ax.set_ylabel(r"$\sigma$ (interaction / nonlinearity)")
+        if show_title:
+            ax.set_title(f"Morris Screening: {run_id}")
+        ax.grid(alpha=0.3)
+        ax.set_axisbelow(True)
+        for side in ("top", "right"):
+            ax.spines[side].set_visible(False)
 
-    ax.set_xlabel("$\\mu^*$ (Importance)", fontsize=12)
-    ax.set_ylabel("$\\sigma$ (Interaction / Nonlinearity)", fontsize=12)
-    ax.set_title(f"Morris Screening — {run_id}", fontsize=13)
-    ax.grid(alpha=0.3)
+        legend_elements = [
+            Patch(facecolor=color, edgecolor="black", label=CATEGORY_LABELS[cat])
+            for cat, color in CATEGORY_COLORS.items()
+        ]
+        ax.legend(handles=legend_elements, loc="upper left", frameon=False)
 
-    legend_elements = [
-        Patch(facecolor=color, edgecolor="black", label=CATEGORY_LABELS[cat]) for cat, color in CATEGORY_COLORS.items()
-    ]
-    ax.legend(handles=legend_elements, loc="upper left", fontsize=10)
-
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches="tight")
-    print(f"Scatter plot saved to: {output_path}")
-    plt.close(fig)
+        fig.tight_layout()
+        fig.savefig(output_path, bbox_inches="tight")
+        print(f"Scatter plot saved to: {output_path}")
+        plt.close(fig)
 
 
 def main():
@@ -328,11 +426,11 @@ def main():
     output_dir = args.output if args.output else "figures/analysis/morris_param_sensitivity"
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-    bar_path = f"{output_dir}/{run_id}_morris_bar.png"
-    scatter_path = f"{output_dir}/{run_id}_morris_scatter.png"
+    bar_path = f"{output_dir}/{run_id}_morris_bar.pdf"
+    scatter_path = f"{output_dir}/{run_id}_morris_scatter.pdf"
 
-    create_bar_plot(si, param_names, bar_path, run_id)
-    create_scatter_plot(si, param_names, scatter_path, run_id)
+    create_bar_plot(si, param_names, bar_path, run_id, show_title=not args.no_title)
+    create_scatter_plot(si, param_names, scatter_path, run_id, show_title=not args.no_title)
 
     env.close()
     print("Done!")

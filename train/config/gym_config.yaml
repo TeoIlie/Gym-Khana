@@ -31,7 +31,7 @@ sparse_width_obs: true
 
 # Reset configuration
 track_direction: "random"
-prevent_instability: true # enables integration instability checking with reset
+prevent_instability: false # enables integration instability checking with reset
 
 # Rendering/Debug settings
 test_debug_render: true
@@ -41,6 +41,17 @@ train_debug_render: false
 ckpt_save_freq: 10000 # reused for EvalCallback and custom CurriculumLearningCallback
 n_eval_episodes: 15
 
+# Domain randomization - multiplicative Gaussian noise from N(1, sigma) applied to selected params 
+# comment out to disable DR
+domain_randomization:
+  a_max: 0.05
+  sv_max: 0.05
+  T_steer: 0.05
+  tire_p_dy1: 0.05
+  tire_p_ky1: 0.05
+  tire_p_dx1: 0.05
+  tire_p_kx1: 0.05
+
 # =================================
 #   RECOVERY MODE CONFIG
 # =================================
@@ -48,12 +59,6 @@ n_eval_episodes: 15
 recovery_project_name: "f1tenth-ppo-recover"
 recovery_training_mode: "recover"
 recovery_track_pool: null # train only on IMS
-
-# Domain randomization - multiplicative Gaussian noise from N(1, sigma) applied to selected params 
-# comment out to disable DR
-domain_randomization:
-  m: 0.05
-  I_z: 0.02
 
 # Curriculum learning - gradually expand recovery state ranges
 curriculum:
