@@ -12,8 +12,8 @@ start_learning_rate: 0.0003 # initial learning rate
 end_learning_rate: 0.0001 # final learning rate, with linear decay
 act_func_neg_slope: 0.2  # actor, critic LeakyReLU negative slope
 use_custom_relu: false   # if true, use LeakyReLU (with act_func_neg_slope) instead of default Tanh
-actor_layer_size: 64     # hidden layer size for actor (pi) network (2 layers)
-critic_layer_size: 64    # hidden layer size for critic (vf) network (2 layers)
+actor_layer_size: 128     # hidden layer size for actor (pi) network (2 layers)
+critic_layer_size: 256    # hidden layer size for critic (vf) network (2 layers)
 
 # log_std schedule for fresh training (--m t). Linear anneal init -> end over total_timesteps.
 # Closes the stochastic-vs-deterministic train/eval gap. Comment out block to disable.
@@ -23,6 +23,6 @@ log_std_schedule:
   end: -3.0     # σ ≈ 0.05
 
 # Transfer/continue training defaults (mode 'f')
-additional_timesteps: 100000000  # additional timesteps for transfer/continue training
+additional_timesteps: 50000000  # additional timesteps for transfer/continue training
 transfer_reset_log_std: -0.5  # reset log_std to this value; use null to skip reset
 transfer_reset_critic: true  # reinitialize critic to random weights

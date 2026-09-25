@@ -55,7 +55,7 @@ class TestRecoveryConfig(unittest.TestCase):
         self.assertEqual(self.uw.recovery_s_max, 140)
 
         # perturbation ranges (lists from default_config)
-        self.assertEqual(self.uw.recovery_v_range, [2, 12])
+        self.assertEqual(self.uw.recovery_v_range, GKEnv.default_config()["recovery_v_range"])
         self.assertIsInstance(self.uw.recovery_beta_range, list)
         self.assertIsInstance(self.uw.recovery_r_range, list)
         self.assertIsInstance(self.uw.recovery_yaw_range, list)
