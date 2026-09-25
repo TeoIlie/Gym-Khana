@@ -41,7 +41,7 @@ train_debug_render: false
 ckpt_save_freq: 10000 # reused for EvalCallback and custom CurriculumLearningCallback
 n_eval_episodes: 15
 
-# Domain randomization - multiplicative Gaussian noise from N(1, sigma) applied to selected params 
+# Domain randomization - multiplicative Gaussian noise from N(1, sigma) applied to selected params
 # comment out to disable DR
 domain_randomization:
   a_max: 0.05

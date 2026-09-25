@@ -134,16 +134,21 @@ PARAM_LABELS = {
     "I_y_w":      r"$I_{y,w}$",
     "T_sb":       r"$T_{sb}$",
     "T_se":       r"$T_{se}$",
-    "a_max":      r"$a_{max}$",
+    "a_max":      r"$a_{\max}$",
 }
 # fmt: on
+
+
+def escape_underscores(text: str) -> str:
+    """Draw underscores via mathtext, since the cmr10 text font has no '_' glyph."""
+    return text.replace("_", r"$\_$")
 
 
 def param_label(name: str) -> str:
     """Display name for a parameter, falling back to the escaped raw name."""
     if name in PARAM_LABELS:
         return PARAM_LABELS[name]
-    return name.replace("_", r"\_")
+    return escape_underscores(name)
 
 
 def parse_args():
@@ -283,12 +288,14 @@ def create_bar_plot(si, param_names, output_path, run_id, show_title=True):
         values = mu_star[ranked]
         errors = sigma[ranked]
 
-        ax.bar(x, values, yerr=errors, color=colors, edgecolor="black", linewidth=0.5, capsize=3)
+        # Clip the lower bar at zero: mu_star is non-negative
+        yerr = [np.minimum(errors, values), errors]
+        ax.bar(x, values, yerr=yerr, color=colors, edgecolor="black", linewidth=0.5, capsize=3)
 
         ax.set_xlabel("Dynamics model parameter")
         ax.set_ylabel(r"$\mu^*$ (mean absolute elementary effect)")
         if show_title:
-            ax.set_title(f"Morris Parameter Sensitivity: {run_id}")
+            ax.set_title(f"Morris Parameter Sensitivity: {escape_underscores(run_id)}")
         ax.set_xticks(x)
         ax.set_xticklabels(labels, rotation=45, ha="right")
         ax.set_xlim(-0.75, len(param_names) - 0.25)
@@ -356,7 +363,7 @@ def create_scatter_plot(si, param_names, output_path, run_id, show_title=True):
         ax.set_xlabel(r"$\mu^*$ (importance)")
         ax.set_ylabel(r"$\sigma$ (interaction / nonlinearity)")
         if show_title:
-            ax.set_title(f"Morris Screening: {run_id}")
+            ax.set_title(f"Morris Screening: {escape_underscores(run_id)}")
         ax.grid(alpha=0.3)
         ax.set_axisbelow(True)
         for side in ("top", "right"):
