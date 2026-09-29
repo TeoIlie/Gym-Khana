@@ -75,8 +75,8 @@ class KMPCGymBridge:
 
         # Frenet conversion via MPC's FrenetConverter
         s_d = self.controller.fren_conv.get_frenet(np.array([pose_x]), np.array([pose_y]))
-        s = float(s_d[0])
-        d = float(s_d[1])
+        s = s_d[0].item()
+        d = s_d[1].item()
 
         # Heading deviation via SplineTrack
         deriv = self.controller.spline.get_derivative(s)
@@ -172,8 +172,8 @@ class STMPCGymBridge:
 
         # Frenet conversion via MPC's FrenetConverter
         s_d = self.controller.fren_conv.get_frenet(np.array([pose_x]), np.array([pose_y]))
-        s = float(s_d[0])
-        d = float(s_d[1])
+        s = s_d[0].item()
+        d = s_d[1].item()
 
         # Heading deviation via SplineTrack
         deriv = self.controller.spline.get_derivative(s)
@@ -217,7 +217,7 @@ class STMPCGymBridge:
 
         # update arclengths
         s_d = self.controller.fren_conv.get_frenet(np.array([pose_x]), np.array([pose_y]))
-        s = float(s_d[0])
+        s = s_d[0].item()
 
         self.controller.fre_s = s
         self.controller.previous_frenet_s = s
