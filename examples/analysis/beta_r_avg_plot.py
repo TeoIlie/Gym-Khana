@@ -22,6 +22,7 @@ Output saved to figures/analysis/recover_heatmap/<controller_type or run_id>/
 """
 
 import argparse
+import json
 import os
 
 import gymnasium as gym
@@ -252,22 +253,17 @@ def run_episode(eval_env, controller, beta, r, v, yaw):
     return recovered, steps * dt
 
 
-def run_grid_evaluation(eval_env, controller, stanley_states=None):
+def run_grid_evaluation(eval_env, controller):
     """Run recovery evaluation across the full (beta, r, v, yaw) grid.
 
     Args:
         eval_env: The gym environment.
         controller: Controller providing get_action(obs).
-        stanley_states: Optional set of (beta, r, v, yaw) tuples where Stanley succeeded.
-            When provided, also tracks metrics on this subset.
 
     Returns:
         recovery_rates: array of recovery rate per (beta, r) cell
         recovery_times: list of recovery times (seconds), one per successful episode
-        successful_states: list of (beta, r, v, yaw) tuples that recovered
-        stanley_total: number of evaluated states in the Stanley-recoverable set
-        stanley_times: recovery times on Stanley-recoverable states
-        non_stanley_times: recovery times on states Stanley did not recover
+        successful_states: list of (beta, r, v, yaw) tuples that recovered, aligned with recovery_times
     """
     n_beta = len(BETA_VALUES)
     n_r = len(R_VALUES)
@@ -279,11 +275,6 @@ def run_grid_evaluation(eval_env, controller, stanley_states=None):
     recovery_counts = np.zeros((n_beta, n_r))
     recovery_times = []
     successful_states = []
-
-    # Stanley-subset accumulators
-    stanley_total_count = 0
-    stanley_recovery_times = []
-    non_stanley_recovery_times = []
 
     episode = 0
     for i, beta in enumerate(BETA_VALUES):
@@ -297,27 +288,27 @@ def run_grid_evaluation(eval_env, controller, stanley_states=None):
                         recovery_times.append(time_s)
                         successful_states.append((beta, r, v, yaw))
 
-                    # Track Stanley-subset and non-Stanley metrics
-                    if stanley_states is not None:
-                        if (beta, r, v, yaw) in stanley_states:
-                            stanley_total_count += 1
-                            if recovered:
-                                stanley_recovery_times.append(time_s)
-                        elif recovered:
-                            non_stanley_recovery_times.append(time_s)
-
                     episode += 1
                     if episode % 10 == 0:
                         print(f"  Progress: {episode}/{total_episodes} episodes")
 
-    return (
-        recovery_counts / n_inner,
-        recovery_times,
-        successful_states,
-        stanley_total_count,
-        stanley_recovery_times,
-        non_stanley_recovery_times,
-    )
+    return recovery_counts / n_inner, recovery_times, successful_states
+
+
+def split_by_stanley(successful_states, recovery_times, stanley_states):
+    """Split successful recovery times into Stanley-recoverable (SR) and -unrecoverable (SU) states.
+
+    Computed from the current Stanley baseline on every run, so cached results never
+    report comparison metrics against an outdated baseline.
+
+    Returns:
+        stanley_times: recovery times on states in SR
+        non_stanley_times: recovery times on states not in SR
+    """
+    stanley_times, non_stanley_times = [], []
+    for state, time_s in zip(successful_states, recovery_times):
+        (stanley_times if state in stanley_states else non_stanley_times).append(time_s)
+    return stanley_times, non_stanley_times
 
 
 # Luminance below which white text out-contrasts black, from equating the two WCAG
@@ -454,18 +445,37 @@ def grid_matches(data):
     )
 
 
-def save_grid_cache(
-    path, recovery_rates, recovery_times, successful_states, stanley_total, stanley_times, non_stanley_times
-):
+def eval_settings(controller_type):
+    """Return the pinned evaluation settings for a controller as a JSON string, stored with cached results."""
+    settings = {"params": EVAL_PARAMS}
+    if controller_type == "learned":
+        settings["obs_type"] = EVAL_OBS_TYPE
+        settings["control_input"] = EVAL_CONTROL_INPUT
+    return json.dumps(settings, sort_keys=True, default=str)
+
+
+def check_cache(data, path, controller_type):
+    """Raise ValueError if a loaded .npz was built with a different grid or different eval settings."""
+    if not grid_matches(data):
+        raise ValueError(
+            f"Cached grid parameters in {path} do not match the current BETA/R/V/YAW_VALUES. "
+            "Delete the cache file or re-run with --no-cache to regenerate."
+        )
+    if "eval_settings" not in data or str(data["eval_settings"]) != eval_settings(controller_type):
+        raise ValueError(
+            f"{path} was built with different (or unrecorded) EVAL_PARAMS / EVAL_OBS_TYPE / EVAL_CONTROL_INPUT. "
+            "Re-run with --no-cache to regenerate."
+        )
+
+
+def save_grid_cache(path, recovery_rates, recovery_times, successful_states, controller_type):
     """Save run_grid_evaluation results to an .npz cache file."""
     np.savez(
         path,
         recovery_rates=recovery_rates,
         recovery_times=np.array(recovery_times),
         successful_states=np.array(successful_states) if successful_states else np.empty((0, 4)),
-        stanley_total=np.array(stanley_total),
-        stanley_times=np.array(stanley_times),
-        non_stanley_times=np.array(non_stanley_times),
+        eval_settings=eval_settings(controller_type),
         beta_values=BETA_VALUES,
         r_values=R_VALUES,
         v_values=V_VALUES,
@@ -474,33 +484,33 @@ def save_grid_cache(
     print(f"Grid results cached to: {path}")
 
 
-def load_grid_cache(path):
+def load_grid_cache(path, controller_type):
     """Load and validate a cached grid_results.npz file.
 
-    Returns the six run_grid_evaluation outputs if the grid parameters match,
-    or raises ValueError if the cache was built with different grid settings
-    or predates per-episode recovery times.
+    Returns the three run_grid_evaluation outputs, or raises ValueError if the cache
+    predates per-episode recovery times or was built with a different grid or eval settings.
     """
     data = np.load(path)
     if "recovery_times" not in data:
         raise ValueError(
             f"Cache {path} has no per-episode recovery times (old format). Re-run with --no-cache to regenerate."
         )
-    if not grid_matches(data):
-        raise ValueError(
-            f"Cached grid parameters in {path} do not match the current BETA/R/V/YAW_VALUES. "
-            "Delete the cache file or re-run with --no-cache to regenerate."
-        )
+    check_cache(data, path, controller_type)
 
     successful_states = [tuple(row) for row in data["successful_states"]]
-    return (
-        data["recovery_rates"],
-        list(data["recovery_times"]),
-        successful_states,
-        int(data["stanley_total"]),
-        list(data["stanley_times"]),
-        list(data["non_stanley_times"]),
-    )
+    return data["recovery_rates"], list(data["recovery_times"]), successful_states
+
+
+def load_stanley_states(path):
+    """Load the Stanley-recoverable set SR, checking it matches the current grid and eval settings."""
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"{path} not found — run Stanley evaluation first for baseline metrics")
+    data = np.load(path)
+    try:
+        check_cache(data, path, "stanley")
+    except ValueError as e:
+        raise ValueError(f"{e} Re-run with --controller_type stanley to regenerate the baseline.") from None
+    return set(map(tuple, data["states"]))
 
 
 def parse_args():
@@ -542,12 +552,17 @@ def main():
     os.makedirs(subfolder, exist_ok=True)
     cache_path = os.path.join(subfolder, "grid_results.npz")
 
+    # Stanley-recoverable set SR, loaded fresh on every run (cached or not) for the baseline comparison
+    stanley_states_path = f"{proj_root}/figures/analysis/recover_heatmap/stanley_recovery_states.npz"
+    stanley_states = None
+    if controller_type != "stanley":
+        stanley_states = load_stanley_states(stanley_states_path)
+        print(f"Loaded {len(stanley_states)} Stanley recovery states for baseline comparison")
+
     # Attempt to load from cache
     if not no_cache and os.path.exists(cache_path):
         print(f"\nFound cached grid results at: {cache_path}")
-        recovery_rates, recovery_times, successful_states, stanley_total, stanley_times, non_stanley_times = (
-            load_grid_cache(cache_path)
-        )
+        recovery_rates, recovery_times, successful_states = load_grid_cache(cache_path, controller_type)
         print("Cache loaded successfully — skipping grid evaluation.")
         eval_env = None
     else:
@@ -578,50 +593,22 @@ def main():
 
         np.random.seed(SEED)
 
-        # Load Stanley recovery states for learned controllers
-        stanley_states_path = f"{proj_root}/figures/analysis/recover_heatmap/stanley_recovery_states.npz"
-
-        stanley_states = None
-        if controller_type != "stanley" and os.path.exists(stanley_states_path):
-            data = np.load(stanley_states_path)
-            if grid_matches(data):
-                stanley_states = set(map(tuple, data["states"]))
-                print(f"Loaded {len(stanley_states)} Stanley recovery states for baseline comparison")
-            else:
-                raise ValueError(
-                    "Stanley states were computed with a different grid — "
-                    "re-run with --controller_type stanley to regenerate."
-                )
-        elif controller_type != "stanley":
-            raise FileNotFoundError(
-                f"{stanley_states_path} not found — run Stanley evaluation first for baseline metrics"
-            )
-
         print(
             f"\nRunning grid evaluation: {len(BETA_VALUES)}x{len(R_VALUES)} cells, "
             f"{len(V_VALUES) * len(YAW_VALUES)} episodes per cell..."
         )
 
-        recovery_rates, recovery_times, successful_states, stanley_total, stanley_times, non_stanley_times = (
-            run_grid_evaluation(eval_env, controller, stanley_states=stanley_states)
-        )
+        recovery_rates, recovery_times, successful_states = run_grid_evaluation(eval_env, controller)
 
         # Cache results immediately after evaluation
-        save_grid_cache(
-            cache_path,
-            recovery_rates,
-            recovery_times,
-            successful_states,
-            stanley_total,
-            stanley_times,
-            non_stanley_times,
-        )
+        save_grid_cache(cache_path, recovery_rates, recovery_times, successful_states, controller_type)
 
         # Save Stanley successful states with grid parameters
         if controller_type == "stanley" and successful_states:
             np.savez(
                 stanley_states_path,
                 states=np.array(successful_states),
+                eval_settings=eval_settings("stanley"),
                 beta_values=BETA_VALUES,
                 r_values=R_VALUES,
                 v_values=V_VALUES,
@@ -662,8 +649,10 @@ def main():
         desc=desc,
     )
 
-    # Stanley-baseline metrics for learned controllers
-    if stanley_total > 0:
+    # Stanley-baseline metrics for non-Stanley controllers
+    if stanley_states:
+        stanley_total = len(stanley_states)  # |SR|, also Stanley's own recovery count
+        stanley_times, non_stanley_times = split_by_stanley(successful_states, recovery_times, stanley_states)
         n_recovered = len(stanley_times)
         rate = n_recovered / stanley_total * 100
         improvement = (n_recovered_total - stanley_total) / stanley_total * 100
