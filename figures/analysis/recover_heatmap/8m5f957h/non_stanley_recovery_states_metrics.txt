@@ -1,0 +1,11 @@
+
+==================================================
+NON-STANLEY RECOVERY TIME METRICS
+==================================================
+States recovered by learned but NOT by Stanley: 51
+Mean recovery time:   0.431 s
+Median recovery time: 0.430 s
+Std recovery time:    0.176 s
+==================================================
+
+Note: ABLATION recovering model - Euclidean reward, larger beta, r ranges

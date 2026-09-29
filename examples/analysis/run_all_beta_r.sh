@@ -1,33 +1,28 @@
 #!/usr/bin/env bash
-# Run beta_r_avg_plot.py for all learned controller configurations sequentially.
+# Run beta_r_avg_plot.py for the baselines and the final/ablation learned models sequentially.
+# All learned models below were trained with "drift" obs + accl control, matching EVAL_OBS_TYPE /
+# EVAL_CONTROL_INPUT in beta_r_avg_plot.py.
 set -e
 
 cd "$(dirname "$0")/../.."
-SCRIPT="python examples/analysis/beta_r_avg_plot.py"
+# Non-interactive backend so plt.show() doesn't block between runs
+export MPLBACKEND=Agg
+# --no-cache regenerates every grid; remove it to reuse existing grid_results.npz caches
+SCRIPT="python examples/analysis/beta_r_avg_plot.py --no-cache"
 
-# Stanley baseline (generates recovery states for learned controller comparison)
-$SCRIPT --controller_type stanley --desc "stanley"
+# 1. Stanley baseline (must run first: generates the recovery states the others compare against)
+$SCRIPT --controller_type stanley --learned_type "" --run_id "" --desc "stanley"
 
-# STMPC baseline
-$SCRIPT --controller_type --desc "Single-track MPC controller with acados + CasAdi, ported from ForzaETH"
+# 2. STMPC baseline
+$SCRIPT --controller_type stmpc --learned_type "" --run_id "" --desc "Single-track MPC controller with acados + CasAdi, ported from ForzaETH"
 
-# Drift models
-# $SCRIPT --controller_type learned --learned_type drift --run_id 178a1a5l --desc "drift model - CW & CCW on Drift_large, with sparse_width_obs = True"
-# $SCRIPT --controller_type learned --learned_type drift --run_id iza03vyw --desc "drift model - CW & CCW on Drift_large, with sparse_width_obs = False"
-$SCRIPT --controller_type learned --learned_type drift --run_id bsoh5xyb --desc "drift model - CW & CCW on Drift_large, with sparse_width_obs = True"
+# 3-5. Final models
+$SCRIPT --controller_type learned --learned_type recover --run_id f1mgktxe --desc "FINAL transfer model - drift model 8ncsx1rk retrained with Fine-Tuning with Fresh Optimizer + LR Reset + log_std reset + Critic Reinitialization. No curriculum learning, small beta-r initial ranges, no Euclidean reward"
+$SCRIPT --controller_type learned --learned_type recover --run_id irdqwnhp --desc "FINAL recovering model - no Euclidean reward"
+$SCRIPT --controller_type learned --learned_type drift --run_id 8ncsx1rk --desc "FINAL drift model - CW & CCW on Drift_large, with sparse_width_obs = True, 3rd train with seed 123"
 
-# Recover models
-$SCRIPT --controller_type learned --learned_type recover --run_id p13d1mdz --desc "recovering model - original with Euclidean reward"
-$SCRIPT --controller_type learned --learned_type recover --run_id irdqwnhp --desc "recovering model - no Euclidean reward"
-$SCRIPT --controller_type learned --learned_type recover --run_id 8m5f957h --desc "recovering model - Euclidean reward, larger beta, r ranges"
-$SCRIPT --controller_type learned --learned_type recover --run_id 50x16c1d --desc "recovering model - Euclidean reward, curriculum learning, smaller beta, r ranges"
-$SCRIPT --controller_type learned --learned_type recover --run_id qhj88o3r --desc "recovering model - Euclidean reward, curriculum learning, larger beta, r ranges"
-$SCRIPT --controller_type learned --learned_type recover --run_id sysea5vx --desc "recovering model - no Euclidean reward, curriculum learning, 200 success reward, smaller beta, r ranges"
-$SCRIPT --controller_type learned --learned_type recover --run_id qh54psj2 --desc "recovering model - original with Euclidean reward, no curriculum, small beta,r variations"
-$SCRIPT --controller_type learned --learned_type recover --run_id koa3rljd --desc "recovering model - Euclidean reward, curriculum learning, larger beta, r ranges"
-$SCRIPT --controller_type learned --learned_type recover --run_id w7bkr26u --desc "recovering model - no Euclidean reward, curriculum learning, 200 success reward, smaller beta, r ranges"
-$SCRIPT --controller_type learned --learned_type recover --run_id g3w88oqx --desc "recovering model - drift model 178a1a5l retrained with Fine-Tuning with Fresh Optimizer + LR Reset + log_std reset with --m f. No curriculum learning, small beta-r initial ranges, no Euclidean reward"
-$SCRIPT --controller_type learned --learned_type recover --run_id bwcm7l05 --desc "recovering model - drift model 178a1a5l retrained by loading and continuing training with --m c. No curriculum learning, small beta-r initial ranges, no Euclidean reward"
-$SCRIPT --controller_type learned --learned_type recover --run_id pbmnxwcc --desc "recovering model - drift model 178a1a5l retrained with Fine-Tuning with Fresh Optimizer + LR Reset + log_std reset + Critic Reinitialization. No curriculum learning, small beta-r initial ranges, no Euclidean reward"
+# 6-7. Ablation models
+$SCRIPT --controller_type learned --learned_type recover --run_id 8m5f957h --desc "ABLATION recovering model - Euclidean reward, larger beta, r ranges"
+$SCRIPT --controller_type learned --learned_type recover --run_id qhj88o3r --desc "ABLATION recovering model - Euclidean reward, curriculum learning, larger beta, r ranges"
 
 echo "All evaluations complete!"

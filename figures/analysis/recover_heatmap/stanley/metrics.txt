@@ -1,0 +1,13 @@
+
+==================================================
+RECOVERY METRICS
+==================================================
+Grid: 7x7 (beta x r), 6 (v, yaw) combos per cell
+Total episodes: 294
+Overall recovery rate: 38/294 (12.9%, std across cells: 29.4%)
+Mean recovery time:   0.789 s
+Median recovery time: 0.515 s
+Std recovery time:    0.706 s
+==================================================
+
+Note: stanley

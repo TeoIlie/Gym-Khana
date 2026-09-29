@@ -1,0 +1,13 @@
+
+==================================================
+RECOVERY METRICS
+==================================================
+Grid: 7x7 (beta x r), 6 (v, yaw) combos per cell
+Total episodes: 294
+Overall recovery rate: 43/294 (14.6%, std across cells: 33.3%)
+Mean recovery time:   0.813 s
+Median recovery time: 0.920 s
+Std recovery time:    0.485 s
+==================================================
+
+Note: Single-track MPC controller with acados + CasAdi, ported from ForzaETH

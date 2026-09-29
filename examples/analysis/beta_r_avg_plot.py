@@ -22,6 +22,7 @@ Output saved to figures/analysis/recover_heatmap/<controller_type or run_id>/
 """
 
 import argparse
+import json
 import os
 
 import gymnasium as gym
@@ -30,6 +31,7 @@ import numpy as np
 
 from examples.analysis.fig_format import CMAP, latex_style
 from examples.controllers import create_controller
+from gymkhana.envs.gymkhana_env import GKEnv
 from train.config.env_config import get_env_id
 from train.train_utils import get_output_dirs, print_header
 
@@ -53,9 +55,30 @@ from train.train_utils import get_output_dirs, print_header
 
 CONTROLLER_TYPE = "learned"
 
-LEARNED_TYPE = "transfer"
-RUN_ID = "29hhclk1"
-DESC = "transfer model - tgkpbyrh retrained"
+# LEARNED_TYPE = "recover"
+# RUN_ID = "f1mgktxe"
+# DESC = "FINAL transfer model - drift model 8ncsx1rk retrained with Fine-Tuning with Fresh Optimizer + LR Reset + log_std reset + Critic Reinitialization. No curriculum learning, small beta-r initial ranges, no Euclidean reward"
+
+# LEARNED_TYPE = "recover"
+# RUN_ID = "irdqwnhp"
+# DESC = "FINAL recovering model - no Euclidean reward"
+
+# LEARNED_TYPE = "drift"
+# RUN_ID = "8ncsx1rk"
+# DESC = "FINAL drift model - CW & CCW on Drift_large, with `sparse_width_obs` = True, 3rd train with seed 123"
+
+# LEARNED_TYPE = "recover"
+# RUN_ID = "8m5f957h"
+# DESC = "ABLATION recovering model - Euclidean reward, larger beta, r ranges"
+
+LEARNED_TYPE = "recover"
+RUN_ID = "qhj88o3r"
+DESC = "ABLATION recovering model - Euclidean reward, curriculum learning, larger beta, r ranges"
+
+
+# LEARNED_TYPE = "transfer"
+# RUN_ID = "29hhclk1"
+# DESC = "transfer model - tgkpbyrh retrained"
 
 # LEARNED_TYPE = "drift"
 # RUN_ID = "tgkpbyrh"
@@ -81,10 +104,6 @@ DESC = "transfer model - tgkpbyrh retrained"
 # RUN_ID = "zv45r303"
 # DESC = "transfer model - drift model bsoh5xyb retrained with Fine-Tuning with Fresh Optimizer + LR Reset + log_std reset with --m f. No curriculum learning, small beta-r initial ranges, no Euclidean reward"
 
-# LEARNED_TYPE = "drift"
-# RUN_ID = "8ncsx1rk"
-# DESC = "drift model - CW & CCW on Drift_large, with `sparse_width_obs` = True, 3rd train with seed 123"
-
 # LEARNED_TYPE = "transfer"
 # RUN_ID = "c76n9olh"
 # DESC = "transfer model - drift model bsoh5xyb retrained by loading and continuing training with --m c. No curriculum learning, small beta-r initial ranges, no Euclidean reward "
@@ -106,20 +125,8 @@ DESC = "transfer model - tgkpbyrh retrained"
 # DESC = "recovering model - original with Euclidean reward"
 
 # LEARNED_TYPE = "recover"
-# RUN_ID = "irdqwnhp"
-# DESC = "recovering model - no Euclidean reward"
-
-# LEARNED_TYPE = "recover"
-# RUN_ID = "8m5f957h"
-# DESC = "recovering model - Euclidean reward, larger beta, r ranges"
-
-# LEARNED_TYPE = "recover"
 # RUN_ID = "50x16c1d"
 # DESC = "recovering model - Euclidean reward, curriculum learning, smaller beta, r ranges"
-
-# LEARNED_TYPE = "recover"
-# RUN_ID = "qhj88o3r"
-# DESC = "recovering model - Euclidean reward, curriculum learning, larger beta, r ranges"
 
 # LEARNED_TYPE = "recover"
 # RUN_ID = "sysea5vx"
@@ -166,20 +173,25 @@ DESC = "transfer model - tgkpbyrh retrained"
 # DESC = "transfer model - drift model bsoh5xyb retrained with Fine-Tuning with Fresh Optimizer + LR Reset + log_std reset + Critic Reinitialization. \nNo curriculum learning, small beta-r initial ranges, no Euclidean reward"
 
 # LEARNED_TYPE = "recover"
-# RUN_ID = "f1mgktxe"
-# DESC = "transfer model - drift model 8ncsx1rk retrained with Fine-Tuning with Fresh Optimizer + LR Reset + log_std reset + Critic Reinitialization. No curriculum learning, small beta-r initial ranges, no Euclidean reward"
-
-# LEARNED_TYPE = "recover"
 # RUN_ID = "gpti2zb1"
 # DESC = "recovering model - original with Euclidean reward, small beta, r ranges, and success reward 50,  collision penalty -100"
+
+# Vehicle parameters, pinned here so edits to train/config/env_config.py or gymkhana/presets.py don't change them
+EVAL_PARAMS = GKEnv.f1tenth_std_drift_bias_params()
+
+# Learned-policy obs type and control input, pinned to what the evaluated model was trained with.
+# Models trained before 2026-05-14 use "drift" + accl; later ones use "drift_real" + speed.
+# Classic controllers set their own and ignore these.
+EVAL_OBS_TYPE = "drift"
+EVAL_CONTROL_INPUT = ["accl", "steering_angle"]
 
 S = 96  # Arc length on IMS straight section
 SEED = 42
 
 # Grid parameters (radians / rad/s / m/s)
-BETA_VALUES = np.linspace(-1.0472, 1.0472, 7)  # 10 points, +/-60 deg
-R_VALUES = np.linspace(-6.5, 6.5, 7)  # 10 points, +/-372 deg/s
-V_VALUES = np.linspace(3, 4, 2)  # 3 points: [2, 7, 12]
+BETA_VALUES = np.linspace(-1.39, 1.39, 7)  # 7 points, +/-80 deg
+R_VALUES = np.linspace(-13, 13, 7)  # 7 points, +/-745 deg/s
+V_VALUES = np.linspace(4, 5, 2)  # 2 points: [4, 5]
 YAW_VALUES = np.linspace(-0.17, 0.17, 3)  # 3 points: [-10, 0, +10] deg
 
 
@@ -241,19 +253,17 @@ def run_episode(eval_env, controller, beta, r, v, yaw):
     return recovered, steps * dt
 
 
-def run_grid_evaluation(eval_env, controller, stanley_states=None):
+def run_grid_evaluation(eval_env, controller):
     """Run recovery evaluation across the full (beta, r, v, yaw) grid.
 
     Args:
         eval_env: The gym environment.
         controller: Controller providing get_action(obs).
-        stanley_states: Optional set of (beta, r, v, yaw) tuples where Stanley succeeded.
-            When provided, also tracks metrics on this subset.
 
     Returns:
         recovery_rates: array of recovery rate per (beta, r) cell
-        mean_recovery_times: array of mean recovery time (seconds) per cell
-        successful_states: list of (beta, r, v, yaw) tuples that recovered
+        recovery_times: list of recovery times (seconds), one per successful episode
+        successful_states: list of (beta, r, v, yaw) tuples that recovered, aligned with recovery_times
     """
     n_beta = len(BETA_VALUES)
     n_r = len(R_VALUES)
@@ -262,16 +272,9 @@ def run_grid_evaluation(eval_env, controller, stanley_states=None):
     n_inner = n_v * n_yaw
     total_episodes = n_beta * n_r * n_inner
 
-    # Per-cell accumulators
     recovery_counts = np.zeros((n_beta, n_r))
-    recovery_time_sums = np.zeros((n_beta, n_r))
-
+    recovery_times = []
     successful_states = []
-
-    # Stanley-subset accumulators
-    stanley_total_count = 0
-    stanley_recovery_times = []
-    non_stanley_recovery_times = []
 
     episode = 0
     for i, beta in enumerate(BETA_VALUES):
@@ -282,37 +285,30 @@ def run_grid_evaluation(eval_env, controller, stanley_states=None):
 
                     if recovered:
                         recovery_counts[i, j] += 1
-                        recovery_time_sums[i, j] += time_s
+                        recovery_times.append(time_s)
                         successful_states.append((beta, r, v, yaw))
-
-                    # Track Stanley-subset and non-Stanley metrics
-                    if stanley_states is not None:
-                        is_stanley_state = (beta, r, v, yaw) in stanley_states
-                        if is_stanley_state:
-                            stanley_total_count += 1
-                            if recovered:
-                                stanley_recovery_times.append(time_s)
-                        elif recovered:
-                            non_stanley_recovery_times.append(time_s)
 
                     episode += 1
                     if episode % 10 == 0:
                         print(f"  Progress: {episode}/{total_episodes} episodes")
 
-    recovery_rates = recovery_counts / n_inner
+    return recovery_counts / n_inner, recovery_times, successful_states
 
-    # compute mean times, guarding against division by 0
-    with np.errstate(divide="ignore", invalid="ignore"):
-        mean_recovery_times = np.where(recovery_counts > 0, recovery_time_sums / recovery_counts, np.nan)
 
-    return (
-        recovery_rates,
-        mean_recovery_times,
-        successful_states,
-        stanley_total_count,
-        stanley_recovery_times,
-        non_stanley_recovery_times,
-    )
+def split_by_stanley(successful_states, recovery_times, stanley_states):
+    """Split successful recovery times into Stanley-recoverable (SR) and -unrecoverable (SU) states.
+
+    Computed from the current Stanley baseline on every run, so cached results never
+    report comparison metrics against an outdated baseline.
+
+    Returns:
+        stanley_times: recovery times on states in SR
+        non_stanley_times: recovery times on states not in SR
+    """
+    stanley_times, non_stanley_times = [], []
+    for state, time_s in zip(successful_states, recovery_times):
+        (stanley_times if state in stanley_states else non_stanley_times).append(time_s)
+    return stanley_times, non_stanley_times
 
 
 # Luminance below which white text out-contrasts black, from equating the two WCAG
@@ -413,7 +409,7 @@ def save_metrics(title, summary_lines, recovery_times, output_path, desc=""):
     Args:
         title: Section header
         summary_lines: List of summary strings (grid info, rates, etc.).
-        recovery_times: 1-D array of recovery times for successful episodes.
+        recovery_times: Recovery times (seconds), one per successful episode.
         output_path: File path to write the metrics to.
         desc: Optional description to append to the file.
     """
@@ -439,18 +435,47 @@ def save_metrics(title, summary_lines, recovery_times, output_path, desc=""):
     print(f"Metrics saved to: {output_path}")
 
 
-def save_grid_cache(
-    path, recovery_rates, mean_recovery_times, successful_states, stanley_total, stanley_times, non_stanley_times
-):
+def grid_matches(data):
+    """Return True if the grid stored in a loaded .npz matches the current grid."""
+    return (
+        np.allclose(data["beta_values"], BETA_VALUES)
+        and np.allclose(data["r_values"], R_VALUES)
+        and np.allclose(data["v_values"], V_VALUES)
+        and np.allclose(data["yaw_values"], YAW_VALUES)
+    )
+
+
+def eval_settings(controller_type):
+    """Return the pinned evaluation settings for a controller as a JSON string, stored with cached results."""
+    settings = {"params": EVAL_PARAMS}
+    if controller_type == "learned":
+        settings["obs_type"] = EVAL_OBS_TYPE
+        settings["control_input"] = EVAL_CONTROL_INPUT
+    return json.dumps(settings, sort_keys=True, default=str)
+
+
+def check_cache(data, path, controller_type):
+    """Raise ValueError if a loaded .npz was built with a different grid or different eval settings."""
+    if not grid_matches(data):
+        raise ValueError(
+            f"Cached grid parameters in {path} do not match the current BETA/R/V/YAW_VALUES. "
+            "Delete the cache file or re-run with --no-cache to regenerate."
+        )
+    if "eval_settings" not in data or str(data["eval_settings"]) != eval_settings(controller_type):
+        raise ValueError(
+            f"{path} was built with different (or unrecorded) EVAL_PARAMS / EVAL_OBS_TYPE / EVAL_CONTROL_INPUT. "
+            "Re-run with --no-cache to regenerate."
+        )
+
+
+def save_grid_cache(path, recovery_rates, recovery_times, successful_states, controller_type):
     """Save run_grid_evaluation results to an .npz cache file."""
     np.savez(
         path,
         recovery_rates=recovery_rates,
-        mean_recovery_times=mean_recovery_times,
+        recovery_times=np.array(recovery_times),
         successful_states=np.array(successful_states) if successful_states else np.empty((0, 4)),
-        stanley_total=np.array(stanley_total),
-        stanley_times=np.array(stanley_times),
-        non_stanley_times=np.array(non_stanley_times),
+        eval_settings=eval_settings(controller_type),
         beta_values=BETA_VALUES,
         r_values=R_VALUES,
         v_values=V_VALUES,
@@ -459,34 +484,33 @@ def save_grid_cache(
     print(f"Grid results cached to: {path}")
 
 
-def load_grid_cache(path):
+def load_grid_cache(path, controller_type):
     """Load and validate a cached grid_results.npz file.
 
-    Returns the six run_grid_evaluation outputs if the grid parameters match,
-    or raises ValueError if the cache was built with different grid settings.
+    Returns the three run_grid_evaluation outputs, or raises ValueError if the cache
+    predates per-episode recovery times or was built with a different grid or eval settings.
     """
     data = np.load(path)
-    grids_match = (
-        np.allclose(data["beta_values"], BETA_VALUES)
-        and np.allclose(data["r_values"], R_VALUES)
-        and np.allclose(data["v_values"], V_VALUES)
-        and np.allclose(data["yaw_values"], YAW_VALUES)
-    )
-    if not grids_match:
+    if "recovery_times" not in data:
         raise ValueError(
-            f"Cached grid parameters in {path} do not match the current BETA/R/V/YAW_VALUES. "
-            "Delete the cache file or re-run with --no-cache to regenerate."
+            f"Cache {path} has no per-episode recovery times (old format). Re-run with --no-cache to regenerate."
         )
+    check_cache(data, path, controller_type)
 
     successful_states = [tuple(row) for row in data["successful_states"]]
-    return (
-        data["recovery_rates"],
-        data["mean_recovery_times"],
-        successful_states,
-        int(data["stanley_total"]),
-        list(data["stanley_times"]),
-        list(data["non_stanley_times"]),
-    )
+    return data["recovery_rates"], list(data["recovery_times"]), successful_states
+
+
+def load_stanley_states(path):
+    """Load the Stanley-recoverable set SR, checking it matches the current grid and eval settings."""
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"{path} not found — run Stanley evaluation first for baseline metrics")
+    data = np.load(path)
+    try:
+        check_cache(data, path, "stanley")
+    except ValueError as e:
+        raise ValueError(f"{e} Re-run with --controller_type stanley to regenerate the baseline.") from None
+    return set(map(tuple, data["states"]))
 
 
 def parse_args():
@@ -528,12 +552,17 @@ def main():
     os.makedirs(subfolder, exist_ok=True)
     cache_path = os.path.join(subfolder, "grid_results.npz")
 
+    # Stanley-recoverable set SR, loaded fresh on every run (cached or not) for the baseline comparison
+    stanley_states_path = f"{proj_root}/figures/analysis/recover_heatmap/stanley_recovery_states.npz"
+    stanley_states = None
+    if controller_type != "stanley":
+        stanley_states = load_stanley_states(stanley_states_path)
+        print(f"Loaded {len(stanley_states)} Stanley recovery states for baseline comparison")
+
     # Attempt to load from cache
     if not no_cache and os.path.exists(cache_path):
         print(f"\nFound cached grid results at: {cache_path}")
-        recovery_rates, mean_recovery_times, successful_states, stanley_total, stanley_times, non_stanley_times = (
-            load_grid_cache(cache_path)
-        )
+        recovery_rates, recovery_times, successful_states = load_grid_cache(cache_path, controller_type)
         print("Cache loaded successfully — skipping grid evaluation.")
         eval_env = None
     else:
@@ -549,6 +578,10 @@ def main():
 
         config = controller.get_env_config()
         config["training_mode"] = "recover"
+        config["params"] = EVAL_PARAMS
+        if controller_type == "learned":
+            config["observation_config"] = {"type": EVAL_OBS_TYPE}
+            config["control_input"] = EVAL_CONTROL_INPUT
 
         eval_env = gym.make(
             get_env_id(),
@@ -560,60 +593,22 @@ def main():
 
         np.random.seed(SEED)
 
-        # Load Stanley recovery states for learned controllers
-        stanley_states_path = f"{proj_root}/figures/analysis/recover_heatmap/stanley_recovery_states.npz"
-
-        stanley_states = None
-        if controller_type != "stanley" and os.path.exists(stanley_states_path):
-            data = np.load(stanley_states_path)
-
-            grids_match = (
-                np.allclose(data["beta_values"], BETA_VALUES)
-                and np.allclose(data["r_values"], R_VALUES)
-                and np.allclose(data["v_values"], V_VALUES)
-                and np.allclose(data["yaw_values"], YAW_VALUES)
-            )
-            if grids_match:
-                stanley_states = set(map(tuple, data["states"]))
-                print(f"Loaded {len(stanley_states)} Stanley recovery states for baseline comparison")
-            else:
-                raise ValueError(
-                    "Stanley states were computed with a different grid — "
-                    "re-run with --controller_type stanley to regenerate."
-                )
-        elif controller_type != "stanley":
-            raise FileNotFoundError(
-                f"{stanley_states_path} not found — run Stanley evaluation first for baseline metrics"
-            )
-
         print(
             f"\nRunning grid evaluation: {len(BETA_VALUES)}x{len(R_VALUES)} cells, "
             f"{len(V_VALUES) * len(YAW_VALUES)} episodes per cell..."
         )
 
-        recovery_rates, mean_recovery_times, successful_states, stanley_total, stanley_times, non_stanley_times = (
-            run_grid_evaluation(eval_env, controller, stanley_states=stanley_states)
-        )
+        recovery_rates, recovery_times, successful_states = run_grid_evaluation(eval_env, controller)
 
         # Cache results immediately after evaluation
-        save_grid_cache(
-            cache_path,
-            recovery_rates,
-            mean_recovery_times,
-            successful_states,
-            stanley_total,
-            stanley_times,
-            non_stanley_times,
-        )
+        save_grid_cache(cache_path, recovery_rates, recovery_times, successful_states, controller_type)
 
         # Save Stanley successful states with grid parameters
         if controller_type == "stanley" and successful_states:
-            stanley_states_path = f"{proj_root}/figures/analysis/recover_heatmap/stanley_recovery_states.npz"
-            save_dir = os.path.dirname(stanley_states_path)
-            os.makedirs(save_dir, exist_ok=True)
             np.savez(
                 stanley_states_path,
                 states=np.array(successful_states),
+                eval_settings=eval_settings("stanley"),
                 beta_values=BETA_VALUES,
                 r_values=R_VALUES,
                 v_values=V_VALUES,
@@ -638,35 +633,37 @@ def main():
     )
 
     n_inner = len(V_VALUES) * len(YAW_VALUES)
-    overall_rate = np.mean(recovery_rates) * 100
+    n_total = len(BETA_VALUES) * len(R_VALUES) * n_inner
+    n_recovered_total = len(recovery_times)
+    overall_rate = n_recovered_total / n_total * 100
     overall_std = np.std(recovery_rates) * 100
-    valid_times = mean_recovery_times[~np.isnan(mean_recovery_times)]
     save_metrics(
         "RECOVERY METRICS",
         [
             f"Grid: {len(BETA_VALUES)}x{len(R_VALUES)} (beta x r), {n_inner} (v, yaw) combos per cell",
-            f"Total episodes: {len(BETA_VALUES) * len(R_VALUES) * n_inner}",
-            f"Overall recovery rate: {overall_rate:.1f}% (std across cells: {overall_std:.1f}%)",
+            f"Total episodes: {n_total}",
+            f"Overall recovery rate: {n_recovered_total}/{n_total} ({overall_rate:.1f}%, std across cells: {overall_std:.1f}%)",
         ],
-        valid_times,
+        recovery_times,
         os.path.join(subfolder, "metrics.txt"),
         desc=desc,
     )
 
-    # Stanley-baseline metrics for learned controllers
-    if stanley_total > 0:
+    # Stanley-baseline metrics for non-Stanley controllers
+    if stanley_states:
+        stanley_total = len(stanley_states)  # |SR|, also Stanley's own recovery count
+        stanley_times, non_stanley_times = split_by_stanley(successful_states, recovery_times, stanley_states)
         n_recovered = len(stanley_times)
         rate = n_recovered / stanley_total * 100
-        learned_total_recoveries = len(successful_states)
-        improvement = (learned_total_recoveries - stanley_total) / stanley_total * 100
+        improvement = (n_recovered_total - stanley_total) / stanley_total * 100
         save_metrics(
             "STANLEY-BASELINE RECOVERY METRICS",
             [
                 f"Stanley recovery states evaluated: {stanley_total}",
                 f"Learned policy recovered: {n_recovered}/{stanley_total} ({rate:.1f}%)",
-                f"Recovery rate improvement over Stanley: {improvement:+.1f}% ({learned_total_recoveries} vs {stanley_total} total recoveries)",
+                f"Recovery rate improvement over Stanley: {improvement:+.1f}% ({n_recovered_total} vs {stanley_total} total recoveries)",
             ],
-            np.array(stanley_times),
+            stanley_times,
             os.path.join(subfolder, "stanley_recovery_states_metrics.txt"),
             desc=desc,
         )
@@ -677,7 +674,7 @@ def main():
             [
                 f"States recovered by learned but NOT by Stanley: {len(non_stanley_times)}",
             ],
-            np.array(non_stanley_times),
+            non_stanley_times,
             os.path.join(subfolder, "non_stanley_recovery_states_metrics.txt"),
             desc=desc,
         )
