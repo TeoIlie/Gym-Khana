@@ -1,0 +1,11 @@
+
+==================================================
+NON-STANLEY RECOVERY TIME METRICS
+==================================================
+States recovered by learned but NOT by Stanley: 9
+Mean recovery time:   0.961 s
+Median recovery time: 1.150 s
+Std recovery time:    0.530 s
+==================================================
+
+Note: Single-track MPC controller with acados + CasAdi, ported from ForzaETH

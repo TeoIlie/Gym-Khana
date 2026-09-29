@@ -192,8 +192,9 @@ st_acados_ocp.json
 
 mpc-ref/
 
-# Analysis and test figures
-figures/analysis/
+# Analysis and test figures, except the recovery heatmap results (tracked)
+figures/analysis/*
+!figures/analysis/recover_heatmap/
 figures/tests/
 
 # Frames and videos saved from the renderer with the 'P' and 'R' keys

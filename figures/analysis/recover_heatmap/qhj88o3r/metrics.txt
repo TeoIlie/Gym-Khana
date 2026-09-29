@@ -1,0 +1,13 @@
+
+==================================================
+RECOVERY METRICS
+==================================================
+Grid: 7x7 (beta x r), 6 (v, yaw) combos per cell
+Total episodes: 294
+Overall recovery rate: 92/294 (31.3%, std across cells: 42.1%)
+Mean recovery time:   1.375 s
+Median recovery time: 0.455 s
+Std recovery time:    2.971 s
+==================================================
+
+Note: ABLATION recovering model - Euclidean reward, curriculum learning, larger beta, r ranges

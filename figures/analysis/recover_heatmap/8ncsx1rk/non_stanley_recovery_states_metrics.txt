@@ -1,0 +1,11 @@
+
+==================================================
+NON-STANLEY RECOVERY TIME METRICS
+==================================================
+States recovered by learned but NOT by Stanley: 59
+Mean recovery time:   1.384 s
+Median recovery time: 1.320 s
+Std recovery time:    0.779 s
+==================================================
+
+Note: FINAL drift model - CW & CCW on Drift_large, with sparse_width_obs = True, 3rd train with seed 123

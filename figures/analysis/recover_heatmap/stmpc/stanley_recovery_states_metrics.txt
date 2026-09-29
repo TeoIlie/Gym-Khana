@@ -1,0 +1,13 @@
+
+==================================================
+STANLEY-BASELINE RECOVERY METRICS
+==================================================
+Stanley recovery states evaluated: 38
+Learned policy recovered: 34/38 (89.5%)
+Recovery rate improvement over Stanley: +13.2% (43 vs 38 total recoveries)
+Mean recovery time:   0.774 s
+Median recovery time: 0.540 s
+Std recovery time:    0.464 s
+==================================================
+
+Note: Single-track MPC controller with acados + CasAdi, ported from ForzaETH
